@@ -1,18 +1,17 @@
 const { Telegraf } = require('telegraf');
 const Groq = require('groq-sdk');
 
-const bot = new Telegraf('9281732550:AAHuH2XS3Aw0Ok0w703aaKbbGgx-_MLTFyw');
-const groq = new Groq({ apiKey: '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' });
+const bot = new Telegraf(process.env.TELEGRAM_TOKEN || '9281732550:AAHuH2XS3Aw0Ok0w703aaKbbGgx-_MLTFyw');
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || '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' });
 
-function isAmharic(text) {
-  return /[\u1200-\u137F]/.test(text);
-}
+const WEBSITE_LINK = 'https://your-netlify-link.netlify.app'; // ← Change this
 
 bot.start((ctx) => {
   ctx.reply(
     'Hello! / ሰላም!\n\n' +
     'I am the Multilingual Learning Assistant.\n' +
     'Ask me anything. I reply in both languages when possible.\n\n' +
+    'Website: ' + WEBSITE_LINK + '\n\n' +
     'Commands:\n/help - Request human help'
   );
 });
@@ -24,6 +23,13 @@ bot.command('help', (ctx) => {
 bot.on('text', async (ctx) => {
   const text = ctx.message.text || '';
   if (text.startsWith('/')) return;
+
+  const lower = text.toLowerCase();
+
+  // Give website link
+  if (lower.includes('website') || lower.includes('link') || text.includes('ድረ ገጽ') || text.includes('ድህረገጽ')) {
+    return ctx.reply('Here is the website:\n' + WEBSITE_LINK + '\n\nClick the link to open it.');
+  }
 
   try {
     const completion = await groq.chat.completions.create({
