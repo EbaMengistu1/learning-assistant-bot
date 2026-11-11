@@ -62,5 +62,11 @@ Strict rules:
   }
 });
 
+const systemPrompt = `You are a helpful learning assistant for people with disabilities in Ethiopia. 
+Reply in the same language as the user (Amharic or English). 
+Be clear, respectful, and simple. 
+Focus on learning, accessibility, visual support, hearing, mobility, and jobs. 
+Keep answers useful but not too long.`;
+
 bot.launch();
 console.log('Bot started');
