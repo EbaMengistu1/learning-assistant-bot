@@ -1,101 +1,302 @@
-const { Telegraf } = require('telegraf');
-const Groq = require('groq-sdk');
-const express = require('express');
-const cors = require('cors');
+const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
 
-const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const TOKEN = process.env.BOT_TOKEN;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+if (!TOKEN) {
+  console.error("BOT_TOKEN is missing. Add it in Railway Variables.");
+  process.exit(1);
+}
 
-const WEBSITE_LINK = 'https://m-at.netlify.app/';
+const bot = new TelegramBot(TOKEN, {
+  polling: true
+});
 
-// Telegram Bot
-bot.start((ctx) => {
-  ctx.reply(
-    'Hello! / ሰላም!\n\n' +
-    'I am the Multilingual Learning Assistant.\n' +
-    'Website: ' + WEBSITE_LINK + '\n\n' +
-    'Commands:\n/help - Request human help'
+let COURSE_DATA = { lessons: [] };
+
+try {
+  COURSE_DATA = JSON.parse(
+    fs.readFileSync("course-data.json", "utf8")
   );
-});
+} catch (error) {
+  console.error("Could not load course-data.json:", error);
+}
 
-bot.command('help', (ctx) => {
-  ctx.reply('For human help, use the Request Human Help button on the website.');
-});
+const userLessons = new Map();
 
-bot.on('text', async (ctx) => {
-  const text = ctx.message.text || '';
-  if (text.startsWith('/')) return;
 
-  const lower = text.toLowerCase();
-  if (lower.includes('website') || lower.includes('link') || text.includes('ድረ ገጽ')) {
-    return ctx.reply('Here is the website:\n' + WEBSITE_LINK);
-  }
+function normalizeText(text) {
+  return String(text)
+    .toLowerCase()
+    .replace(/[?؟!.።,،]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  try {
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: `You are the Multilingual Learning Assistant created by Eba Mengistu.
-If asked who you are, say you are the Multilingual Learning Assistant.
-If asked who created you, say Eba Mengistu.
-Answer in the same language the user uses.
-Be helpful and clear.`
-        },
-        { role: 'user', content: text }
-      ],
-      model: 'openai/gpt-oss-20b',
-      max_tokens: 400
+
+function findCourseAnswer(question) {
+  const questionText = normalizeText(question);
+  let bestLesson = null;
+  let bestScore = 0;
+
+
+  COURSE_DATA.lessons.forEach(lesson => {
+    let score = 0;
+
+
+    const keywords = lesson.keywords || [];
+
+
+    keywords.forEach(keyword => {
+      const keywordText = normalizeText(keyword);
+
+
+      if (!keywordText) {
+        return;
+      }
+
+
+      if (questionText.includes(keywordText)) {
+        score += 2;
+      }
     });
 
-    const answer = completion.choices[0]?.message?.content?.trim() || 'Sorry, no answer.';
-    ctx.reply(answer);
-  } catch (err) {
-    console.error(err);
-    ctx.reply('Sorry, try again.');
-  }
-});
 
-// API for Website
-app.post('/ask', async (req, res) => {
-  const question = req.body.question || '';
-  if (!question) return res.json({ answer: 'Please ask a question.' });
+    const lessonTitle = normalizeText(lesson.title || "");
+
+
+    if (questionText.includes(lessonTitle)) {
+      score += 3;
+    }
+
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestLesson = lesson;
+    }
+  });
+
+
+  return bestScore > 0 ? bestLesson : null;
+}
+
+
+function getSimpleAnswer(lesson) {
+  const simple = lesson.simple || {};
+
+
+  return simple.en || simple.am || "";
+}
+
+
+function getFullAnswer(lesson) {
+  const answer = lesson.answer || {};
+
+
+  return answer.en || answer.am || "";
+}
+
+
+function getSource(lesson) {
+  const source = lesson.source || {};
+
+
+  let text = "📚 Source: ";
+
+
+  text += source.lesson || lesson.title || "Course lesson";
+
+
+  if (source.section) {
+    text += " — " + source.section;
+  }
+
+
+  if (source.url) {
+    text += "\n🔗 " + source.url;
+  }
+
+
+  return text;
+}
+
+
+async function askGroq(question) {
+  if (!GROQ_API_KEY) {
+    return null;
+  }
+
+
+  const response = await fetch(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + GROQ_API_KEY
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a simple learning assistant for beginners. " +
+              "Answer clearly in simple English. " +
+              "If the learner writes in Amharic, answer in Amharic. " +
+              "Keep the answer short, helpful, and easy to understand. " +
+              "Do not give medical, legal, or financial advice."
+          },
+          {
+            role: "user",
+            content: question
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+      })
+    }
+  );
+
+
+  if (!response.ok) {
+    throw new Error("Groq API error: " + response.status);
+  }
+
+
+  const data = await response.json();
+
+
+  return data.choices[0].message.content.trim();
+}
+
+
+bot.on("message", async message => {
+  const chatId = message.chat.id;
+  const text = message.text;
+
+
+  if (!text) {
+    return;
+  }
+
+
+  const normalText = text.toLowerCase().trim();
+
+
+  if (normalText === "/start") {
+    bot.sendMessage(
+      chatId,
+      "Hello! Ask me a question from the Internet Basics course.\n\n" +
+      "Examples:\n" +
+      "• What is downloading?\n" +
+      "• What is the internet?\n" +
+      "• What is a hyperlink?\n" +
+      "• How can I stay safe online?"
+    );
+
+
+    return;
+  }
+
+
+  if (
+    normalText === "yes" ||
+    normalText === "full" ||
+    normalText === "full answer" ||
+    normalText === "አዎ"
+  ) {
+    const lesson = userLessons.get(chatId);
+
+
+    if (!lesson) {
+      bot.sendMessage(
+        chatId,
+        "Please first ask a course question, such as: What is downloading?"
+      );
+
+
+      return;
+    }
+
+
+    const fullAnswer = getFullAnswer(lesson);
+    const source = getSource(lesson);
+
+
+    bot.sendMessage(
+      chatId,
+      fullAnswer + "\n\n" + source
+    );
+
+
+    return;
+  }
+
+
+  const lesson = findCourseAnswer(text);
+
+
+  if (lesson) {
+    userLessons.set(chatId, lesson);
+
+
+    const simpleAnswer = getSimpleAnswer(lesson);
+    const source = getSource(lesson);
+
+
+    bot.sendMessage(
+      chatId,
+      simpleAnswer +
+      "\n\n" +
+      source +
+      "\n\nWould you like the full explanation? Reply: yes"
+    );
+
+
+    return;
+  }
+
+
+  bot.sendMessage(chatId, "🔎 Thinking...");
+
 
   try {
-    const completion = await groq.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: 'You are the Multilingual Learning Assistant created by Eba Mengistu. Answer clearly and helpfully in the same language the user uses.'
-        },
-        { role: 'user', content: question }
-      ],
-      model: 'openai/gpt-oss-20b',
-      max_tokens: 400
-    });
+    const groqAnswer = await askGroq(text);
 
-    const answer = completion.choices[0]?.message?.content || 'Sorry, no answer.';
-    res.json({ answer });
-  } catch (err) {
-    console.error(err);
-    res.json({ answer: 'Sorry, try again.' });
+
+    if (groqAnswer) {
+      bot.sendMessage(
+        chatId,
+        groqAnswer +
+        "\n\n🤖 Answer generated by Groq."
+      );
+
+
+      return;
+    }
+
+
+    bot.sendMessage(
+      chatId,
+      "I can help with questions from the Internet Basics course.\n\n" +
+      "Try asking:\n" +
+      "• What is downloading?\n" +
+      "• What is the internet?\n" +
+      "• What is a hyperlink?\n" +
+      "• How can I stay safe online?"
+    );
+  } catch (error) {
+    console.error("Groq answer failed:", error);
+
+
+    bot.sendMessage(
+      chatId,
+      "Sorry, I could not answer that question right now. Please try again."
+    );
   }
 });
 
-// Health check (useful for Railway)
-app.get('/', (req, res) => {
-  res.send('Learning Assistant API is running');
-});
 
-// Listen on the port Railway expects
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('API running on port', PORT);
-});
-
-bot.launch();
-console.log('Bot started');
+console.log("Telegram bot is running.");
