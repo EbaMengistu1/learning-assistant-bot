@@ -1,11 +1,13 @@
 const { Telegraf } = require('telegraf');
 const Groq = require('groq-sdk');
 const express = require('express');
+const cors = require('cors');
 
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 const WEBSITE_LINK = 'https://your-netlify-link.netlify.app';
