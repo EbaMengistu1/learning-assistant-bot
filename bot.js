@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const WEBSITE_LINK = 'https://your-netlify-link.netlify.app';
+const WEBSITE_LINK = 'https://m-ass.netlify.app/';
 
 // Telegram Bot
 bot.start((ctx) => {
