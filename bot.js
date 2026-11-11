@@ -53,6 +53,7 @@ Be helpful and clear.`
     const answer = completion.choices[0]?.message?.content?.trim() || 'Sorry, no answer.';
     ctx.reply(answer);
   } catch (err) {
+    console.error(err);
     ctx.reply('Sorry, try again.');
   }
 });
@@ -78,12 +79,21 @@ app.post('/ask', async (req, res) => {
     const answer = completion.choices[0]?.message?.content || 'Sorry, no answer.';
     res.json({ answer });
   } catch (err) {
+    console.error(err);
     res.json({ answer: 'Sorry, try again.' });
   }
 });
 
+// Health check (useful for Railway)
+app.get('/', (req, res) => {
+  res.send('Learning Assistant API is running');
+});
+
+// Listen on the port Railway expects
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => console.log('API running on port', PORT));
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('API running on port', PORT);
+});
 
 bot.launch();
 console.log('Bot started');
