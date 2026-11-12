@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v15 Teacher and Student roles");
+console.log("BOT VERSION: v16 Track 3 Accessible Learning and Employment Support");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -54,6 +54,7 @@ const stats = {
   aiQuestions: 0,
   helpRequests: 0,
   accommodationRequests: 0,
+  screenShareRequests: 0,
   quizCompletions: 0,
   smsNotifications: 0,
   telegramAnnouncements: 0,
@@ -370,7 +371,7 @@ function sendHelpRequestToAdmin(chatId, question) {
 
   bot.sendMessage(
     ADMIN_CHAT_ID,
-    "🔔 New help request\n\n" +
+    "🙋 New help request\n\n" +
     "User ID: " + chatId + "\n" +
     "Question: " + question
   );
@@ -386,6 +387,19 @@ function sendAccommodationRequestToAdmin(chatId, accommodation) {
     "📋 Interview accommodation request\n\n" +
     "User ID: " + chatId + "\n" +
     "Need: " + accommodation
+  );
+}
+
+function sendScreenShareRequestToAdmin(chatId, meetingLink) {
+  if (!ADMIN_CHAT_ID) {
+    return;
+  }
+
+  bot.sendMessage(
+    ADMIN_CHAT_ID,
+    "🖥️ Screen-sharing request\n\n" +
+    "User ID: " + chatId + "\n" +
+    "Meeting link: " + meetingLink
   );
 }
 
@@ -454,6 +468,47 @@ function sendQuizMenu(chatId) {
   );
 }
 
+function sendJobAlerts(chatId) {
+  let jobText = "💼 Job Alerts\n\n";
+  jobText += "Tap a job title to see details.\n\n";
+
+  const jobButtons = jobs.map((job, index) => {
+    return [
+      {
+        text: (index + 1) + ". " + job.title,
+        callback_data: "job_" + index
+      }
+    ];
+  });
+
+  bot.sendMessage(
+    chatId,
+    jobText,
+    {
+      reply_markup: {
+        inline_keyboard: jobButtons
+      }
+    }
+  );
+}
+
+function sendAccommodationMenu(chatId) {
+  userState.set(chatId, "waiting_accommodation");
+
+  bot.sendMessage(
+    chatId,
+    "📋 Interview Support\n\n" +
+    "What accommodation do you need for an interview?\n\n" +
+    "1. Extra time\n" +
+    "2. Screen reader support\n" +
+    "3. Sign language interpreter\n" +
+    "4. Quiet interview space\n" +
+    "5. Written questions\n" +
+    "6. Other\n\n" +
+    "Please reply with a number."
+  );
+}
+
 function sendTeacherAnalytics(chatId) {
   let topicText = "No course questions yet.";
 
@@ -480,6 +535,7 @@ function sendTeacherAnalytics(chatId) {
     "AI questions: " + stats.aiQuestions + "\n" +
     "Help requests: " + stats.helpRequests + "\n" +
     "Accommodation requests: " + stats.accommodationRequests + "\n" +
+    "Screen-sharing requests: " + stats.screenShareRequests + "\n" +
     "Quiz completions: " + stats.quizCompletions + "\n" +
     "SMS reminders sent: " + stats.smsNotifications + "\n" +
     "Telegram announcements: " + stats.telegramAnnouncements + "\n" +
@@ -849,6 +905,115 @@ bot.on("callback_query", async callbackQuery => {
     return;
   }
 
+  if (data === "track3_course_question") {
+    bot.sendMessage(
+      chatId,
+      "📚 Ask your course question in Amharic or English.\n\n" +
+      "Examples:\n" +
+      "• What is downloading?\n" +
+      "• ማውረድ ምን ማለት ነው?\n" +
+      "• What is the internet?\n" +
+      "• What is online safety?\n\n" +
+      "I will show the answer and its source."
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "track3_need_person") {
+    userState.set(chatId, "waiting_help_question");
+
+    bot.sendMessage(
+      chatId,
+      "🙋 Please write your question or problem.\n\n" +
+      "A teacher or support person will receive your request.\n\n" +
+      "You do not need to share your screen."
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "track3_share_screen") {
+    bot.sendMessage(
+      chatId,
+      "🖥️ Screen sharing is optional.\n\n" +
+      "You can choose:\n\n" +
+      "1. Yes, I want to share my screen\n" +
+      "2. No, I do not want to share my screen",
+
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "✅ Yes, share my screen",
+                callback_data: "share_screen_yes"
+              }
+            ],
+            [
+              {
+                text: "❌ No, do not share",
+                callback_data: "share_screen_no"
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "share_screen_yes") {
+    bot.sendMessage(
+      chatId,
+      "✅ Thank you for choosing to share your screen.\n\n" +
+      "Please send your Google Meet, Zoom, or other meeting link.\n\n" +
+      "Example:\n`https://meet.google.com/your-meeting-link`\n\n" +
+      "A teacher or support person will join only if you share the link."
+    );
+
+    userState.set(chatId, "waiting_screen_link");
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "share_screen_no") {
+    bot.sendMessage(
+      chatId,
+      "✅ No problem. You do not need to share your screen.\n\n" +
+      "You can still ask questions, request help, take quizzes, and get job alerts."
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "track3_jobs") {
+    sendJobAlerts(chatId);
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "track3_interview_support") {
+    sendAccommodationMenu(chatId);
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
   if (data.startsWith("start_quiz_")) {
     const quizName = data.replace("start_quiz_", "");
 
@@ -1119,6 +1284,63 @@ bot.on("message", async message => {
     return;
   }
 
+  // ---------- TRACK 3 ----------
+
+  if (normalText === "/track3") {
+    bot.sendMessage(
+      chatId,
+      "🎯 Track 3: Accessible Learning and Employment Support\n\n" +
+      "This tool helps students learn, get support, and prepare for work.\n\n" +
+      "Features:\n" +
+      "• Ask a course question in Amharic or English\n" +
+      "• Get answers from approved course material\n" +
+      "• See the source of each answer\n" +
+      "• Request help from a teacher with one button\n" +
+      "• Choose whether to share your screen\n" +
+      "• Get job alerts\n" +
+      "• Request interview support",
+
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "📚 Ask a Course Question",
+                callback_data: "track3_course_question"
+              }
+            ],
+            [
+              {
+                text: "🙋 Need a Person / Help",
+                callback_data: "track3_need_person"
+              }
+            ],
+            [
+              {
+                text: "🖥️ Share My Screen",
+                callback_data: "track3_share_screen"
+              }
+            ],
+            [
+              {
+                text: "💼 Job Alerts",
+                callback_data: "track3_jobs"
+              }
+            ],
+            [
+              {
+                text: "📋 Interview Support",
+                callback_data: "track3_interview_support"
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+    return;
+  }
+
   // ---------- ADMIN COMMANDS ----------
 
   if (normalText === "/admin") {
@@ -1208,36 +1430,6 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/cancel") {
-  userState.delete(chatId);
-  smsWaiting.delete(chatId);
-
-  bot.sendMessage(
-    chatId,
-    "✅ Cancelled. You can use the bot normally now."
-  );
-
-  return;
-}
-
-if (normalText === "/myid") {
-  bot.sendMessage(
-    chatId,
-    "🆔 Your Telegram Chat ID is:\n\n" +
-    "`" + chatId + "`\n\n" +
-    "Copy this number and add it in Railway as:\n\n" +
-    "`ADMIN_CHAT_ID`",
-    {
-      parse_mode: "Markdown"
-    }
-  );
-
-  return;
-}
-
-  if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v15");
-    return;
-  }if (normalText === "/cancel") {
     userState.delete(chatId);
     smsWaiting.delete(chatId);
 
@@ -1246,6 +1438,13 @@ if (normalText === "/myid") {
       "✅ Cancelled. You can use the bot normally now."
     );
 
+    return;
+  }
+
+  // ---------- NORMAL COMMANDS ----------
+
+  if (normalText === "/ping") {
+    bot.sendMessage(chatId, "PONG v16");
     return;
   }
 
@@ -1264,8 +1463,15 @@ if (normalText === "/myid") {
     return;
   }
 
-  if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v15");
+  if (normalText === "/help") {
+    userState.set(chatId, "waiting_help_question");
+
+    bot.sendMessage(
+      chatId,
+      "Please write the question or problem you need help with.\n\n" +
+      "A teacher or support person will receive your request."
+    );
+
     return;
   }
 
@@ -1316,45 +1522,13 @@ if (normalText === "/myid") {
   }
 
   if (normalText === "/jobs") {
-    let jobText = "💼 Job Alerts\n\n";
-    jobText += "Tap a job title to see details.\n\n";
-
-    const jobButtons = jobs.map((job, index) => {
-      return [
-        {
-          text: (index + 1) + ". " + job.title,
-          callback_data: "job_" + index
-        }
-      ];
-    });
-
-    bot.sendMessage(
-      chatId,
-      jobText,
-      {
-        reply_markup: {
-          inline_keyboard: jobButtons
-        }
-      }
-    );
+    sendJobAlerts(chatId);
 
     return;
   }
 
   if (normalText === "/accommodation") {
-    userState.set(chatId, "waiting_accommodation");
-
-    bot.sendMessage(
-      chatId,
-      "What accommodation do you need for an interview?\n\n" +
-      "1. Extra time\n" +
-      "2. Screen reader support\n" +
-      "3. Sign language interpreter\n" +
-      "4. Quiet interview space\n" +
-      "5. Written questions\n" +
-      "6. Other\n\n" +
-      "Please reply with a number."
-    );
+    sendAccommodationMenu(chatId);
 
     return;
   }
@@ -1375,6 +1549,34 @@ if (normalText === "/myid") {
   }
 
   const currentState = userState.get(chatId);
+
+  if (currentState === "waiting_screen_link") {
+    userState.delete(chatId);
+
+    const meetingLink = text.trim();
+
+    if (!meetingLink.startsWith("http")) {
+      bot.sendMessage(
+        chatId,
+        "❌ Please send a valid meeting link.\n\n" +
+        "Example:\n`https://meet.google.com/your-meeting-link`"
+      );
+
+      return;
+    }
+
+    stats.screenShareRequests += 1;
+
+    sendScreenShareRequestToAdmin(chatId, meetingLink);
+
+    bot.sendMessage(
+      chatId,
+      "✅ Your screen-sharing request has been sent.\n\n" +
+      "A teacher or support person will use your link if they need to help you."
+    );
+
+    return;
+  }
 
   if (currentState === "waiting_announcement") {
     userState.delete(chatId);
@@ -1606,7 +1808,8 @@ function sendStartMenu(chatId, message) {
       "• /admin — open teacher admin panel\n" +
       "• /announce — send Telegram announcement to all students\n" +
       "• /announce-sms — send SMS announcement to saved phone numbers\n" +
-      "• /teacher — view learning analytics\n\n" +
+      "• /teacher — view learning analytics\n" +
+      "• /track3 — Track 3 learning and employment support\n\n" +
       "Student features:\n" +
       "• /help — request human help\n" +
       "• /progress — see your progress\n" +
@@ -1634,6 +1837,12 @@ function sendStartMenu(chatId, message) {
             ],
             [
               {
+                text: "🎯 Track 3 Support",
+                callback_data: "track3_menu"
+              }
+            ],
+            [
+              {
                 text: "📩 Get SMS Reminder",
                 callback_data: "sms_notification"
               }
@@ -1654,7 +1863,8 @@ function sendStartMenu(chatId, message) {
     "• /progress — see your progress\n" +
     "• /quiz — choose a quiz\n" +
     "• /jobs — see job alerts\n" +
-    "• /accommodation — request interview support\n\n" +
+    "• /accommodation — request interview support\n" +
+    "• /track3 — Track 3 learning and employment support\n\n" +
     "Examples:\n" +
     "• What is downloading?\n" +
     "• What is the internet?\n" +
@@ -1672,6 +1882,12 @@ function sendStartMenu(chatId, message) {
             {
               text: "📚 Start Learning",
               callback_data: "student_learning"
+            }
+          ],
+          [
+            {
+              text: "🎯 Track 3 Support",
+              callback_data: "track3_menu"
             }
           ],
           [
