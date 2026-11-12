@@ -1,6 +1,32 @@
 {
   "lessons": [
     {
+      "title": "How to Use This Bot",
+      "keywords": [
+        "how to use bot",
+        "how to use this bot",
+        "help",
+        "start",
+        "እንዴት እጠቀማለሁ",
+        "እንዴት እጠቀማለሁ ቦት",
+        "እርዳታ",
+        "መጀመሪያ"
+      ],
+      "simple": {
+        "en": "Send /start to see the main menu. You can ask questions in Amharic or English.",
+        "am": "ዋናውን ምናሌ ለማየት /start ይላኩ። በአማርኛ ወይም በእንግሊዝኛ ጥያቄ መጠየቅ ይችላሉ።"
+      },
+      "answer": {
+        "en": "Send /start to open the main menu. You can ask questions in Amharic or English. Use /lessons to choose a lesson, /jobs to see job alerts, /quiz to practice, and /help if you need a teacher.",
+        "am": "ዋናውን ምናሌ ለመክፈት /start ይላኩ። በአማርኛ ወይም በእንግሊዝኛ ጥያቄ መጠየቅ ይችላሉ። ትምህርት ለመምረጥ /lessons፣ የሥራ ማስታወቂያ ለማየት /jobs፣ ለልምምድ /quiz እና መምህር ከፈለጉ /help ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "How to Use This Bot",
+        "section": "Getting Started",
+        "url": "https://example.com/how-to-use"
+      }
+    },
+    {
       "title": "Downloading",
       "keywords": [
         "download",
@@ -55,6 +81,8 @@
         "web browser",
         "google chrome",
         "chrome",
+        "firefox",
+        "safari",
         "ብራውዘር",
         "ዌብ ብራውዘር"
       ],
@@ -333,6 +361,151 @@
         "lesson": "Accessibility",
         "section": "Support",
         "url": "https://example.com/accessibility"
+      }
+    },
+    {
+      "title": "Digital Skills",
+      "keywords": [
+        "digital skills",
+        "computer skills",
+        "technology",
+        "ዲጂታል ክህሎት",
+        "ኮምፒውተር ክህሎት",
+        "ቴክኖሎጂ"
+      ],
+      "simple": {
+        "en": "Digital skills help you use phones, computers, the internet, and online tools safely.",
+        "am": "ዲጂታል ክህሎት ስልክ፣ ኮምፒውተር፣ ኢንተርኔት እና የመስመር ላይ መሣሪያዎችን በደህና ሁኔታ ለመጠቀም ይረዳሉ።"
+      },
+      "answer": {
+        "en": "Digital skills help you use phones, computers, the internet, and online tools safely. Important skills include searching for information, using email, creating documents, staying safe online, and applying for jobs.",
+        "am": "ዲጂታል ክህሎት ስልክ፣ ኮምፒውተር፣ ኢንተርኔት እና የመስመር ላይ መሣሪያዎችን በደህና ሁኔታ ለመጠቀም ይረዳሉ። ጠቃሚ ክህሎቶች መረጃ መፈለግ፣ ኢሜይል መጠቀም፣ ሰነድ መፍጠር፣ በመስመር ላይ ደህንነትን መጠበቅ እና ለሥራ መመልከት ይገኙበታል።"
+      },
+      "source": {
+        "lesson": "Digital Skills",
+        "section": "Introduction",
+        "url": "https://example.com/digital-skills"
+      }
+    },
+    {
+      "title": "Learning Online",
+      "keywords": [
+        "learning online",
+        "online learning",
+        "study online",
+        "በመስመር ላይ መማር",
+        "የመስመር ላይ ትምህርት"
+      ],
+      "simple": {
+        "en": "Online learning means using the internet to study and practice new skills.",
+        "am": "በመስመር ላይ መማር ማለት ኢንተርኔትን ተጠቅመው ትምህርት ለመማር እና አዳዲስ ክህሎቶችን ለልምምድ ማለት ነው።"
+      },
+      "answer": {
+        "en": "Online learning means using the internet to study and practice new skills. You can watch lessons, read articles, take quizzes, join online classes, and ask questions. Choose trusted websites and take notes to remember important information.",
+        "am": "በመስመር ላይ መማር ማለት ኢንተርኔትን ተጠቅመው ትምህርት ለመማር እና አዳዲስ ክህሎቶችን ለልምምድ ማለት ነው። ትምህርት መመልከት፣ ጽሑፍ ማንበብ፣ ፈተና መውሰድ፣ የመስመር ላይ ክፍል መቀላቀል እና ጥያቄ መጠየቅ ይችላሉ። ታመሙ ድረ-ገጾችን ይምረጡ እና ጠቃሚ መረጃን ለማስታወስ ማስታወሻ ይውሰዱ።"
+      },
+      "source": {
+        "lesson": "Digital Skills",
+        "section": "Learning Online",
+        "url": "https://example.com/digital-skills/learning-online"
+      }
+    },
+    {
+      "title": "Using a Phone",
+      "keywords": [
+        "phone",
+        "mobile phone",
+        "smartphone",
+        "ስልክ",
+        "ሞባይል",
+        "ስማርትፎን"
+      ],
+      "simple": {
+        "en": "A phone can help you call, send messages, learn, search, and apply for jobs.",
+        "am": "ስልክ ለመደወል፣ መልእክት ለመላክ፣ ለመማረን፣ ለመፈለግ እና ለሥራ ለመመልከት ይረዳል።"
+      },
+      "answer": {
+        "en": "A phone can help you call people, send messages, use the internet, learn, take photos, and apply for jobs. Keep your phone updated and use a screen lock to protect your information.",
+        "am": "ስልክ ሰዎችን ለመደወል፣ መልእክት ለመላክ፣ ኢንተርኔት ለመጠቀም፣ ለመማረን፣ ፎቶ ለመነሳት እና ለሥራ ለመመልከት ይረዳል። ስልክዎን ያዘምኑ እና መረጃዎን ለመጠበቅ የስክሪን ቁልፍ ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "Digital Skills",
+        "section": "Using a Phone",
+        "url": "https://example.com/digital-skills/phone"
+      }
+    },
+    {
+      "title": "Using WhatsApp",
+      "keywords": [
+        "whatsapp",
+        "message",
+        "chat",
+        "ዋትስአፕ",
+        "መልእክት"
+      ],
+      "simple": {
+        "en": "WhatsApp is an app used to send messages, photos, and voice notes.",
+        "am": "WhatsApp መልእክት፣ ፎቶ እና የድምጽ መልእክት ለመላክ የሚያገለግል መተግበሪያ ነው።"
+      },
+      "answer": {
+        "en": "WhatsApp is an app used to send messages, photos, videos, and voice notes. You can use it to communicate with teachers, friends, and family. Do not share personal information, passwords, or bank details with unknown people.",
+        "am": "WhatsApp መልእክት፣ ፎቶ፣ ቪዲዮ እና የድምጽ መልእክት ለመላክ የሚያገለግል መተግበሪያ ነው። ከመምህራን፣ ከጓደኞች እና ከቤተሰብ ጋር ለመገናኘት ይጠቀሙ። የግል መረጃ፣ የይለፍ ቃል ወይም የባንክ መረጃ ለማይታወቁ ሰዎች አይላኩ።"
+      },
+      "source": {
+        "lesson": "Digital Skills",
+        "section": "Using WhatsApp",
+        "url": "https://example.com/digital-skills/whatsapp"
+      }
+    },
+    {
+      "title": "Job Alerts",
+      "keywords": [
+        "job alerts",
+        "jobs",
+        "job opportunities",
+        "vacancy",
+        "የሥራ ማስታወቂያ",
+        "ሥራ",
+        "ቅጥር"
+      ],
+      "simple": {
+        "en": "Send /jobs to see current job alerts.",
+        "am": "የአሁኑን የሥራ ማስታወቂያዎች ለማየት /jobs ይላኩ።"
+      },
+      "answer": {
+        "en": "Job alerts show current job opportunities. Send /jobs to see the list. Tap a job title to see the organization, location, type of work, deadline, and application link.",
+        "am": "የሥራ ማስታወቂያዎች የአሁኑን የሥራ ዕድሎች ያሳያሉ። ዝርዝሩን ለማየት /jobs ይላኩ። ድርጅቱን፣ ቦታውን፣ የሥራ ዓይነቱን፣ የማብቂያ ቀኑን እና የማመልከቻ ሊንኩን ለማየት የሥራ ርዕሱን ይንኩ።"
+      },
+      "source": {
+        "lesson": "Career Gateway",
+        "section": "Job Alerts",
+        "url": "https://example.com/career/job-alerts"
+      }
+    },
+    {
+      "title": "Track 3 Support",
+      "keywords": [
+        "track 3",
+        "support",
+        "help",
+        "accessible learning",
+        "employment support",
+        "የTrack 3 ድጋፍ",
+        "ድጋፍ",
+        "እርዳታ"
+      ],
+      "simple": {
+        "en": "Track 3 helps you learn, get support, find jobs, and request interview accommodations.",
+        "am": "Track 3 ለመማረክ፣ ድጋፍ ለማግኘት፣ ሥራ ለማግኘት እና የቃለ መጠይቅ ድጋፍ ለመጠየቅ ይረዳል።"
+      },
+      "answer": {
+        "en": "Track 3 provides accessible learning and employment support. You can ask course questions, request help from a teacher, share your screen if needed, see job alerts, and request interview accommodations. Send /track3 to open the Track 3 menu.",
+        "am": "Track 3 ተደራሽ ትምህርት እና የሥራ ድጋፍ ይሰጣል። የትምህርት ጥያቄ መጠየቅ፣ ከመምህር ድጋፍ መጠየቅ፣ አስፈላጊ ከሆነ ስክሪን መጋራት፣ የሥራ ማስታወቂያ ማየት እና የቃለ መጠይቅ ድጋፍ መጠየቅ ይችላሉ። የTrack 3 ምናሌን ለመክፈት /track3 ይላኩ።"
+      },
+      "source": {
+        "lesson": "Track 3",
+        "section": "Support",
+        "url": "https://example.com/track3"
       }
     }
   ]
