@@ -1,0 +1,343 @@
+{
+  "lessons": [
+    {
+      "title": "Downloading",
+      "keywords": [
+        "download",
+        "downloading",
+        "download file",
+        "download a file",
+        "what is downloading",
+        "ማውረድ",
+        "ማውረድ ምንድን ነው"
+      ],
+      "simple": {
+        "en": "Downloading means saving a file from the internet to your device.",
+        "am": "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ነው።"
+      },
+      "answer": {
+        "en": "Downloading means copying a file from the internet and saving it on your phone or computer. After downloading, you can usually open the file even when you are offline.\n\nExamples include downloading a PDF, photo, video, song, or app.",
+        "am": "ማውረድ ማለት ፋይልን ከኢንተርኔት ተቀምጦ ወደ ስልክዎ ወይም ኮምፒውተርዎ ማስቀመጥ ነው። ከወረደ በኋላ ያለ ኢንተርኔት መክፈት ይችላሉ።\n\nለምሳሌ PDF፣ ፎቶ፣ ቪዲዮ፣ ዘፈን ወይም መተግበሪያ ማውረድ ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Downloading",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Internet",
+      "keywords": [
+        "internet",
+        "what is the internet",
+        "ኢንተርኔት",
+        "ኢንተርኔት ምንድን ነው"
+      ],
+      "simple": {
+        "en": "The internet is a worldwide network that connects computers and phones.",
+        "am": "ኢንተርኔት ማለት ኮምፒውተሮችን እና ስልኮችን የሚያገናኝ ዓለም አቀፍ አውታረ መረብ ነው።"
+      },
+      "answer": {
+        "en": "The internet is a global network that connects many devices. It lets people share websites, messages, videos, files, and other information.\n\nYou use the internet when you open a website, send an email, or watch an online video.",
+        "am": "ኢንተርኔት ማለት ብዙ መሣሪያዎችን የሚያገናኝ ዓለም አቀፍ አውታረ መረብ ነው። ድረ-ገጾችን፣ መልዕክቶችን፣ ቪዲዮዎችን እና ፋይሎችን ለመለዋወጥ ይረዳል።\n\nድረ-ገጽ ሲከፍቱ፣ ኢሜይል ሲልኩ ወይም ኦንላይን ቪዲዮ ሲያዩ ኢንተርኔት ይጠቀማሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Internet",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Hyperlink",
+      "keywords": [
+        "hyperlink",
+        "link",
+        "what is a hyperlink",
+        "what is a link",
+        "አገናኝ",
+        "አገናኝ ምንድን ነው"
+      ],
+      "simple": {
+        "en": "A hyperlink is a clickable link that takes you to another page.",
+        "am": "አገናኝ ማለት ወደ ሌላ ገጽ የሚወስድ በመጫን የሚችል አገናኝ ነው።"
+      },
+      "answer": {
+        "en": "A hyperlink, or link, is text or an image you can click. When you click it, it opens another webpage or file.\n\nLinks often appear blue and underlined, but they can look different on different websites.",
+        "am": "አገናኝ ማለት መጫን የሚችሉት ጽሑፍ ወይም ምስል ነው። ሲጫኑ ሌላ ድረ-ገጽ ወይም ፋይል ይከፍታል።\n\nአገናኞች ብዙ ጊዜ በሰማያዊ ቀለም እና በመስመር ይታያሉ፣ ነገር ግን በተለያዩ ድረ-ገጾች ላይ የተለያየ ሊሆኑ ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Hyperlink",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Online Safety",
+      "keywords": [
+        "safe online",
+        "online safety",
+        "stay safe online",
+        "how can i stay safe online",
+        "ደህንነት",
+        "በመስመር ላይ ደህንነት",
+        "በመስመር ላይ እንዴት ደህንነቴን እጠብቃለሁ"
+      ],
+      "simple": {
+        "en": "Use strong passwords, do not share private information, and avoid suspicious links.",
+        "am": "ጠንካራ የይለፍ ቃል ይጠቀሙ፣ የግል መረጃ አይካፈሉ እና አጠራጣሪ አገናኞችን ይቀርቡ።"
+      },
+      "answer": {
+        "en": "To stay safe online, use a strong password, do not share your password, do not click strange links, and do not share private information with strangers.\n\nAlso, check that a website is real before entering personal information.",
+        "am": "በመስመር ላይ ደህንነትዎን ለመጠበቅ ጠንካራ የይለፍ ቃል ይጠቀሙ፣ የይለፍ ቃልዎን አይካፈሉ፣ አጠራጣሪ አገናኞችን አይጫኑ እና የግል መረጃዎን ለማይታወቁ ሰዎች አይስጡ።\n\nእንዲሁም የግል መረጃ ከመስጠትዎ በፊት ድረ-ገጹ እውነተኛ መሆኑን ያረጋግጡ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Safety",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Computer",
+      "keywords": [
+        "computer",
+        "what is a computer",
+        "ኮምፒውተር",
+        "ኮምፒውተር ምንድን ነው"
+      ],
+      "simple": {
+        "en": "A computer is an electronic device that helps people store, find, and share information.",
+        "am": "ኮምፒውተር ማለት ሰዎች መረጃ እንዲያስቀምጡ፣ እንዲያገኙ እና እንዲያካፍሉ የሚረዳ ኤሌክትሮኒክ መሣሪያ ነው።"
+      },
+      "answer": {
+        "en": "A computer is an electronic device that can store, find, and share information. It can run programs, show websites, play videos, and help people learn and work.\n\nExamples include a desktop computer, laptop, tablet, and smartphone.",
+        "am": "ኮምፒውተር ማለት መረጃ ማስቀመጥ፣ መፈለግ እና ማካፈል የሚችል ኤሌክትሮኒክ መሣሪያ ነው። ፕሮግራሞችን ማስኬድ፣ ድረ-ገጾችን ማሳየት፣ ቪዲዮ ማጫወት እና ሰዎችን ለመማርና ለሥራ መርዳት ይችላል።\n\nዴስክቶፕ ኮምፒውተር፣ ላፕቶፕ፣ ታብሌት እና ስልክ ምሳሌዎች ናቸው።"
+      },
+      "source": {
+        "lesson": "Computer Basics",
+        "section": "Computer Basics",
+        "url": "https://edu.gcfglobal.org/en/computerbasics/"
+      }
+    },
+
+    {
+      "title": "Email",
+      "keywords": [
+        "email",
+        "e-mail",
+        "what is email",
+        "ኢሜይል",
+        "ኢሜይል ምንድን ነው"
+      ],
+      "simple": {
+        "en": "Email is a way to send messages and files using the internet.",
+        "am": "ኢሜይል ማለት መልዕክቶችን እና ፋይሎችን በኢንተርኔት ለመላክ የሚያግዝ መንገድ ነው።"
+      },
+      "answer": {
+        "en": "Email is a way to send messages and files using the internet. You need an email address, such as name@gmail.com.\n\nYou can use email to communicate with teachers, friends, family, and workplaces.",
+        "am": "ኢሜይል ማለት መልዕክቶችን እና ፋይሎችን በኢንተርኔት ለመላክ የሚያግዝ መንገድ ነው። እንደ name@gmail.com ያለ ኢሜይል አድራሻ ያስፈልጋል።\n\nከመምህሮች፣ ከጓደኞች፣ ከቤተሰብ እና ከሥራ ቦታዎች ጋር ለመግባባት ኢሜይል መጠቀም ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Email",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Password",
+      "keywords": [
+        "password",
+        "strong password",
+        "what is a password",
+        "የይለፍ ቃል",
+        "ጠንካራ የይለፍ ቃል"
+      ],
+      "simple": {
+        "en": "A password is a secret word or code that protects your account.",
+        "am": "የይለፍ ቃል ማለት አካውንትዎን የሚጠብቅ ሚስጥራዊ ቃል ወይም ኮድ ነው።"
+      },
+      "answer": {
+        "en": "A password is a secret word or code that protects your account. Use a long password with letters, numbers, and symbols.\n\nDo not share your password with other people. Use a different password for each important account.",
+        "am": "የይለፍ ቃል ማለት አካውንትዎን የሚጠብቅ ሚስጥራዊ ቃል ወይም ኮድ ነው። ፊደላት፣ ቁጥሮች እና ምልክቶች ያሉት ረዥም የይለፍ ቃል ይጠቀሙ።\n\nየይለፍ ቃልዎን ለሌሎች ሰዎች አይካፈሉ። ለእያንዳንዱ አስፈላጊ አካውንት የተለየ የይለፍ ቃል ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Safety",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Browser",
+      "keywords": [
+        "browser",
+        "web browser",
+        "what is a browser",
+        "what is a web browser",
+        "ብራውዘር",
+        "ብራውዘር ምንድን ነው"
+      ],
+      "simple": {
+        "en": "A browser is an app used to open websites on the internet.",
+        "am": "ብራውዘር ማለት በኢንተርኔት ድረ-ገጾችን ለመክፈት የሚያገለግል መተግበሪያ ነው።"
+      },
+      "answer": {
+        "en": "A browser is an application that lets you open and use websites. You type a website address or search for information, and the browser shows the page.\n\nExamples include Google Chrome, Mozilla Firefox, Microsoft Edge, and Safari.",
+        "am": "ብራውዘር ማለት ድረ-ገጾችን ለመክፈት እና ለመጠቀም የሚያግዝ መተግበሪያ ነው። የድረ-ገጽ አድራሻ ይጻፉ ወይም መረጃ ይፈልጉ፣ እና ብራውዘሩ ገጹን ያሳያል።\n\nGoogle Chrome፣ Mozilla Firefox፣ Microsoft Edge እና Safari ምሳሌዎች ናቸው።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Browsers",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Website",
+      "keywords": [
+        "website",
+        "web site",
+        "what is a website",
+        "ድረ-ገጽ",
+        "ድረ-ገጽ ምንድን ነው"
+      ],
+      "simple": {
+        "en": "A website is a place on the internet with information, pictures, videos, or services.",
+        "am": "ድረ-ገጽ ማለት መረጃ፣ ምስል፣ ቪዲዮ ወይም አገልግሎት የሚያካትት በኢንተርኔት ላይ ያለ ቦታ ነው።"
+      },
+      "answer": {
+        "en": "A website is a collection of pages on the internet. It can show information, pictures, videos, news, learning materials, or services.\n\nExamples include a school website, a news website, or an online shop.",
+        "am": "ድረ-ገጽ ማለት በኢንተርኔት ላይ ያሉ ገጾች ስብስብ ነው። መረጃ፣ ምስል፣ ቪዲዮ፣ ዜና፣ የትምህርት ቁሳቁሶች ወይም አገልግሎቶችን ማሳየት ይችላል።\n\nየትምህርት ቤት ድረ-ገጽ፣ የዜና ድረ-ገጽ ወይም ኦንላይን ሱቅ ምሳሌዎች ናቸው።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Websites",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Wi-Fi",
+      "keywords": [
+        "wifi",
+        "wi-fi",
+        "what is wifi",
+        "what is wi-fi",
+        "ዋይፋይ",
+        "ዋይፋይ ምንድን ነው"
+      ],
+      "simple": {
+        "en": "Wi-Fi is a wireless way for devices to connect to the internet.",
+        "am": "ዋይፋይ ማለት መሣሪያዎች ያለ ኬብል ኢንተርኔት እንዲገናኙ የሚያግዝ የመስመር ያልሆነ መንገድ ነው።"
+      },
+      "answer": {
+        "en": "Wi-Fi is a wireless connection that lets phones, computers, and other devices connect to the internet without cables.\n\nYou usually need a Wi-Fi network name and password to connect.",
+        "am": "ዋይፋይ ማለት ስልኮች፣ ኮምፒውተሮች እና ሌሎች መሣሪያዎች ያለ ኬብል ኢንተርኔት እንዲገናኙ የሚያግዝ የመስመር ያልሆነ ግንኙነት ነው።\n\nለመገናኘት ብዙ ጊዜ የዋይፋይ ስም እና የይለፍ ቃል ያስፈልጋል።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Wi-Fi",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Computer Virus",
+      "keywords": [
+        "computer virus",
+        "virus",
+        "malware",
+        "what is a computer virus",
+        "ኮምፒውተር ቫይረስ",
+        "ቫይረስ"
+      ],
+      "simple": {
+        "en": "A computer virus is harmful software that can damage or slow down a computer.",
+        "am": "የኮምፒውተር ቫይረስ ማለት ኮምፒውተርን ሊጎዳ ወይም ሊያዘገይ የሚችል ጎጂ ሶፍትዌር ነው።"
+      },
+      "answer": {
+        "en": "A computer virus is harmful software that can damage files, slow down a computer, or steal private information.\n\nTo stay safe, do not open strange links or attachments, keep your software updated, and use antivirus software.",
+        "am": "የኮምፒውተር ቫይረስ ማለት ፋይሎችን ሊያበላሽ፣ ኮምፒውተርን ሊያዘገይ ወይም የግል መረጃ ሊስተላልፍ የሚችል ጎጂ ሶፍትዌር ነው።\n\nለመጠበቅ አጠራጣሪ አገናኞችን ወይም አባሪዎችን አይክፈቱ፣ ሶፍትዌርዎን ያዘምኑ እና አንቲቫይረስ መጠቀም ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Safety",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Solar System",
+      "keywords": [
+        "solar system",
+        "what is the solar system",
+        "የፀሐይ ሥርዓት"
+      ],
+      "simple": {
+        "en": "The solar system is the Sun and everything that orbits it.",
+        "am": "የፀሐይ ሥርዓት ማለት ፀሐይን እና ዙሪያዋን የሚያዙ ነገሮች ሁሉ ነው።"
+      },
+      "answer": {
+        "en": "The solar system includes the Sun, eight planets, dwarf planets, asteroids, and comets. The Sun’s gravity keeps them moving around it.",
+        "am": "የፀሐይ ሥርዓት ፀሐይን፣ Ꮀምና ፕላኔቶችን፣ የተራቅ ፕላኔቶችን፣ አስቴሮይዶችን እና ኮሜቶችን ያካትታል። የፀሐይ ስበት እነሱን ዙሪያዋ እንዲያዙ ይጠብቃል።"
+      },
+      "source": {
+        "lesson": "Science Basics",
+        "section": "Solar System",
+        "url": "https://science.nasa.gov/solar-system/"
+      }
+    },
+
+    {
+      "title": "Search Engine",
+      "keywords": [
+        "search engine",
+        "google",
+        "what is a search engine"
+      ],
+      "simple": {
+        "en": "A search engine helps you find information on the internet.",
+        "am": "የፍለጋ ሞተር መረጃ ለመፈለግ ይረዳል።"
+      },
+      "answer": {
+        "en": "A search engine helps you find websites and information on the internet. You type words into the search box, and it shows results.\n\nExamples include Google, Bing, and DuckDuckGo.",
+        "am": "የፍለጋ ሞተር ድረ-ገጾችን እና መረጃን በኢንተርኔት ለመፈለግ ይረዳል። ቃላት በፍለጋ ሳጥኑ ውስጥ ይጻፉ እና ውጤቶችን ያሳያል።\n\nGoogle፣ Bing እና DuckDuckGo ምሳሌዎች ናቸው።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Search Engines",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Online Privacy",
+      "keywords": [
+        "online privacy",
+        "privacy",
+        "private information",
+        "personal information",
+        "what is online privacy",
+        "የግል መረጃ",
+        "የመስመር ላይ ግላዊነት"
+      ],
+      "simple": {
+        "en": "Online privacy means protecting your personal information on the internet.",
+        "am": "የመስመር ላይ ግላዊነት ማለት የግል መረጃዎን በኢንተርኔት መጠበቅ ነው።"
+      },
+      "answer": {
+        "en": "Online privacy means keeping your personal information safe on the internet. Personal information includes your full name, address, phone number, photos, and passwords.\n\nDo not share private information with strangers. Check privacy settings and use strong passwords.",
+        "am": "የመስመር ላይ ግላዊነት ማለት የግል መረጃዎን በኢንተርኔት ላይ መጠበቅ ነው። የግል መረጃ ሙሉ ስም፣ አድራሻ፣ ስልክ ቁጥር፣ ፎቶዎች እና የይለፍ ቃሎችን ያካትታል።\n\nየግል መረጃዎን ለማይታወቁ ሰዎች አይስጡ። የግላዊነት ቅንብሮችን ያረጋግጡ እና ጠንካራ የይለፍ ቃል ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Privacy",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    }
+  ]
+}

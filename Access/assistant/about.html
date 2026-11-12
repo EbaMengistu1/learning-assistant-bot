@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About - Multilingual Learning Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="index.html">Home</a>
+    <a href="about.html" aria-current="page">About</a>
+  </nav>
+
+  <div class="container">
+    <header>
+      <h1>About This Tool</h1>
+      <p class="subtitle">Accessibility Hackathon 2026</p>
+    </header>
+
+    <div class="online-status online" id="onlineStatus">Online</div>
+
+    <div class="main about-content">
+      <div class="two-column">
+        <div class="column">
+          <h2>Purpose</h2>
+          <p>This Multilingual Learning Assistant helps people in Ethiopia access information more easily, especially those with disabilities.</p>
+
+          <h2>Who It Helps</h2>
+          <ul>
+            <li><strong>Blind / Low Vision:</strong> Read Aloud, High Contrast, and text size options.</li>
+            <li><strong>Deaf / Hard of Hearing:</strong> Clear written text in both languages.</li>
+            <li><strong>Physical Disabilities:</strong> Large buttons and voice input.</li>
+            <li><strong>Refugees & Returnees:</strong> Bilingual support.</li>
+          </ul>
+
+          <h2>Goal</h2>
+          <p>To create a simple and inclusive tool that supports learning for everyone.</p>
+
+          <p class="created"><strong>Created by:</strong> Eba Mengistu</p>
+        </div>
+
+        <div class="column" lang="am">
+          <h2>ዓላማ</h2>
+          <p>ይህ የመማር ረዳት በአማርኛ እና በእንግሊዝኛ መረጃ ለማግኘት ይረዳል፣ በተለይ የአካል ጉዳት ላላቸው ሰዎች።</p>
+
+          <h2>ለማን ይረዳል</h2>
+          <ul>
+            <li><strong>ዓይነ ስውራን / ዝቅተኛ እይታ:</strong> ድምፅ ንባብ፣ ከፍተኛ ንፅፅር እና የጽሑፍ መጠን።</li>
+            <li><strong>መስማት የተሳናቸው:</strong> በሁለቱም ቋንቋዎች ግልጽ ጽሑፍ።</li>
+            <li><strong>አካል ጉዳተኞች:</strong> ትላልቅ ቁልፎች እና የድምፅ ግብዓት።</li>
+            <li><strong>ስደተኞች እና ተመላሾች:</strong> ባለሁለት ቋንቋ ድጋፍ።</li>
+          </ul>
+
+          <h2>ግብ</h2>
+          <p>ሁሉም ሰው ቀላል እና ተደራሽ የሆነ የመማር መሳሪያ እንዲጠቀም።</p>
+
+          <p class="created"><strong>የተሰራው በ:</strong> ኤባ መንግስቱ</p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      Accessibility Hackathon 2026 • Ethiopia<br>
+      Created by Eba Mengistu
+    </footer>
+  </div>
+
+  <script>
+    function updateOnlineStatus() {
+      const el = document.getElementById("onlineStatus");
+      if (!el) return;
+      if (navigator.onLine) {
+        el.textContent = "Online";
+        el.className = "online-status online";
+      } else {
+        el.textContent = "No internet";
+        el.className = "online-status offline";
+      }
+    }
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+    updateOnlineStatus();
+  </script>
+</body>
+</html>

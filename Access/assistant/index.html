@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multilingual Learning Assistant</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav class="top-nav">
+    <a href="index.html" aria-current="page">Home</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <div class="container">
+    <header>
+      <h1 id="mainTitle">የመማር ረዳት</h1>
+      <p class="subtitle" id="subtitle">Multilingual Learning Assistant</p>
+    </header>
+
+    <div id="onlineStatus" class="online-status">Checking connection...</div>
+
+    <div class="info-box">
+      <p lang="en">
+        <strong>Reference curriculum:</strong>
+        <a
+          href="https://edu.gcfglobal.org/en/internetbasics/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GCFGlobal — Internet Basics
+        </a>
+      </p>
+
+      <p lang="am">
+        <strong>የትምህርት ማጣቀሻ፦</strong>
+        GCFGlobal — የኢንተርኔት መሠረታዊ እውቀት
+      </p>
+    </div>
+
+    <div class="main">
+      <div class="box">
+        <label for="question" id="questionLabel">Type your question</label>
+
+        <textarea
+          id="question"
+          placeholder="Type or speak your question..."
+        ></textarea>
+      </div>
+
+      <div class="lang-toggle-container">
+        <button id="langToggle" class="lang-toggle" type="button">E</button>
+      </div>
+
+      <div class="buttons voice-row">
+        <button id="voiceAmharicBtn" class="secondary" type="button">
+          🎤 አማርኛ
+        </button>
+
+        <button id="voiceEnglishBtn" class="secondary" type="button">
+          🎤 English
+        </button>
+      </div>
+
+      <div class="buttons action-row">
+        <button id="getAnswerBtn" class="primary" type="button">
+          Get Answer
+        </button>
+
+        <button id="speakAmharicBtn" class="secondary" type="button">
+          Read Amharic
+        </button>
+
+        <button id="speakEnglishBtn" class="secondary" type="button">
+          Read English
+        </button>
+
+        <button id="clearBtn" class="secondary" type="button">
+          Clear
+        </button>
+
+        <button
+          id="fullAnswerBtn"
+          class="secondary"
+          type="button"
+          aria-pressed="false"
+        >
+          <span id="fullAnswerText">Show Full Answer</span>
+        </button>
+      </div>
+
+      <div class="buttons course-row">
+        <button
+          class="suggest"
+          data-en="What is downloading?"
+          data-am="ማውረድ ምንድን ነው?"
+          type="button"
+        >
+          <span class="btn-icon">⬇️</span>
+          <span class="btn-text">Downloading</span>
+        </button>
+
+        <button
+          class="suggest"
+          data-en="What is the internet?"
+          data-am="ኢንተርኔት ምንድን ነው?"
+          type="button"
+        >
+          <span class="btn-icon">🌐</span>
+          <span class="btn-text">Internet</span>
+        </button>
+
+        <button
+          class="suggest"
+          data-en="What is a hyperlink?"
+          data-am="አገናኝ ምንድን ነው?"
+          type="button"
+        >
+          <span class="btn-icon">🔗</span>
+          <span class="btn-text">Hyperlink</span>
+        </button>
+
+        <button
+          class="suggest"
+          data-en="How can I stay safe online?"
+          data-am="በመስመር ላይ እንዴት ደህንነቴን እጠብቃለሁ?"
+          type="button"
+        >
+          <span class="btn-icon">🛡️</span>
+          <span class="btn-text">Online Safety</span>
+        </button>
+      </div>
+
+      <div class="buttons font-row">
+        <button id="contrastBtn" class="secondary" type="button">
+          High Contrast
+        </button>
+
+        <button
+          id="fontSmall"
+          class="secondary"
+          type="button"
+          aria-label="Decrease text size"
+        >
+          −
+        </button>
+
+        <button
+          id="fontNormal"
+          class="secondary"
+          type="button"
+          aria-label="Normal text size"
+        >
+          Normal
+        </button>
+
+        <button
+          id="fontLarge"
+          class="secondary"
+          type="button"
+          aria-label="Increase text size"
+        >
+          +
+        </button>
+      </div>
+
+      <div class="box">
+        <label for="answer" id="answerLabel">Answer</label>
+
+        <textarea
+          id="answer"
+          readonly
+          placeholder="Answer will appear here..."
+        ></textarea>
+      </div>
+
+      <div class="copy-container">
+        <button id="copyBtn" type="button">Copy</button>
+
+        <button
+          id="humanHelpBtn"
+          class="primary"
+          type="button"
+          style="background:#16a34a;"
+        >
+          Request Human Help
+        </button>
+      </div>
+
+      <p id="telegramHelp" class="help-text">
+        Need more help? Open the Telegram bot.
+      </p>
+    </div>
+
+    <div class="info-box" id="readAloudInfo">
+      <strong id="readAloudTitle">About Read Aloud</strong>
+
+      <p id="readAloudText">
+        English voice works on most devices. Amharic voice may need an
+        installed voice or internet connection.
+      </p>
+    </div>
+
+    <footer>
+      Accessibility Hackathon 2026 • Ethiopia<br>
+      ለተደራሽነት ሃክአቶን 2026
+    </footer>
+  </div>
+
+  <div id="liveRegion" class="sr-only" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

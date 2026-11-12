@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Needed so the Amharic voice can load on Chrome / mobile -->
+  <meta name="referrer" content="no-referrer">
+  <title>የመማሪያ ረዳት | Learning Assistant</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Small read-aloud note */
+    .info-box {
+      position: static !important;
+      padding: 8px 12px !important;
+      margin: 12px 0 !important;
+      font-size: 0.85rem !important;
+      line-height: 1.5 !important;
+      border-radius: 8px;
+    }
+    .info-box p { margin: 2px 0 !important; }
+
+    /* Keep footer visible */
+    footer {
+      position: static !important;
+      display: block !important;
+      margin: 12px 0 24px !important;
+      padding: 8px 0 !important;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+    body { padding-bottom: 24px; }
+
+    /* Mic status message */
+    .voice-status {
+      min-height: 1.2em;
+      margin: 6px 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .voice-status.ok    { color: #0a7d3b; }
+    .voice-status.warn  { color: #b3261e; }
+    .voice-status.info  { color: #1f5fbf; }
+    body.high-contrast .voice-status { color: #ffff00; }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <nav class="top-nav">
+    <a href="index.html" aria-current="page">Home</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <div class="container">
+    <header>
+      <h1>የመማሪያ ረዳት</h1>
+      <p class="subtitle">
+        <span class="typing">Multilingual Learning Assistant</span>
+      </p>
+    </header>
+
+    <main id="main" class="main">
+      <div class="box">
+        <label for="question">ጥያቄዎን ይጻፉ / Type your question</label>
+        <textarea id="question" placeholder="ማንኛውንም ጥያቄ ይጠይቁ... / Ask any question..."></textarea>
+      </div>
+
+      <!-- Row 1: Voice Buttons Only -->
+      <div class="buttons voice-row">
+        <button id="voiceAmharicBtn">🎤 አማርኛ</button>
+        <button id="voiceEnglishBtn">🎤 English</button>
+      </div>
+      <p id="voiceStatus" class="voice-status" role="status" aria-live="assertive"></p>
+
+      <!-- Row 2: Main Actions -->
+      <div class="buttons">
+        <button id="getAnswerBtn">መልስ ያግኙ</button>
+        <button id="speakAmharicBtn" aria-pressed="false">አማርኛ አንብብ</button>
+        <button id="speakEnglishBtn">Read English</button>
+        <button id="clearBtn">አጽዳ</button>
+      </div>
+
+      <!-- Row 3: Suggestions -->
+      <div class="suggestions">
+        <button class="suggest" data-q="Accessibility Hackathon 2026">📘 Learning</button>
+        <button class="suggest" data-q="Visual support">👁️ Visual Support</button>
+        <button class="suggest" data-q="Hearing support">👂 Hearing Support</button>
+        <button class="suggest" data-q="Mobility support">♿ Mobility Support</button>
+      </div>
+
+      <!-- Row 4: Contrast + Font Size -->
+      <div class="font-tools">
+        <button id="contrastBtn" aria-pressed="false">ከፍተኛ ንፅፅር</button>
+        <button id="fontSmall">አነፃፀር</button>
+        <button id="fontNormal">መደበኛ እይታ</button>
+        <button id="fontLarge">ማጉላት</button>
+      </div>
+
+      <div class="box">
+        <label for="answer">መልስ / Answer</label>
+        <textarea id="answer" readonly placeholder="መልስ እዚህ ይታያል..."></textarea>
+      </div>
+
+      <div class="copy-container">
+        <button id="copyBtn">ቅዳ / Copy</button>
+      </div>
+
+      <div id="liveRegion" aria-live="polite" class="sr-only"></div>
+    </main>
+
+    <div class="info-box">
+      <p>✅ መሰረታዊ መልሶች እና ድምፃቸው ያለ ኢንተርኔት ይሰራሉ። 📶 አዲስ ጥያቄዎች እና የአማርኛ ማይክ ኢንተርኔት ያስፈልጋቸዋል።</p>
+      <p>Basic answers and their voice work offline. New questions and the Amharic mic need internet.</p>
+    </div>
+
+    <footer>Accessibility Hackathon 2026 • Ethiopia</footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

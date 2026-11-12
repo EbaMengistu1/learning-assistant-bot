@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Important: without this, Google may block the audio request -->
+<meta name="referrer" content="no-referrer">
+<title>አማርኛ አንብብ - Test</title>
+<style>
+  body { font-family: "Noto Sans Ethiopic", "Nyala", "Abyssinica SIL", system-ui, sans-serif;
+         max-width: 640px; margin: 0 auto; padding: 16px; background: #f6f7f9; color: #1d1d1f; }
+  h1 { font-size: 1.4rem; }
+  textarea { width: 100%; min-height: 140px; font-size: 1.15rem; padding: 12px;
+             border: 1px solid #ccc; border-radius: 10px; box-sizing: border-box; font-family: inherit; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  button { font-size: 1.05rem; padding: 12px 16px; border: 0; border-radius: 10px;
+           cursor: pointer; font-family: inherit; }
+  .am { background: #0a7d3b; color: #fff; }
+  .en { background: #1f5fbf; color: #fff; }
+  .stop { background: #b3261e; color: #fff; }
+  .ghost { background: #e4e6ea; color: #1d1d1f; }
+  label { font-size: .95rem; }
+  #status { padding: 10px 12px; border-radius: 8px; background: #fff; border: 1px solid #ddd;
+            min-height: 1.4em; font-size: .95rem; }
+  #log { font-family: monospace; font-size: .8rem; white-space: pre-wrap; background: #fff;
+         border: 1px solid #ddd; border-radius: 8px; padding: 10px; max-height: 220px; overflow: auto; }
+</style>
+</head>
+<body>
+
+<h1>አማርኛ አንብብ — Test</h1>
+
+<textarea id="text">ሰላም! እንዴት ነህ? ይህ የአማርኛ ድምፅ ሙከራ ነው። ይህ መሳሪያ በስልክ እና በኮምፒውተር ላይ ይሰራል።</textarea>
+
+<div class="row">
+  <button class="am" id="btnAm">🔊 አማርኛ አንብብ</button>
+  <button class="en" id="btnEn">🔊 Read English</button>
+  <button class="stop" id="btnStop">⏹ አቁም / Stop</button>
+</div>
+
+<div class="row">
+  <label>Engine:
+    <select id="engine">
+      <option value="auto">Auto (best available)</option>
+      <option value="google">Google voice (online)</option>
+      <option value="local">Device voice only</option>
+    </select>
+  </label>
+  <label>Speed:
+    <select id="speed">
+      <option value="0.8">Slow</option>
+      <option value="1" selected>Normal</option>
+      <option value="1.2">Fast</option>
+    </select>
+  </label>
+  <button class="ghost" id="btnVoices">Show device voices</button>
+</div>
+
+<div id="status">Ready.</div>
+<p><b>Debug log</b></p>
+<div id="log"></div>
+
+<script>
+/* =========================================================
+   Amharic Reader
+   Order:  1) device Amharic voice (if the phone/PC has one)
+           2) Google Translate voice (online, no API key)
+           3) clear error message
+   ========================================================= */
+
+const $ = id => document.getElementById(id);
+const statusEl = $("status"), logEl = $("log");
+const player = new Audio();          // one reusable player (important for mobile)
+let queue = [], stopped = false;
+
+function log(msg) { logEl.textContent += msg + "\n"; logEl.scrollTop = logEl.scrollHeight; console.log(msg); }
+function setStatus(msg) { statusEl.textContent = msg; }
+
+/* ---------- voices (loaded async in Chrome) ---------- */
+function getVoices() {
+  return new Promise(resolve => {
+    let v = speechSynthesis.getVoices();
+    if (v.length) return resolve(v);
+    speechSynthesis.onvoiceschanged = () => resolve(speechSynthesis.getVoices());
+    setTimeout(() => resolve(speechSynthesis.getVoices()), 1500);
+  });
+}
+async function findVoice(prefix) {
+  if (!("speechSynthesis" in window)) return null;
+  const voices = await getVoices();
+  return voices.find(v => v.lang.toLowerCase().replace("_", "-").startsWith(prefix)) || null;
+}
+
+/* ---------- split long text (Google limit ~200 chars) ---------- */
+function splitText(text, max = 180) {
+  const parts = text.replace(/\s+/g, " ").trim()
+    .split(/(?<=[።፤፥፣፡?!.,;:\n])\s*/);   // Ethiopic + Latin punctuation
+  const chunks = [];
+  let cur = "";
+  for (const p of parts) {
+    if ((cur + " " + p).trim().length <= max) { cur = (cur + " " + p).trim(); continue; }
+    if (cur) chunks.push(cur);
+    if (p.length <= max) { cur = p; continue; }
+    // very long piece with no punctuation -> cut on spaces
+    let words = p.split(" "); cur = "";
+    for (const w of words) {
+      if ((cur + " " + w).trim().length > max) { if (cur) chunks.push(cur); cur = w; }
+      else cur = (cur + " " + w).trim();
+    }
+  }
+  if (cur) chunks.push(cur);
+  return chunks.filter(Boolean);
+}
+
+/* ---------- Engine 1: device voice ---------- */
+function speakLocal(text, voice, lang) {
+  return new Promise((resolve, reject) => {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang; u.voice = voice; u.rate = parseFloat($("speed").value);
+    u.onend = resolve;
+    u.onerror = e => reject(e.error || "speech error");
+    speechSynthesis.speak(u);
+  });
+}
+
+/* ---------- Engine 2: Google voice (online) ---------- */
+function googleUrl(text, lang) {
+  return "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=" + lang +
+         "&q=" + encodeURIComponent(text);
+}
+function playChunk(text, lang) {
+  return new Promise((resolve, reject) => {
+    player.onended = resolve;
+    player.onerror = () => reject("audio failed to load");
+    player.src = googleUrl(text, lang);
+    player.playbackRate = parseFloat($("speed").value);
+    player.play().catch(reject);
+  });
+}
+async function speakGoogle(text, lang) {
+  queue = splitText(text);
+  log("Google voice: " + queue.length + " part(s)");
+  for (let i = 0; i < queue.length; i++) {
+    if (stopped) return;
+    setStatus(`🔊 Reading part ${i + 1} of ${queue.length}…`);
+    await playChunk(queue[i], lang);
+  }
+}
+
+/* ---------- main ---------- */
+async function read(lang /* "am" or "en" */) {
+  const text = $("text").value.trim();
+  if (!text) return setStatus("Please type some text first.");
+  stop(); stopped = false;
+  const engine = $("engine").value;
+  const bcp = lang === "am" ? "am-ET" : "en-US";
+
+  try {
+    // English: device voices are fine everywhere
+    // Amharic: only use device voice if one really exists
+    const voice = engine !== "google" ? await findVoice(lang) : null;
+    log(`[${lang}] engine=${engine}, device voice=${voice ? voice.name : "none"}`);
+
+    if (voice) {
+      setStatus("🔊 Reading with device voice: " + voice.name);
+      await speakLocal(text, voice, bcp);
+    } else if (engine === "local") {
+      throw "No device voice for " + bcp + " on this browser.";
+    } else {
+      await speakGoogle(text, lang);
+    }
+    if (!stopped) setStatus("✅ Done.");
+  } catch (err) {
+    log("ERROR: " + err);
+    setStatus("⚠️ Could not read aloud: " + err + " — check internet connection and try again.");
+  }
+}
+
+function stop() {
+  stopped = true;
+  try { speechSynthesis.cancel(); } catch (e) {}
+  player.pause(); player.removeAttribute("src"); player.load();
+  setStatus("Stopped.");
+}
+
+$("btnAm").onclick = () => read("am");
+$("btnEn").onclick = () => read("en");
+$("btnStop").onclick = stop;
+$("btnVoices").onclick = async () => {
+  if (!("speechSynthesis" in window)) return log("speechSynthesis not supported.");
+  const v = await getVoices();
+  log(`--- ${v.length} device voices ---`);
+  v.forEach(x => log(`${x.lang}  ${x.name}${x.localService ? "" : " (online)"}`));
+  const am = v.filter(x => x.lang.toLowerCase().startsWith("am"));
+  log(am.length ? "✅ Amharic device voice found" : "❌ No Amharic device voice -> Google voice will be used");
+};
+
+log("Browser: " + navigator.userAgent);
+</script>
+</body>
+</html>
