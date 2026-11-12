@@ -19,6 +19,8 @@ try {
   COURSE_DATA = JSON.parse(
     fs.readFileSync("course-data.json", "utf8")
   );
+
+  console.log("Course lessons loaded:", COURSE_DATA.lessons.length);
 } catch (error) {
   console.error("Could not load course-data.json:", error);
 }
