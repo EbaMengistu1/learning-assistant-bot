@@ -2,8 +2,11 @@ const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
+const cors = require("cors");
 
-console.log("BOT VERSION: v20 FINAL POWERFUL BILINGUAL TRACK 3 ASSISTANT");
+const db = require("./database");
+
+console.log("BOT VERSION: v21 FINAL ALL-IN-ONE TRACK 3 ASSISTANT");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -22,8 +25,9 @@ const bot = new TelegramBot(TOKEN, {
 });
 
 const app = express();
-app.use(express.urlencoded({ extended: false }));
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 let COURSE_DATA = {
   lessons: []
@@ -759,6 +763,158 @@ async function sendSms(to, message) {
   }
 }
 
+// ---------- WEB API ----------
+
+app.get("/", (req, res) => {
+  res.json({
+    status: "Track 3 Assistant API is running",
+    version: "v21"
+  });
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    database: Boolean(process.env.DATABASE_URL),
+    lessons: COURSE_DATA.lessons.length
+  });
+});
+
+app.get("/api/lessons", (req, res) => {
+  res.json({
+    success: true,
+    lessons: COURSE_DATA.lessons
+  });
+});
+
+app.get("/api/jobs", (req, res) => {
+  res.json({
+    success: true,
+    jobs: jobs
+  });
+});
+
+app.get("/api/students", async (req, res) => {
+  try {
+    const students = await db.getAllStudents();
+
+    res.json({
+      success: true,
+      students: students
+    });
+  } catch (error) {
+    console.error("Get students failed:", error.message);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not load students"
+    });
+  }
+});
+
+app.get("/api/progress/:chatId", async (req, res) => {
+  try {
+    const chatId = req.params.chatId;
+    const progress = await db.getProgress(chatId);
+
+    res.json({
+      success: true,
+      progress: progress
+    });
+  } catch (error) {
+    console.error("Get progress failed:", error.message);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not load progress"
+    });
+  }
+});
+
+app.post("/api/help", async (req, res) => {
+  try {
+    const chatId = req.body.chatId;
+    const question = req.body.question;
+
+    if (!chatId || !question) {
+      return res.status(400).json({
+        success: false,
+        error: "chatId and question are required"
+      });
+    }
+
+    await db.saveHelpRequest(chatId, question);
+
+    res.json({
+      success: true,
+      message: "Help request saved"
+    });
+  } catch (error) {
+    console.error("Save help request failed:", error.message);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not save help request"
+    });
+  }
+});
+
+app.post("/api/accommodation", async (req, res) => {
+  try {
+    const chatId = req.body.chatId;
+    const accommodation = req.body.accommodation;
+
+    if (!chatId || !accommodation) {
+      return res.status(400).json({
+        success: false,
+        error: "chatId and accommodation are required"
+      });
+    }
+
+    await db.saveAccommodationRequest(chatId, accommodation);
+
+    res.json({
+      success: true,
+      message: "Accommodation request saved"
+    });
+  } catch (error) {
+    console.error("Save accommodation failed:", error.message);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not save accommodation request"
+    });
+  }
+});
+
+app.post("/api/screen-share", async (req, res) => {
+  try {
+    const chatId = req.body.chatId;
+    const meetingLink = req.body.meetingLink;
+
+    if (!chatId || !meetingLink) {
+      return res.status(400).json({
+        success: false,
+        error: "chatId and meetingLink are required"
+      });
+    }
+
+    await db.saveScreenShareRequest(chatId, meetingLink);
+
+    res.json({
+      success: true,
+      message: "Screen-sharing request saved"
+    });
+  } catch (error) {
+    console.error("Save screen-share request failed:", error.message);
+
+    res.status(500).json({
+      success: false,
+      error: "Could not save screen-sharing request"
+    });
+  }
+});
+
 app.post("/sms", async (req, res) => {
   const incomingMessage = req.body.text || "";
   const sender = req.body.from || "";
@@ -801,6 +957,8 @@ app.post("/sms", async (req, res) => {
 
   res.status(200).send("OK");
 });
+
+// ---------- TELEGRAM BUTTONS ----------
 
 bot.on("callback_query", async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
@@ -1408,6 +1566,10 @@ bot.on("callback_query", async callbackQuery => {
 
     saveUserProgress(chatId, lesson.title);
 
+    db.saveProgress(chatId, lesson.title).catch(error => {
+      console.error("Save progress failed:", error.message);
+    });
+
     const answer = lesson.answer || {};
     const englishFull = answer.en || "";
     const amharicFull = answer.am || "";
@@ -1522,6 +1684,8 @@ bot.on("callback_query", async callbackQuery => {
   }
 });
 
+// ---------- TELEGRAM MESSAGES ----------
+
 bot.on("message", async message => {
   const chatId = message.chat.id;
   const text = message.text;
@@ -1536,11 +1700,17 @@ bot.on("message", async message => {
 
   console.log("Received message:", text);
 
-  botUsers.set(chatId, {
+  const userData = {
     chatId: chatId,
     firstName: message.from.first_name || "Learner",
     username: message.from.username || null,
     role: isAdmin(chatId) ? "teacher" : "student"
+  };
+
+  botUsers.set(chatId, userData);
+
+  db.saveUser(userData).catch(error => {
+    console.error("Save user failed:", error.message);
   });
 
   const language = isAmharicQuestion(text) ? "amharic" : "english";
@@ -1592,6 +1762,10 @@ bot.on("message", async message => {
 
     smsWaiting.delete(chatId);
     userPhones.set(chatId, phone);
+
+    db.savePhone(chatId, phone).catch(error => {
+      console.error("Save phone failed:", error.message);
+    });
 
     bot.sendMessage(
       chatId,
@@ -1827,7 +2001,7 @@ bot.on("message", async message => {
   // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v20");
+    bot.sendMessage(chatId, "PONG v21");
     return;
   }
 
@@ -1976,6 +2150,15 @@ bot.on("message", async message => {
 
       stats.individualTelegramMessages += 1;
 
+      db.saveMessage(
+        chatId,
+        studentChatId,
+        text,
+        "telegram"
+      ).catch(error => {
+        console.error("Save Telegram message failed:", error.message);
+      });
+
       bot.sendMessage(
         chatId,
         "✅ Telegram message sent to student."
@@ -2026,6 +2209,15 @@ bot.on("message", async message => {
 
       stats.individualSmsMessages += 1;
       stats.smsNotifications += 1;
+
+      db.saveMessage(
+        chatId,
+        studentChatId,
+        text,
+        "sms"
+      ).catch(error => {
+        console.error("Save SMS message failed:", error.message);
+      });
 
       bot.sendMessage(
         chatId,
@@ -2081,6 +2273,14 @@ bot.on("message", async message => {
 
     stats.telegramAnnouncements += 1;
 
+    db.saveAnnouncement(
+      chatId,
+      announcement,
+      "telegram"
+    ).catch(error => {
+      console.error("Save Telegram announcement failed:", error.message);
+    });
+
     bot.sendMessage(
       chatId,
       "✅ Telegram announcement sent to students.\n\n" +
@@ -2120,6 +2320,14 @@ bot.on("message", async message => {
 
     stats.smsAnnouncements += 1;
 
+    db.saveAnnouncement(
+      chatId,
+      announcement,
+      "sms"
+    ).catch(error => {
+      console.error("Save SMS announcement failed:", error.message);
+    });
+
     bot.sendMessage(
       chatId,
       "✅ SMS announcement process finished.\n\n" +
@@ -2151,6 +2359,10 @@ bot.on("message", async message => {
 
     sendScreenShareRequestToAdmin(chatId, meetingLink);
 
+    db.saveScreenShareRequest(chatId, meetingLink).catch(error => {
+      console.error("Save screen-share request failed:", error.message);
+    });
+
     bot.sendMessage(
       chatId,
       "✅ Your screen-sharing request has been sent.\n\n" +
@@ -2166,6 +2378,10 @@ bot.on("message", async message => {
     stats.helpRequests += 1;
 
     sendHelpRequestToAdmin(chatId, text);
+
+    db.saveHelpRequest(chatId, text).catch(error => {
+      console.error("Save help request failed:", error.message);
+    });
 
     bot.sendMessage(
       chatId,
@@ -2203,6 +2419,10 @@ bot.on("message", async message => {
     stats.accommodationRequests += 1;
 
     sendAccommodationRequestToAdmin(chatId, accommodation);
+
+    db.saveAccommodationRequest(chatId, accommodation).catch(error => {
+      console.error("Save accommodation failed:", error.message);
+    });
 
     bot.sendMessage(
       chatId,
@@ -2487,10 +2707,24 @@ function sendStartMenu(chatId, message) {
   );
 }
 
+// ---------- START SERVER AND DATABASE ----------
+
 const PORT = process.env.PORT || 8080;
 
-app.listen(PORT, () => {
-  console.log("SMS webhook is running on port " + PORT);
-});
+async function start() {
+  try {
+    await db.createTables();
+
+    console.log("Database is ready.");
+  } catch (error) {
+    console.error("Database setup failed:", error.message);
+  }
+
+  app.listen(PORT, () => {
+    console.log("Track 3 web API and SMS webhook are running on port " + PORT);
+  });
+}
+
+start();
 
 console.log("Telegram bot is running.");
