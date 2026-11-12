@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v13 Reminders and announcements");
+console.log("BOT VERSION: v14 Final reminder system");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -599,26 +599,10 @@ bot.on("callback_query", async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
 
-  if (data === "reminder_menu") {
-    const nextLesson = getNextLesson(chatId);
-
-    if (!nextLesson) {
-      bot.sendMessage(
-        chatId,
-        "🎉 Great job! You have completed all available lessons.\n\n" +
-        "Keep practicing with /quiz."
-      );
-
-      bot.answerCallbackQuery(callbackQuery.id);
-
-      return;
-    }
-
+  if (data === "sms_notification") {
     bot.sendMessage(
       chatId,
-      "📚 Your next lesson is:\n\n" +
-      nextLesson.title + "\n\n" +
-      "How would you like to receive your reminder?",
+      "📩 How would you like to receive your learning reminder?",
 
       {
         reply_markup: {
@@ -896,9 +880,15 @@ bot.on("message", async message => {
             }
           }
         );
-
-        return;
+      } else {
+        bot.sendMessage(
+          chatId,
+          "✅ SMS reminder cancelled.\n\nYou can use the bot normally now."
+        );
       }
+
+      return;
+    }
 
     const phone = text.trim();
 
@@ -982,17 +972,29 @@ bot.on("message", async message => {
   if (normalText === "/start") {
     bot.sendMessage(
       chatId,
-      "👋 Welcome to your Learning Assistant!\n\n" +
-      "I can help you learn Internet Basics, answer questions, take quizzes, and find job alerts.\n\n" +
-      "📩 You can get a personalized learning reminder by Telegram or SMS.",
+      "Hello! I am your Learning Assistant.\n\n" +
+      "You can ask course questions or general questions.\n\n" +
+      "Commands:\n" +
+      "• /help — request human help\n" +
+      "• /progress — see your progress\n" +
+      "• /quiz — choose a quiz\n" +
+      "• /jobs — see job alerts\n" +
+      "• /accommodation — request interview support\n" +
+      "• /teacher — teacher analytics\n\n" +
+      "You can also ask course questions by SMS.\n\n" +
+      "Examples:\n" +
+      "• What is downloading?\n" +
+      "• What is the internet?\n" +
+      "• What is photosynthesis?\n" +
+      "• What is the capital of Kenya?",
 
       {
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: "🔔 Get Reminder",
-                callback_data: "reminder_menu"
+                text: "📩 Get SMS Reminder",
+                callback_data: "sms_notification"
               }
             ]
           ]
@@ -1063,7 +1065,7 @@ bot.on("message", async message => {
   // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v13");
+    bot.sendMessage(chatId, "PONG v14");
     return;
   }
 
