@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v19 Powerful Amharic Track 3 Assistant");
+console.log("BOT VERSION: v20 FINAL POWERFUL BILINGUAL TRACK 3 ASSISTANT");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -333,11 +333,13 @@ function findJobAnswer(question) {
     "hire",
     "hiring",
     "employment",
+    "vacancy",
     "ሥራ",
     "ስራ",
     "ቅጥር",
     "ሥራ ለመመልከት",
-    "ሥራ ማግኘት"
+    "ሥራ ማግኘት",
+    "የሥራ ማስታወቂያ"
   ];
 
   const hasJobWord = jobWords.some(word => q.includes(word));
@@ -371,16 +373,6 @@ function findJobAnswer(question) {
     en: "You can see current job alerts by sending /jobs. Tap a job title to see the deadline and application link.",
     am: "የአሁኑን የሥራ ማስታወቂያዎች ለማየት /jobs ይላኩ። ዝርዝሩን እና የማመልከቻ ሊንኩን ለማየት የሥራ ርዕሱን ይንኩ።"
   };
-}
-
-function getSimpleAnswer(lesson) {
-  const simple = lesson.simple || {};
-  return simple.en || simple.am || "";
-}
-
-function getFullAnswer(lesson) {
-  const answer = lesson.answer || {};
-  return answer.en || answer.am || "";
 }
 
 function getSource(lesson) {
@@ -530,7 +522,8 @@ function sendLessonMenu(chatId) {
   bot.sendMessage(
     chatId,
     "📚 Choose a lesson:\n\n" +
-    "You can also type your question in Amharic or English.",
+    "You can also type your question in Amharic or English.\n\n" +
+    "በአማርኛ ወይም በእንግሊዝኛ ጥያቄ መጠየቅ ይችላሉ።",
 
     {
       reply_markup: {
@@ -553,7 +546,8 @@ function sendJobAlerts(chatId) {
   bot.sendMessage(
     chatId,
     "💼 Job Alerts\n\n" +
-    "Tap a job title to see details.",
+    "Tap a job title to see details.\n\n" +
+    "ዝርዝር ለማየት የሥራ ርዕሱን ይንኩ።",
 
     {
       reply_markup: {
@@ -576,7 +570,8 @@ function sendAccommodationMenu(chatId) {
     "4. Quiet interview space\n" +
     "5. Written questions\n" +
     "6. Other\n\n" +
-    "Please reply with a number."
+    "Please reply with a number.\n\n" +
+    "እባክዎ ቁጥር ይላኩ።"
   );
 }
 
@@ -669,8 +664,8 @@ async function askGroq(question, language) {
 
   const systemMessage =
     language === "amharic"
-      ? "You are a simple learning assistant. Answer in clear, simple Amharic first. Then add a short English translation. Keep the answer helpful and easy to understand."
-      : "You are a simple learning assistant. Answer in clear, simple English first. If useful, add a short Amharic translation. Keep the answer helpful and easy to understand.";
+      ? "You are a simple learning assistant. Answer in clear, simple Amharic first. Then add a short English translation. Keep the answer helpful, respectful, and easy to understand."
+      : "You are a simple learning assistant. Answer in clear, simple English first. If useful, add a short Amharic translation. Keep the answer helpful, respectful, and easy to understand.";
 
   const response = await fetch(
     "https://api.groq.com/openai/v1/chat/completions",
@@ -1832,7 +1827,7 @@ bot.on("message", async message => {
   // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v19");
+    bot.sendMessage(chatId, "PONG v20");
     return;
   }
 
@@ -2368,123 +2363,125 @@ bot.on("message", async message => {
 function sendStartMenu(chatId, message) {
   const role = isAdmin(chatId) ? "Teacher / Admin" : "Student";
 
-  let menuText =
-    "👋 Welcome to your Learning Assistant!\n\n" +
-    "Your role: " + role + "\n\n";
-
-  if (isAdmin(chatId)) {
-    menuText +=
-      "👩‍🏫 Teacher Admin Panel\n\n" +
-      "You can manage students, send announcements, contact individual students, and view analytics.\n\n" +
-      "Commands:\n" +
-      "• /admin — open teacher admin panel\n" +
-      "• /students — view and contact students\n" +
-      "• /announce — send Telegram announcement to all students\n" +
-      "• /announce-sms — send SMS announcement to saved phone numbers\n" +
-      "• /teacher — view learning analytics\n" +
-      "• /track3 — Track 3 learning and employment support\n\n" +
-      "Student features:\n" +
-      "• /lessons — choose a lesson\n" +
-      "• /help — request human help\n" +
-      "• /progress — see your progress\n" +
-      "• /quiz — choose a quiz\n" +
-      "• /jobs — see job alerts\n" +
-      "• /accommodation — request interview support\n\n" +
-      "Examples:\n" +
-      "• What is downloading?\n" +
-      "• ማውረድ ምን ማለት ነው?\n" +
-      "• What is the internet?\n" +
-      "• What is the capital of Kenya?";
-
-    bot.sendMessage(
-      chatId,
-      menuText,
-
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "🧑‍🏫 Open Teacher Panel",
-                callback_data: "teacher_panel"
-              }
-            ],
-            [
-              {
-                text: "🎯 Track 3 Support",
-                callback_data: "track3_menu"
-              }
-            ],
-            [
-              {
-                text: "🟢 Simple Mode",
-                callback_data: "toggle_simple_mode"
-              }
-            ],
-            [
-              {
-                text: "📩 Get SMS Reminder",
-                callback_data: "sms_notification"
-              }
-            ]
-          ]
-        }
-      }
-    );
-
-    return;
-  }
-
-  menuText +=
-    "👨‍🎓 Student Learning Panel\n\n" +
-    "You can learn Internet Basics, ask questions in Amharic or English, take quizzes, get reminders, and find job alerts.\n\n" +
-    "Commands:\n" +
-    "• /lessons — choose a lesson\n" +
-    "• /help — request human help\n" +
-    "• /progress — see your progress\n" +
-    "• /quiz — choose a quiz\n" +
-    "• /jobs — see job alerts\n" +
-    "• /accommodation — request interview support\n" +
-    "• /track3 — Track 3 learning and employment support\n" +
-    "• /simple — turn Simple Mode on or off\n\n" +
+  const studentWelcome =
+    "🇪🇹 እንኳን ደህና መጡ!\n\n" +
+    "ይህ ቦት ለትምህርት፣ ለሥራ እና ለድጋፍ ይረዳዎታል።\n\n" +
+    "በአማርኛ ወይም በእንግሊዝኛ መጠየቅ ይችላሉ።\n\n" +
+    "ለምሳሌ ይጻፉ፦\n" +
+    "• ማውረድ ምን ማለት ነው?\n" +
+    "• ሥራ ለመመልከት እንዴት እችላለሁ?\n" +
+    "• ኢንተርኔት ምን ማለት ነው?\n\n" +
+    "🇬🇧 Welcome!\n\n" +
+    "This bot helps you learn, find jobs, and get support.\n\n" +
+    "You can ask in Amharic or English.\n\n" +
     "Examples:\n" +
     "• What is downloading?\n" +
-    "• ማውረድ ምን ማለት ነው?\n" +
-    "• What is the internet?\n" +
-    "• What is the capital of Kenya?";
+    "• How do I apply for a job?\n" +
+    "• What is the internet?\n\n" +
+    "Your role: " + role;
+
+  const teacherWelcome =
+    "🇪🇹 እንኳን ደህና መጡ መምህር!\n\n" +
+    "ተማሪዎችን ማየት፣ መልእክት መላክ፣ ማስታወቂያ መላክ እና የትምህርት መረጃ ማየት ይችላሉ።\n\n" +
+    "🇬🇧 Welcome, Teacher!\n\n" +
+    "You can view students, send individual messages, send announcements, and view learning analytics.\n\n" +
+    "Your role: " + role;
+
+  const welcomeText = isAdmin(chatId) ? teacherWelcome : studentWelcome;
+
+  const studentButtons = [
+    [
+      {
+        text: "📚 ትምህርት ጀምር / Start Learning",
+        callback_data: "student_learning"
+      }
+    ],
+    [
+      {
+        text: "🎯 የTrack 3 ድጋፍ / Track 3 Support",
+        callback_data: "track3_menu"
+      }
+    ],
+    [
+      {
+        text: "💼 የሥራ ማስታወቂያ / Job Alerts",
+        callback_data: "track3_jobs"
+      }
+    ],
+    [
+      {
+        text: "📋 የቃለ መጠይቅ ድጋፍ / Interview Support",
+        callback_data: "track3_interview_support"
+      }
+    ],
+    [
+      {
+        text: "🟢 ቀላል መልስ / Simple Mode",
+        callback_data: "toggle_simple_mode"
+      }
+    ],
+    [
+      {
+        text: "📩 የSMS አስታዋሽ / SMS Reminder",
+        callback_data: "sms_notification"
+      }
+    ],
+    [
+      {
+        text: "🙋 እርዳታ አስፈልገኛል / I Need Help",
+        callback_data: "track3_need_person"
+      }
+    ]
+  ];
+
+  const teacherButtons = [
+    [
+      {
+        text: "🧑‍🏫 የመምህር ፓነል / Teacher Panel",
+        callback_data: "teacher_panel"
+      }
+    ],
+    [
+      {
+        text: "👥 ተማሪዎች / Students",
+        callback_data: "view_students"
+      }
+    ],
+    [
+      {
+        text: "📢 ለሁሉም ተማሪ መልእክት / Announce",
+        callback_data: "start_telegram_announcement"
+      }
+    ],
+    [
+      {
+        text: "📩 ለሁሉም ተማሪ SMS / SMS Announcement",
+        callback_data: "start_sms_announcement"
+      }
+    ],
+    [
+      {
+        text: "📊 የትምህርት መረጃ / Analytics",
+        callback_data: "view_teacher_analytics"
+      }
+    ],
+    [
+      {
+        text: "🎯 የTrack 3 ድጋፍ / Track 3 Support",
+        callback_data: "track3_menu"
+      }
+    ]
+  ];
+
+  const buttons = isAdmin(chatId) ? teacherButtons : studentButtons;
 
   bot.sendMessage(
     chatId,
-    menuText,
+    welcomeText,
 
     {
       reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "📚 Start Learning",
-              callback_data: "student_learning"
-            }
-          ],
-          [
-            {
-              text: "🎯 Track 3 Support",
-              callback_data: "track3_menu"
-            }
-          ],
-          [
-            {
-              text: "🟢 Simple Mode",
-              callback_data: "toggle_simple_mode"
-            }
-          ],
-          [
-            {
-              text: "📩 Get SMS Reminder",
-              callback_data: "sms_notification"
-            }
-          ]
-        ]
+        inline_keyboard: buttons
       }
     }
   );
