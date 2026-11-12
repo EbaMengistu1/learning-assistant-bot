@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v9 SMS support");
+console.log("BOT VERSION: v10 SMS notification support");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -44,6 +44,7 @@ const userLessons = new Map();
 const userProgress = new Map();
 const userQuiz = new Map();
 const userState = new Map();
+const smsWaiting = new Map();
 
 const stats = {
   totalQuestions: 0,
@@ -52,6 +53,7 @@ const stats = {
   helpRequests: 0,
   accommodationRequests: 0,
   quizCompletions: 0,
+  smsNotifications: 0,
   topicCounts: {}
 };
 
@@ -579,6 +581,208 @@ app.post("/sms", async (req, res) => {
   res.status(200).send("OK");
 });
 
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+
+  bot.sendMessage(
+    chatId,
+    "Hello! I am your Learning Assistant.\n\n" +
+    "You can ask course questions or general questions.\n\n" +
+    "Commands:\n" +
+    "• /help — request human help\n" +
+    "• /progress — see your progress\n" +
+    "• /quiz — choose a quiz\n" +
+    "• /jobs — see job alerts\n" +
+    "• /accommodation — request interview support\n" +
+    "• /teacher — teacher analytics\n\n" +
+    "You can also ask course questions by SMS.\n\n" +
+    "Examples:\n" +
+    "• What is downloading?\n" +
+    "• What is the internet?\n" +
+    "• What is photosynthesis?\n" +
+    "• What is the capital of Kenya?",
+
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "📩 Get SMS Notification",
+              callback_data: "sms_notification"
+            }
+          ]
+        ]
+      }
+    }
+  );
+});
+
+bot.on("callback_query", async callbackQuery => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data === "sms_notification") {
+    smsWaiting.set(chatId, true);
+
+    bot.sendMessage(
+      chatId,
+      "📩 *SMS Notification*\n\n" +
+      "Please send your phone number in this format:\n\n" +
+      "`+251912345678`\n\n" +
+      "I will send you a learning reminder by SMS.",
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          force_reply: true
+        }
+      }
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data.startsWith("start_quiz_")) {
+    const quizName = data.replace("start_quiz_", "");
+
+    if (!quizzes[quizName]) {
+      bot.sendMessage(chatId, "Quiz not found.");
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    userQuiz.set(chatId, {
+      name: quizName,
+      questionIndex: 0,
+      score: 0
+    });
+
+    sendQuizQuestion(chatId, quizName, 0);
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "full_answer") {
+    const lesson = userLessons.get(chatId);
+
+    if (!lesson) {
+      bot.sendMessage(
+        chatId,
+        "Please first ask a course question, such as: What is downloading?"
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    saveUserProgress(chatId, lesson.title);
+
+    const fullAnswer = getFullAnswer(lesson);
+    const source = getSource(lesson);
+
+    bot.sendMessage(
+      chatId,
+      fullAnswer + "\n\n" + source
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id, {
+      text: "Full answer sent"
+    });
+
+    return;
+  }
+
+  if (data.startsWith("job_")) {
+    const jobIndex = Number(data.replace("job_", ""));
+
+    const job = jobs[jobIndex];
+
+    if (!job) {
+      bot.sendMessage(chatId, "Job not found.");
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    const jobDetails =
+      "💼 " + job.title + "\n\n" +
+      "Organization: " + job.organization + "\n" +
+      "Location: " + job.location + "\n" +
+      "Type: " + job.type + "\n" +
+      "Deadline: " + job.deadline + "\n\n" +
+      "Apply here:\n" +
+      job.link;
+
+    bot.sendMessage(chatId, jobDetails);
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data.startsWith("quiz_")) {
+    const parts = data.split("_");
+    const quizName = parts[1];
+    const questionIndex = Number(parts[2]);
+    const selectedOption = Number(parts[3]);
+
+    const quiz = quizzes[quizName];
+    const question = quiz[questionIndex];
+
+    const userQuizData = userQuiz.get(chatId);
+
+    if (!userQuizData) {
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    if (selectedOption === question.correct) {
+      userQuizData.score += 1;
+
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text: "✅ Correct!"
+      });
+    } else {
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text:
+          "❌ Incorrect. Correct answer: " +
+          question.options[question.correct]
+      });
+    }
+
+    const nextQuestion = questionIndex + 1;
+
+    if (nextQuestion < quiz.length) {
+      userQuiz.set(chatId, userQuizData);
+
+      sendQuizQuestion(chatId, quizName, nextQuestion);
+    } else {
+      userQuiz.delete(chatId);
+
+      stats.quizCompletions += 1;
+
+      bot.sendMessage(
+        chatId,
+        "🎉 Quiz finished!\n\n" +
+        "Your score: " + userQuizData.score + " out of " + quiz.length + "\n\n" +
+        "Try another quiz:\n" +
+        "• /quiz downloading\n" +
+        "• /quiz internet\n" +
+        "• /quiz safety\n" +
+        "• /quiz email"
+      );
+    }
+  }
+});
+
 bot.on("message", async message => {
   const chatId = message.chat.id;
   const text = message.text;
@@ -593,31 +797,67 @@ bot.on("message", async message => {
 
   console.log("Received message:", text);
 
-  if (normalText === "/start") {
+  // ---------- SMS NOTIFICATION FLOW ----------
+
+  if (smsWaiting.get(chatId)) {
+    const phone = text.trim();
+
+    const phonePattern = /^\+2519\d{8}$/;
+
+    if (!phonePattern.test(phone)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Please send a valid Ethiopian phone number.\n\nExample:\n`+251912345678`",
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            force_reply: true
+          }
+        }
+      );
+
+      return;
+    }
+
+    smsWaiting.delete(chatId);
+
     bot.sendMessage(
       chatId,
-      "Hello! I am your Learning Assistant.\n\n" +
-      "You can ask course questions or general questions.\n\n" +
-      "Commands:\n" +
-      "• /help — request human help\n" +
-      "• /progress — see your progress\n" +
-      "• /quiz — choose a quiz\n" +
-      "• /jobs — see job alerts\n" +
-      "• /accommodation — request interview support\n" +
-      "• /teacher — teacher analytics\n\n" +
-      "You can also ask course questions by SMS.\n\n" +
-      "Examples:\n" +
-      "• What is downloading?\n" +
-      "• What is the internet?\n" +
-      "• What is photosynthesis?\n" +
-      "• What is the capital of Kenya?"
+      "⏳ Sending your SMS notification..."
     );
+
+    try {
+      await sendSms(
+        phone,
+        "Hello! This is a reminder from your Learning Assistant. " +
+        "You can ask questions, take quizzes, and get learning support anytime."
+      );
+
+      stats.smsNotifications += 1;
+
+      bot.sendMessage(
+        chatId,
+        "✅ SMS notification sent successfully!\n\n" +
+        "Please check your phone."
+      );
+
+    } catch (error) {
+      console.error("SMS notification error:", error.message);
+
+      bot.sendMessage(
+        chatId,
+        "❌ Sorry, I could not send the SMS notification right now.\n\n" +
+        "Please try again later."
+      );
+    }
 
     return;
   }
 
+  // ---------- NORMAL BOT COMMANDS ----------
+
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v9");
+    bot.sendMessage(chatId, "PONG v10");
     return;
   }
 
@@ -749,7 +989,8 @@ bot.on("message", async message => {
       "AI questions: " + stats.aiQuestions + "\n" +
       "Help requests: " + stats.helpRequests + "\n" +
       "Accommodation requests: " + stats.accommodationRequests + "\n" +
-      "Quiz completions: " + stats.quizCompletions + "\n\n" +
+      "Quiz completions: " + stats.quizCompletions + "\n" +
+      "SMS notifications: " + stats.smsNotifications + "\n\n" +
       "Most asked topics:\n" +
       topicText
     );
@@ -892,232 +1133,7 @@ bot.on("message", async message => {
   }
 });
 
-bot.on("callback_query", async callbackQuery => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
-
-  if (data.startsWith("start_quiz_")) {
-    const quizName = data.replace("start_quiz_", "");
-
-    if (!quizzes[quizName]) {
-      bot.sendMessage(chatId, "Quiz not found.");
-
-      bot.answerCallbackQuery(callbackQuery.id);
-
-      return;
-    }
-
-    userQuiz.set(chatId, {
-      name: quizName,
-      questionIndex: 0,
-      score: 0
-    });
-
-    sendQuizQuestion(chatId, quizName, 0);
-
-    bot.answerCallbackQuery(callbackQuery.id);
-
-    return;
-  }
-
-  if (data === "full_answer") {
-    const lesson = userLessons.get(chatId);
-
-    if (!lesson) {
-      bot.sendMessage(
-        chatId,
-        "Please first ask a course question, such as: What is downloading?"
-      );
-
-      bot.answerCallbackQuery(callbackQuery.id);
-
-      return;
-    }
-
-    saveUserProgress(chatId, lesson.title);
-
-    const fullAnswer = getFullAnswer(lesson);
-    const source = getSource(lesson);
-
-    bot.sendMessage(
-      chatId,
-      fullAnswer + "\n\n" + source
-    );
-
-    bot.answerCallbackQuery(callbackQuery.id, {
-      text: "Full answer sent"
-    });
-
-    return;
-  }
-
-  if (data.startsWith("job_")) {
-    const jobIndex = Number(data.replace("job_", ""));
-
-    const job = jobs[jobIndex];
-
-    if (!job) {
-      bot.sendMessage(chatId, "Job not found.");
-
-      bot.answerCallbackQuery(callbackQuery.id);
-
-      return;
-    }
-
-    const jobDetails =
-      "💼 " + job.title + "\n\n" +
-      "Organization: " + job.organization + "\n" +
-      "Location: " + job.location + "\n" +
-      "Type: " + job.type + "\n" +
-      "Deadline: " + job.deadline + "\n\n" +
-      "Apply here:\n" +
-      job.link;
-
-    bot.sendMessage(chatId, jobDetails);
-
-    bot.answerCallbackQuery(callbackQuery.id);
-
-    return;
-  }
-
-  if (data.startsWith("quiz_")) {
-    const parts = data.split("_");
-    const quizName = parts[1];
-    const questionIndex = Number(parts[2]);
-    const selectedOption = Number(parts[3]);
-
-    const quiz = quizzes[quizName];
-    const question = quiz[questionIndex];
-
-    const userQuizData = userQuiz.get(chatId);
-
-    if (!userQuizData) {
-      bot.answerCallbackQuery(callbackQuery.id);
-
-      return;
-    }
-
-    if (selectedOption === question.correct) {
-      userQuizData.score += 1;
-
-      bot.answerCallbackQuery(callbackQuery.id, {
-        text: "✅ Correct!"
-      });
-    } else {
-      bot.answerCallbackQuery(callbackQuery.id, {
-        text:
-          "❌ Incorrect. Correct answer: " +
-          question.options[question.correct]
-      });
-    }
-
-    const nextQuestion = questionIndex + 1;
-
-    if (nextQuestion < quiz.length) {
-      userQuiz.set(chatId, userQuizData);
-
-      sendQuizQuestion(chatId, quizName, nextQuestion);
-    } else {
-      userQuiz.delete(chatId);
-
-      stats.quizCompletions += 1;
-
-      bot.sendMessage(
-        chatId,
-        "🎉 Quiz finished!\n\n" +
-        "Your score: " + userQuizData.score + " out of " + quiz.length + "\n\n" +
-        "Try another quiz:\n" +
-        "• /quiz downloading\n" +
-        "• /quiz internet\n" +
-        "• /quiz safety\n" +
-        "• /quiz email"
-      );
-    }
-  }
-});
-
 const PORT = process.env.PORT || 8080;
-
-// ---------- NEW: SMS NOTIFICATION BUTTON ----------
-
-bot.onText(/\/sms/, (msg) => {
-  const chatId = msg.chat.id;
-
-  bot.sendMessage(
-    chatId,
-    "📩 *SMS Notification*\n\n" +
-    "Please send your phone number in this format:\n\n" +
-    "`+251912345678`\n\n" +
-    "I will send you a learning reminder by SMS.",
-    {
-      parse_mode: "Markdown",
-      reply_markup: {
-        force_reply: true
-      }
-    }
-  );
-
-  smsWaiting.set(chatId, true);
-});
-
-bot.on("message", async (msg) => {
-  const chatId = msg.chat.id;
-
-  if (!smsWaiting.get(chatId)) return;
-
-  const phone = msg.text?.trim();
-
-  if (!phone) return;
-
-  // Only accept Ethiopian-style phone numbers
-  const phonePattern = /^\+2519\d{8}$/;
-
-  if (!phonePattern.test(phone)) {
-    bot.sendMessage(
-      chatId,
-      "❌ Please send a valid Ethiopian phone number.\n\nExample:\n`+251912345678`",
-      {
-        parse_mode: "Markdown",
-        reply_markup: {
-          force_reply: true
-        }
-      }
-    );
-    return;
-  }
-
-  smsWaiting.delete(chatId);
-
-  bot.sendMessage(
-    chatId,
-    "⏳ Sending your SMS notification..."
-  );
-
-  try {
-    await sendSms(
-      phone,
-      "Hello! This is a reminder from your Learning Assistant. " +
-      "You can ask questions, take quizzes, and get learning support anytime."
-    );
-
-    bot.sendMessage(
-      chatId,
-      "✅ SMS notification sent successfully!\n\n" +
-      "Please check your phone."
-    );
-
-  } catch (error) {
-    console.error("SMS notification error:", error.message);
-
-    bot.sendMessage(
-      chatId,
-      "❌ Sorry, I could not send the SMS notification right now.\n\nPlease try again later."
-    );
-  }
-});
-
-// Remember which user is waiting to send a phone number
-const smsWaiting = new Map();
 
 app.listen(PORT, () => {
   console.log("SMS webhook is running on port " + PORT);
