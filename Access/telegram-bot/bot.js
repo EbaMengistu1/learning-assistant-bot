@@ -342,6 +342,11 @@ bot.on("message", async message => {
     return;
   }
 
+    if (normalText === "/ping") {
+    bot.sendMessage(chatId, "PONG v6");
+    return;
+  }
+
   if (normalText === "/help") {
     console.log("HELP COMMAND RECEIVED");
 
