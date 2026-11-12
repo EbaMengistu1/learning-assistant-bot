@@ -199,7 +199,7 @@ bot.on("message", async message => {
           inline_keyboard: [
             [
               {
-                text: "✅ /Yes, show full answer",
+                text: "✅ Yes, show full answer",
                 callback_data: "full_answer"
               }
             ]
