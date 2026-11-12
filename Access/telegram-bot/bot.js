@@ -524,7 +524,7 @@ async function sendSms(to, message) {
 
   try {
     const response = await fetch(
-      "https://api.sandbox.africastalking.com/version1/messaging",
+      "https://api.africastalking.com/version1/messaging",
       {
         method: "POST",
         headers: {
