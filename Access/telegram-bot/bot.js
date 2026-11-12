@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v18 Final Teacher-Student Track 3 Assistant");
+console.log("BOT VERSION: v19 Powerful Amharic Track 3 Assistant");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -22,7 +22,6 @@ const bot = new TelegramBot(TOKEN, {
 });
 
 const app = express();
-
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
@@ -37,7 +36,7 @@ try {
 
   console.log("Course lessons loaded:", COURSE_DATA.lessons.length);
 } catch (error) {
-  console.error("Could not load course-data.json:", error);
+  console.error("Could not load course-data.json:", error.message);
 }
 
 const botUsers = new Map();
@@ -46,8 +45,9 @@ const userLessons = new Map();
 const userProgress = new Map();
 const userQuiz = new Map();
 const userState = new Map();
+const userLanguage = new Map();
+const simpleMode = new Map();
 const smsWaiting = new Map();
-const userQuestionLanguage = new Map();
 
 const stats = {
   totalQuestions: 0,
@@ -320,6 +320,57 @@ function findCourseAnswer(question) {
   });
 
   return bestScore > 0 ? bestLesson : null;
+}
+
+function findJobAnswer(question) {
+  const q = normalizeText(question);
+
+  const jobWords = [
+    "job",
+    "jobs",
+    "work",
+    "career",
+    "hire",
+    "hiring",
+    "employment",
+    "ሥራ",
+    "ስራ",
+    "ቅጥር",
+    "ሥራ ለመመልከት",
+    "ሥራ ማግኘት"
+  ];
+
+  const hasJobWord = jobWords.some(word => q.includes(word));
+
+  if (!hasJobWord) {
+    return null;
+  }
+
+  if (q.includes("apply") || q.includes("ማመልከት") || q.includes("ለመመልከት")) {
+    return {
+      en: "To apply for a job, read the job details, prepare your CV, and follow the application link before the deadline.",
+      am: "ለሥራ ለመመልከት፣ የሥራ ዝርዝሩን ያንብቡ፣ CV ያዘጋጁ እና ከጊዜ ማብቂያው በፊት የማመልከቻ ሊንኩን ይከተሉ።"
+    };
+  }
+
+  if (q.includes("cv") || q.includes("resume") || q.includes("ሲቪ")) {
+    return {
+      en: "A CV is a short document that shows your education, skills, experience, and contact information.",
+      am: "CV ማለት ትምህርትዎን፣ ክህሎትዎን፣ ሥራ ልምድዎን እና የመገናኛ መረጃዎን የሚያሳይ አጭር ሰነድ ነው።"
+    };
+  }
+
+  if (q.includes("interview") || q.includes("ቃለ መጠይቅ")) {
+    return {
+      en: "For an interview, arrive early, dress cleanly, answer clearly, and ask for support if you need it.",
+      am: "ለቃለ መጠይቅ፣ ቀድመው ይውጡ፣ በንጹህ ልብስ ይቆሙ፣ በግልጽ ይመልሱ፣ እና እርዳታ ከፈለጉ ይጠይቁ።"
+    };
+  }
+
+  return {
+    en: "You can see current job alerts by sending /jobs. Tap a job title to see the deadline and application link.",
+    am: "የአሁኑን የሥራ ማስታወቂያዎች ለማየት /jobs ይላኩ። ዝርዝሩን እና የማመልከቻ ሊንኩን ለማየት የሥራ ርዕሱን ይንኩ።"
+  };
 }
 
 function getSimpleAnswer(lesson) {
@@ -608,13 +659,18 @@ function sendStudentList(chatId) {
   );
 }
 
-async function askGroq(question) {
+async function askGroq(question, language) {
   if (!GROQ_API_KEY) {
     console.error("GROQ_API_KEY is missing in Railway Variables.");
     return null;
   }
 
   const cleanKey = GROQ_API_KEY.trim();
+
+  const systemMessage =
+    language === "amharic"
+      ? "You are a simple learning assistant. Answer in clear, simple Amharic first. Then add a short English translation. Keep the answer helpful and easy to understand."
+      : "You are a simple learning assistant. Answer in clear, simple English first. If useful, add a short Amharic translation. Keep the answer helpful and easy to understand.";
 
   const response = await fetch(
     "https://api.groq.com/openai/v1/chat/completions",
@@ -629,12 +685,7 @@ async function askGroq(question) {
         messages: [
           {
             role: "system",
-            content:
-              "You are a simple learning assistant for beginners. " +
-              "Answer clearly in simple English. " +
-              "If the learner writes in Amharic, answer in Amharic. " +
-              "Keep the answer short, helpful, and easy to understand. " +
-              "Do not give medical, legal, or financial advice."
+            content: systemMessage
           },
           {
             role: "user",
@@ -642,7 +693,7 @@ async function askGroq(question) {
           }
         ],
         temperature: 0.3,
-        max_tokens: 500
+        max_tokens: 600
       })
     }
   );
@@ -681,11 +732,6 @@ async function sendSms(to, message) {
   const apiKey = AT_API_KEY.trim();
   const senderId = AT_SENDER_ID ? AT_SENDER_ID.trim() : "";
 
-  console.log("Sending SMS using:");
-  console.log("Username:", username);
-  console.log("API key starts with:", apiKey.substring(0, 8));
-  console.log("Sender ID:", senderId || "Not set");
-
   const body = new URLSearchParams();
   body.append("username", username);
   body.append("to", to);
@@ -695,30 +741,26 @@ async function sendSms(to, message) {
     body.append("from", senderId);
   }
 
-  try {
-    const response = await fetch(
-      "https://api.sandbox.africastalking.com/version1/messaging",
-      {
-        method: "POST",
-        headers: {
-          "apiKey": apiKey,
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Accept": "application/json"
-        },
-        body: body
-      }
-    );
-
-    const responseText = await response.text();
-
-    console.log("Africa's Talking status:", response.status);
-    console.log("Africa's Talking response:", responseText);
-
-    if (!response.ok) {
-      console.error("Africa's Talking rejected the request.");
+  const response = await fetch(
+    "https://api.sandbox.africastalking.com/version1/messaging",
+    {
+      method: "POST",
+      headers: {
+        "apiKey": apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+      },
+      body: body
     }
-  } catch (error) {
-    console.error("SMS send failed:", error.message);
+  );
+
+  const responseText = await response.text();
+
+  console.log("Africa's Talking status:", response.status);
+  console.log("Africa's Talking response:", responseText);
+
+  if (!response.ok) {
+    throw new Error("Africa's Talking rejected the request.");
   }
 }
 
@@ -758,7 +800,7 @@ app.post("/sms", async (req, res) => {
     try {
       await sendSms(sender, reply);
     } catch (error) {
-      console.error("SMS send failed:", error);
+      console.error("SMS send failed:", error.message);
     }
   }
 
@@ -1258,6 +1300,24 @@ bot.on("callback_query", async callbackQuery => {
     return;
   }
 
+  if (data === "toggle_simple_mode") {
+    const current = simpleMode.get(chatId) || false;
+    const next = !current;
+
+    simpleMode.set(chatId, next);
+
+    bot.sendMessage(
+      chatId,
+      next
+        ? "🟢 Simple Mode is ON.\n\nI will give short and easy answers."
+        : "🔵 Simple Mode is OFF.\n\nI will give normal answers."
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
   if (data.startsWith("lesson_")) {
     const lessonIndex = Number(data.replace("lesson_", ""));
     const lesson = COURSE_DATA.lessons[lessonIndex];
@@ -1357,7 +1417,7 @@ bot.on("callback_query", async callbackQuery => {
     const englishFull = answer.en || "";
     const amharicFull = answer.am || "";
 
-    const language = userQuestionLanguage.get(chatId) || "english";
+    const language = userLanguage.get(chatId) || "english";
 
     let fullAnswer;
 
@@ -1487,6 +1547,9 @@ bot.on("message", async message => {
     username: message.from.username || null,
     role: isAdmin(chatId) ? "teacher" : "student"
   });
+
+  const language = isAmharicQuestion(text) ? "amharic" : "english";
+  userLanguage.set(chatId, language);
 
   // ---------- SMS REMINDER MODE ----------
 
@@ -1769,7 +1832,7 @@ bot.on("message", async message => {
   // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v18");
+    bot.sendMessage(chatId, "PONG v19");
     return;
   }
 
@@ -1860,6 +1923,22 @@ bot.on("message", async message => {
 
   if (normalText === "/accommodation") {
     sendAccommodationMenu(chatId);
+
+    return;
+  }
+
+  if (normalText === "/simple") {
+    const current = simpleMode.get(chatId) || false;
+    const next = !current;
+
+    simpleMode.set(chatId, next);
+
+    bot.sendMessage(
+      chatId,
+      next
+        ? "🟢 Simple Mode is ON.\n\nI will give short and easy answers."
+        : "🔵 Simple Mode is OFF.\n\nI will give normal answers."
+    );
 
     return;
   }
@@ -2139,6 +2218,34 @@ bot.on("message", async message => {
     return;
   }
 
+  // ---------- JOB QUESTIONS ----------
+
+  const jobAnswer = findJobAnswer(text);
+
+  if (jobAnswer) {
+    let reply;
+
+    if (language === "amharic") {
+      reply =
+        jobAnswer.am +
+        "\n\n🇬🇧 English:\n" +
+        jobAnswer.en;
+    } else {
+      reply =
+        jobAnswer.en +
+        "\n\n🇪🇹 አማርኛ:\n" +
+        jobAnswer.am;
+    }
+
+    bot.sendMessage(
+      chatId,
+      reply +
+      "\n\n💼 You can also see job alerts with /jobs."
+    );
+
+    return;
+  }
+
   // ---------- COURSE ANSWERS ----------
 
   const lesson = findCourseAnswer(text);
@@ -2156,34 +2263,45 @@ bot.on("message", async message => {
 
     userLessons.set(chatId, lesson);
 
-    userQuestionLanguage.set(
-      chatId,
-      isAmharicQuestion(text) ? "amharic" : "english"
-    );
-
     const simple = lesson.simple || {};
+    const answer = lesson.answer || {};
+
     const englishSimple = simple.en || "";
     const amharicSimple = simple.am || "";
+    const englishFull = answer.en || "";
+    const amharicFull = answer.am || "";
 
-    let simpleAnswer;
+    const useSimpleMode = simpleMode.get(chatId) || false;
 
-    if (isAmharicQuestion(text)) {
-      simpleAnswer =
-        amharicSimple +
-        "\n\n🇬🇧 English:\n" +
-        englishSimple;
+    let replyText;
+
+    if (language === "amharic") {
+      replyText = useSimpleMode
+        ? amharicSimple
+        : amharicFull || amharicSimple;
+
+      if (englishSimple || englishFull) {
+        replyText +=
+          "\n\n🇬🇧 English:\n" +
+          (useSimpleMode ? englishSimple : englishFull || englishSimple);
+      }
     } else {
-      simpleAnswer =
-        englishSimple +
-        "\n\n🇪🇹 አማርኛ:\n" +
-        amharicSimple;
+      replyText = useSimpleMode
+        ? englishSimple
+        : englishFull || englishSimple;
+
+      if (amharicSimple || amharicFull) {
+        replyText +=
+          "\n\n🇪🇹 አማርኛ:\n" +
+          (useSimpleMode ? amharicSimple : amharicFull || amharicSimple);
+      }
     }
 
     const source = getSource(lesson);
 
     bot.sendMessage(
       chatId,
-      simpleAnswer +
+      replyText +
       "\n\n" +
       source +
       "\n\nWould you like the full explanation?",
@@ -2212,7 +2330,7 @@ bot.on("message", async message => {
   bot.sendMessage(chatId, "🔎 Thinking...");
 
   try {
-    const groqAnswer = await askGroq(text);
+    const groqAnswer = await askGroq(text, language);
 
     if (groqAnswer) {
       bot.sendMessage(
@@ -2229,6 +2347,7 @@ bot.on("message", async message => {
       "I can help with questions from the Internet Basics course.\n\n" +
       "Try asking:\n" +
       "• What is downloading?\n" +
+      "• ማውረድ ምን ማለት ነው?\n" +
       "• What is the internet?\n" +
       "• What is a hyperlink?\n" +
       "• How can I stay safe online?"
@@ -2298,6 +2417,12 @@ function sendStartMenu(chatId, message) {
             ],
             [
               {
+                text: "🟢 Simple Mode",
+                callback_data: "toggle_simple_mode"
+              }
+            ],
+            [
+              {
                 text: "📩 Get SMS Reminder",
                 callback_data: "sms_notification"
               }
@@ -2320,7 +2445,8 @@ function sendStartMenu(chatId, message) {
     "• /quiz — choose a quiz\n" +
     "• /jobs — see job alerts\n" +
     "• /accommodation — request interview support\n" +
-    "• /track3 — Track 3 learning and employment support\n\n" +
+    "• /track3 — Track 3 learning and employment support\n" +
+    "• /simple — turn Simple Mode on or off\n\n" +
     "Examples:\n" +
     "• What is downloading?\n" +
     "• ማውረድ ምን ማለት ነው?\n" +
@@ -2344,6 +2470,12 @@ function sendStartMenu(chatId, message) {
             {
               text: "🎯 Track 3 Support",
               callback_data: "track3_menu"
+            }
+          ],
+          [
+            {
+              text: "🟢 Simple Mode",
+              callback_data: "toggle_simple_mode"
             }
           ],
           [
