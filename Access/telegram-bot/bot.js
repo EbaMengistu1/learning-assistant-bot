@@ -1,4 +1,6 @@
-require('dotenv').config();
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+const africastalking = require('africastalking');
 
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
