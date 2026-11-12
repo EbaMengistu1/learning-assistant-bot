@@ -587,7 +587,7 @@ bot.on("message", async message => {
       "• /quiz email — take a quiz\n" +
       "• /jobs — see job alerts\n" +
       "• /accommodation — request interview support\n" +
-      "• /teacher-stats — teacher analytics\n\n" +
+      "• /teacher — teacher analytics\n\n" +
       "You can also ask course questions by SMS.\n\n" +
       "Examples:\n" +
       "• What is downloading?\n" +
@@ -714,39 +714,44 @@ bot.on("message", async message => {
     return;
   }
 
-  if (normalText === "/teacher-stats") {
-    let topicText = "No course questions yet.";
+if (normalText === "/teacher" || normalText === "/teacher-stats") {
+  let topicText = "No course questions yet.";
 
-    const topics = Object.keys(stats.topicCounts);
 
-    if (topics.length > 0) {
-      const sortedTopics = topics.sort((a, b) => {
-        return stats.topicCounts[b] - stats.topicCounts[a];
-      });
+  const topics = Object.keys(stats.topicCounts);
 
-      topicText = sortedTopics
-        .slice(0, 5)
-        .map(topic => {
-          return "• " + topic + ": " + stats.topicCounts[topic];
-        })
-        .join("\n");
-    }
 
-    bot.sendMessage(
-      chatId,
-      "📊 Teacher Analytics\n\n" +
-      "Total questions: " + stats.totalQuestions + "\n" +
-      "Course questions: " + stats.courseQuestions + "\n" +
-      "AI questions: " + stats.aiQuestions + "\n" +
-      "Help requests: " + stats.helpRequests + "\n" +
-      "Accommodation requests: " + stats.accommodationRequests + "\n" +
-      "Quiz completions: " + stats.quizCompletions + "\n\n" +
-      "Most asked topics:\n" +
-      topicText
-    );
+  if (topics.length > 0) {
+    const sortedTopics = topics.sort((a, b) => {
+      return stats.topicCounts[b] - stats.topicCounts[a];
+    });
 
-    return;
+
+    topicText = sortedTopics
+      .slice(0, 5)
+      .map(topic => {
+        return "• " + topic + ": " + stats.topicCounts[topic];
+      })
+      .join("\n");
   }
+
+
+  bot.sendMessage(
+    chatId,
+    "📊 Teacher Analytics\n\n" +
+    "Total questions: " + stats.totalQuestions + "\n" +
+    "Course questions: " + stats.courseQuestions + "\n" +
+    "AI questions: " + stats.aiQuestions + "\n" +
+    "Help requests: " + stats.helpRequests + "\n" +
+    "Accommodation requests: " + stats.accommodationRequests + "\n" +
+    "Quiz completions: " + stats.quizCompletions + "\n\n" +
+    "Most asked topics:\n" +
+    topicText
+  );
+
+
+  return;
+}
 
   const currentState = userState.get(chatId);
 
