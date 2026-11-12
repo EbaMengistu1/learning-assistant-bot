@@ -1034,6 +1034,21 @@ bot.on("message", async message => {
       return;
     }
 
+    if (normalText === "/myid") {
+      bot.sendMessage(
+        chatId,
+        "🆔 Your Telegram Chat ID is:\n\n" +
+        "`" + chatId + "`\n\n" +
+        "Copy this number and add it in Railway as:\n\n" +
+        "`ADMIN_CHAT_ID`",
+        {
+          parse_mode: "Markdown"
+        }
+      );
+
+      return;
+    }
+
     const phone = text.trim();
 
     const phonePattern = /^\+[1-9]\d{7,14}$/;
