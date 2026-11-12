@@ -27,31 +27,6 @@
     },
 
     {
-      "title": "Computer Virus",
-      "keywords": [
-        "computer virus",
-        "virus",
-        "malware",
-        "what is a computer virus",
-        "ኮምፒውተር ቫይረስ",
-        "ቫይረስ"
-      ],
-      "simple": {
-        "en": "A computer virus is harmful software that can damage or slow down a computer.",
-        "am": "የኮምፒውተር ቫይረስ ማለት ኮምፒውተርን ሊጎዳ ወይም ሊያዘገይ የሚችል ጎጂ ሶፍትዌር ነው።"
-      },
-      "answer": {
-        "en": "A computer virus is harmful software that can damage files, slow down a computer, or steal private information.\n\nTo stay safe, do not open strange links or attachments, keep your software updated, and use antivirus software.",
-        "am": "የኮምፒውተር ቫይረስ ማለት ፋይሎችን ሊያበላሽ፣ ኮምፒውተርን ሊያዘገይ ወይም የግል መረጃ ሊስተላልፍ የሚችል ጎጂ ሶፍትዌር ነው።\n\nለመጠበቅ አጠራጣሪ አገናኞችን ወይም አባሪዎችን አይክፈቱ፣ ሶፍትዌርዎን ያዘምኑ እና አንቲቫይረስ መጠቀም ይችላሉ።"
-      },
-      "source": {
-        "lesson": "Internet Basics",
-        "section": "Online Safety",
-        "url": "https://edu.gcfglobal.org/en/internetbasics/"
-      }
-    },
-
-    {
       "title": "Internet",
       "keywords": [
         "internet",
@@ -266,6 +241,31 @@
       "source": {
         "lesson": "Internet Basics",
         "section": "Wi-Fi",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Computer Virus",
+      "keywords": [
+        "computer virus",
+        "virus",
+        "malware",
+        "what is a computer virus",
+        "ኮምፒውተር ቫይረስ",
+        "ቫይረስ"
+      ],
+      "simple": {
+        "en": "A computer virus is harmful software that can damage or slow down a computer.",
+        "am": "የኮምፒውተር ቫይረስ ማለት ኮምፒውተርን ሊጎዳ ወይም ሊያዘገይ የሚችል ጎጂ ሶፍትዌር ነው።"
+      },
+      "answer": {
+        "en": "A computer virus is harmful software that can damage files, slow down a computer, or steal private information.\n\nTo stay safe, do not open strange links or attachments, keep your software updated, and use antivirus software.",
+        "am": "የኮምፒውተር ቫይረስ ማለት ፋይሎችን ሊያበላሽ፣ ኮምፒውተርን ሊያዘገይ ወይም የግል መረጃ ሊስተላልፍ የሚችል ጎጂ ሶፍትዌር ነው።\n\nለመጠበቅ አጠራጣሪ አገናኞችን ወይም አባሪዎችን አይክፈቱ፣ ሶፍትዌርዎን ያዘምኑ እና አንቲቫይረስ መጠቀም ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Safety",
         "url": "https://edu.gcfglobal.org/en/internetbasics/"
       }
     },
