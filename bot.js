@@ -1,6 +1,8 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 
+console.log("BOT VERSION: v6 commands fixed");
+
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
@@ -314,10 +316,12 @@ bot.on("message", async message => {
 
   const normalText = text.toLowerCase().trim();
 
-  console.log("BOT VERSION: v5 commands fixed");
+  console.log("BOT VERSION: v6 commands fixed");
   console.log("Received message:", text);
 
   if (normalText === "/start") {
+    console.log("START COMMAND RECEIVED");
+
     bot.sendMessage(
       chatId,
       "Hello! I am your Learning Assistant.\n\n" +
@@ -339,6 +343,8 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/help") {
+    console.log("HELP COMMAND RECEIVED");
+
     userState.set(chatId, "waiting_help_question");
 
     bot.sendMessage(
@@ -351,6 +357,8 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/progress") {
+    console.log("PROGRESS COMMAND RECEIVED");
+
     const completed = userProgress.get(chatId) || [];
 
     if (completed.length === 0) {
@@ -377,6 +385,8 @@ bot.on("message", async message => {
   }
 
   if (normalText.startsWith("/quiz")) {
+    console.log("QUIZ COMMAND RECEIVED");
+
     const parts = text.split(" ");
     const quizName = parts[1];
 
@@ -402,6 +412,8 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/jobs") {
+    console.log("JOBS COMMAND RECEIVED");
+
     let jobText = "💼 Job Alerts\n\n";
 
     jobs.forEach((job, index) => {
@@ -419,6 +431,8 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/accommodation") {
+    console.log("ACCOMMODATION COMMAND RECEIVED");
+
     userState.set(chatId, "waiting_accommodation");
 
     bot.sendMessage(
