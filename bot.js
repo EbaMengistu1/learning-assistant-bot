@@ -3,6 +3,7 @@ const fs = require("fs");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 
 if (!TOKEN) {
   console.error("BOT_TOKEN is missing. Add it in Railway Variables.");
@@ -28,6 +29,60 @@ try {
 }
 
 const userLessons = new Map();
+const userProgress = new Map();
+const userQuiz = new Map();
+const userState = new Map();
+
+
+const quizzes = {
+  downloading: [
+    {
+      question: "What does downloading mean?",
+      options: [
+        "Sending a file to the internet",
+        "Saving a file from the internet to your device",
+        "Deleting a file"
+      ],
+      correct: 1
+    },
+    {
+      question: "After downloading a file, can you usually open it offline?",
+      options: [
+        "Yes",
+        "No"
+      ],
+      correct: 0
+    },
+    {
+      question: "Which one can you download?",
+      options: [
+        "A PDF",
+        "A photo",
+        "A video",
+        "All of the above"
+      ],
+      correct: 3
+    }
+  ]
+};
+
+
+const jobs = [
+  {
+    title: "Data Entry Assistant",
+    organization: "Local Organization",
+    location: "Addis Ababa",
+    deadline: "2026-11-30",
+    link: "https://example.com/apply"
+  },
+  {
+    title: "Online English Tutor",
+    organization: "Learning Center",
+    location: "Remote",
+    deadline: "2026-12-05",
+    link: "https://example.com/apply"
+  }
+];
 
 
 function normalizeText(text) {
@@ -118,11 +173,79 @@ function getSource(lesson) {
 }
 
 
+function saveUserProgress(chatId, lessonTitle) {
+  let completed = userProgress.get(chatId) || [];
+
+  if (!completed.includes(lessonTitle)) {
+    completed.push(lessonTitle);
+  }
+
+  userProgress.set(chatId, completed);
+}
+
+
+function sendHelpRequestToAdmin(chatId, question) {
+  if (!ADMIN_CHAT_ID) {
+    return;
+  }
+
+  bot.sendMessage(
+    ADMIN_CHAT_ID,
+    "🔔 New help request\n\n" +
+    "User ID: " + chatId + "\n" +
+    "Question: " + question
+  );
+}
+
+
+function sendAccommodationRequestToAdmin(chatId, accommodation) {
+  if (!ADMIN_CHAT_ID) {
+    return;
+  }
+
+  bot.sendMessage(
+    ADMIN_CHAT_ID,
+    "📋 Interview accommodation request\n\n" +
+    "User ID: " + chatId + "\n" +
+    "Need: " + accommodation
+  );
+}
+
+
+function sendQuizQuestion(chatId, quizName, questionIndex) {
+  const quiz = quizzes[quizName];
+  const question = quiz[questionIndex];
+
+  const buttons = question.options.map((option, index) => {
+    return [
+      {
+        text: option,
+        callback_data:
+          "quiz_" + quizName + "_" + questionIndex + "_" + index
+      }
+    ];
+  });
+
+  bot.sendMessage(
+    chatId,
+    "Question " + (questionIndex + 1) + " of " + quiz.length + "\n\n" +
+    question.question,
+    {
+      reply_markup: {
+        inline_keyboard: buttons
+      }
+    }
+  );
+}
+
+
 async function askGroq(question) {
   if (!GROQ_API_KEY) {
     console.error("GROQ_API_KEY is missing in Railway Variables.");
     return null;
   }
+
+  const cleanKey = GROQ_API_KEY.trim();
 
   const response = await fetch(
     "https://api.groq.com/openai/v1/chat/completions",
@@ -130,7 +253,7 @@ async function askGroq(question) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + GROQ_API_KEY
+        "Authorization": "Bearer " + cleanKey
       },
       body: JSON.stringify({
         model: "openai/gpt-oss-20b",
@@ -194,12 +317,168 @@ bot.on("message", async message => {
   if (normalText === "/start") {
     bot.sendMessage(
       chatId,
-      "Hello! Ask me a question from the Internet Basics course.\n\n" +
+      "Hello! I am your Learning Assistant.\n\n" +
+      "You can ask course questions or general questions.\n\n" +
+      "Commands:\n" +
+      "• /help — request human help\n" +
+      "• /progress — see your progress\n" +
+      "• /quiz downloading — take a quiz\n" +
+      "• /jobs — see job alerts\n" +
+      "• /accommodation — request interview support\n\n" +
       "Examples:\n" +
       "• What is downloading?\n" +
       "• What is the internet?\n" +
-      "• What is a hyperlink?\n" +
-      "• How can I stay safe online?"
+      "• What is photosynthesis?\n" +
+      "• What is the capital of Kenya?"
+    );
+
+    return;
+  }
+
+  if (normalText === "/help") {
+    userState.set(chatId, "waiting_help_question");
+
+    bot.sendMessage(
+      chatId,
+      "Please write the question or problem you need help with.\n\n" +
+      "A teacher or support person will receive your request."
+    );
+
+    return;
+  }
+
+  if (normalText === "/progress") {
+    const completed = userProgress.get(chatId) || [];
+
+    if (completed.length === 0) {
+      bot.sendMessage(
+        chatId,
+        "📚 You have not completed any lessons yet.\n\n" +
+        "Ask a course question, then tap:\n" +
+        "✅ Yes, show full answer"
+      );
+
+      return;
+    }
+
+    const total = COURSE_DATA.lessons.length;
+
+    bot.sendMessage(
+      chatId,
+      "📚 Your progress\n\n" +
+      completed.map(title => "✅ " + title).join("\n") +
+      "\n\nCompleted: " + completed.length + " of " + total + " lessons"
+    );
+
+    return;
+  }
+
+  if (normalText.startsWith("/quiz")) {
+    const parts = text.split(" ");
+    const quizName = parts[1];
+
+    if (!quizName || !quizzes[quizName]) {
+      bot.sendMessage(
+        chatId,
+        "Please choose a quiz:\n\n" +
+        "• /quiz downloading"
+      );
+
+      return;
+    }
+
+    userQuiz.set(chatId, {
+      name: quizName,
+      questionIndex: 0,
+      score: 0
+    });
+
+    sendQuizQuestion(chatId, quizName, 0);
+
+    return;
+  }
+
+  if (normalText === "/jobs") {
+    let jobText = "💼 Job Alerts\n\n";
+
+    jobs.forEach((job, index) => {
+      jobText +=
+        (index + 1) + ". " + job.title + "\n" +
+        "Organization: " + job.organization + "\n" +
+        "Location: " + job.location + "\n" +
+        "Deadline: " + job.deadline + "\n" +
+        "Apply: " + job.link + "\n\n";
+    });
+
+    bot.sendMessage(chatId, jobText);
+
+    return;
+  }
+
+  if (normalText === "/accommodation") {
+    userState.set(chatId, "waiting_accommodation");
+
+    bot.sendMessage(
+      chatId,
+      "What accommodation do you need for an interview?\n\n" +
+      "1. Extra time\n" +
+      "2. Screen reader support\n" +
+      "3. Sign language interpreter\n" +
+      "4. Quiet interview space\n" +
+      "5. Written questions\n" +
+      "6. Other\n\n" +
+      "Please reply with a number."
+    );
+
+    return;
+  }
+
+  const currentState = userState.get(chatId);
+
+  if (currentState === "waiting_help_question") {
+    userState.delete(chatId);
+
+    sendHelpRequestToAdmin(chatId, text);
+
+    bot.sendMessage(
+      chatId,
+      "✅ Your help request has been sent.\n\n" +
+      "A teacher or support person will contact you soon."
+    );
+
+    return;
+  }
+
+  if (currentState === "waiting_accommodation") {
+    const accommodationOptions = [
+      "Extra time",
+      "Screen reader support",
+      "Sign language interpreter",
+      "Quiet interview space",
+      "Written questions",
+      "Other"
+    ];
+
+    const choice = Number(text.trim());
+    const accommodation = accommodationOptions[choice - 1];
+
+    if (!accommodation) {
+      bot.sendMessage(
+        chatId,
+        "Please reply with a number from 1 to 6."
+      );
+
+      return;
+    }
+
+    userState.delete(chatId);
+
+    sendAccommodationRequestToAdmin(chatId, accommodation);
+
+    bot.sendMessage(
+      chatId,
+      "✅ Your accommodation request has been sent.\n\n" +
+      "Need: " + accommodation
     );
 
     return;
@@ -292,6 +571,8 @@ bot.on("callback_query", async callbackQuery => {
       return;
     }
 
+    saveUserProgress(chatId, lesson.title);
+
     const fullAnswer = getFullAnswer(lesson);
     const source = getSource(lesson);
 
@@ -303,6 +584,58 @@ bot.on("callback_query", async callbackQuery => {
     bot.answerCallbackQuery(callbackQuery.id, {
       text: "Full answer sent"
     });
+
+    return;
+  }
+
+  if (data.startsWith("quiz_")) {
+    const parts = data.split("_");
+    const quizName = parts[1];
+    const questionIndex = Number(parts[2]);
+    const selectedOption = Number(parts[3]);
+
+    const quiz = quizzes[quizName];
+    const question = quiz[questionIndex];
+
+    const userQuizData = userQuiz.get(chatId);
+
+    if (!userQuizData) {
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    if (selectedOption === question.correct) {
+      userQuizData.score += 1;
+
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text: "✅ Correct!"
+      });
+    } else {
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text:
+          "❌ Incorrect. Correct answer: " +
+          question.options[question.correct]
+      });
+    }
+
+    const nextQuestion = questionIndex + 1;
+
+    if (nextQuestion < quiz.length) {
+      userQuiz.set(chatId, userQuizData);
+
+      sendQuizQuestion(chatId, quizName, nextQuestion);
+    } else {
+      userQuiz.delete(chatId);
+
+      bot.sendMessage(
+        chatId,
+        "🎉 Quiz finished!\n\n" +
+        "Your score: " + userQuizData.score + " out of " + quiz.length + "\n\n" +
+        "Try another quiz:\n" +
+        "• /quiz downloading"
+      );
+    }
   }
 });
 
