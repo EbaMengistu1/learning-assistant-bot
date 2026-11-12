@@ -224,6 +224,3 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`SMS webhook is running on port ${PORT}`);
 });
-
-
-console.log("Telegram bot is running.");
