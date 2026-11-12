@@ -494,7 +494,7 @@ bot.on("message", async message => {
     return;
   }
 
-    if (normalText === "/ping") {
+  if (normalText === "/ping") {
     bot.sendMessage(chatId, "PONG v6");
     return;
   }
@@ -551,7 +551,10 @@ bot.on("message", async message => {
       bot.sendMessage(
         chatId,
         "Please choose a quiz:\n\n" +
-        "• /quiz downloading"
+        "• /quiz downloading\n" +
+        "• /quiz internet\n" +
+        "• /quiz safety\n" +
+        "• /quiz email"
       );
 
       return;
@@ -770,29 +773,46 @@ bot.on("callback_query", async callbackQuery => {
   }
 
   if (data.startsWith("job_")) {
-      const jobIndex = Number(data.replace("job_", ""));
+    const jobIndex = Number(data.replace("job_", ""));
 
-      const job = jobs[jobIndex];
+    const job = jobs[jobIndex];
 
-      if (!job) {
-        bot.sendMessage(chatId, "Job not found.");
+    if (!job) {
+      bot.sendMessage(chatId, "Job not found.");
 
-        bot.answerCallbackQuery(callbackQuery.id);
+      bot.answerCallbackQuery(callbackQuery.id);
 
-        return;
-      }
+      return;
+    }
 
-      const jobDetails =
-        "💼 " + job.title + "\n\n" +
-        "Organization: " + job.organization + "\n" +
-        "Location: " + job.location + "\n" +
-        "Type: " + job.type + "\n" +
-        "Deadline: " + job.deadline + "\n\n" +
-        "Apply here:\n" +
-        job.link;
+    const jobDetails =
+      "💼 " + job.title + "\n\n" +
+      "Organization: " + job.organization + "\n" +
+      "Location: " + job.location + "\n" +
+      "Type: " + job.type + "\n" +
+      "Deadline: " + job.deadline + "\n\n" +
+      "Apply here:\n" +
+      job.link;
 
-      bot.sendMessage(chatId, jobDetails);
+    bot.sendMessage(chatId, jobDetails);
 
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data.startsWith("quiz_")) {
+    const parts = data.split("_");
+    const quizName = parts[1];
+    const questionIndex = Number(parts[2]);
+    const selectedOption = Number(parts[3]);
+
+    const quiz = quizzes[quizName];
+    const question = quiz[questionIndex];
+
+    const userQuizData = userQuiz.get(chatId);
+
+    if (!userQuizData) {
       bot.answerCallbackQuery(callbackQuery.id);
 
       return;
@@ -826,7 +846,10 @@ bot.on("callback_query", async callbackQuery => {
         "🎉 Quiz finished!\n\n" +
         "Your score: " + userQuizData.score + " out of " + quiz.length + "\n\n" +
         "Try another quiz:\n" +
-        "• /quiz downloading"
+        "• /quiz downloading\n" +
+        "• /quiz internet\n" +
+        "• /quiz safety\n" +
+        "• /quiz email"
       );
     }
   }
