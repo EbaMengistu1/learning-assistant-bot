@@ -41,6 +41,8 @@ function normalizeText(text) {
 
 function findCourseAnswer(question) {
   const questionText = normalizeText(question);
+  const words = questionText.split(" ");
+
   let bestLesson = null;
   let bestScore = 0;
 
@@ -56,9 +58,9 @@ function findCourseAnswer(question) {
         return;
       }
 
-      const words = questionText.split(" ");
+      const keywordWords = keywordText.split(" ");
 
-      if (words.includes(keywordText)) {
+      if (keywordWords.every(word => words.includes(word))) {
         score += 2;
       }
     });
@@ -66,7 +68,10 @@ function findCourseAnswer(question) {
     const lessonTitle = normalizeText(lesson.title || "");
     const titleWords = lessonTitle.split(" ");
 
-    if (titleWords.length > 0 && titleWords.every(word => words.includes(word))) {
+    if (
+      titleWords.length > 0 &&
+      titleWords.every(word => words.includes(word))
+    ) {
       score += 3;
     }
 
