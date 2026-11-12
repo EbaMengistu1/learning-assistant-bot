@@ -1040,24 +1040,25 @@ const PORT = process.env.PORT || 8080;
 
 // ---------- NEW: SMS NOTIFICATION BUTTON ----------
 
-bot.onText(/\/sms/, (msg) => {
-  const chatId = msg.chat.id;
-
+bot.onText(/\/start/, (msg) => {
   bot.sendMessage(
-    chatId,
-    "📩 *SMS Notification*\n\n" +
-    "Please send your phone number in this format:\n\n" +
-    "`+251912345678`\n\n" +
-    "I will send you a learning reminder by SMS.",
+    msg.chat.id,
+    courseIntro +
+    "\n\n📩 You can also get learning reminders by SMS.",
+
     {
-      parse_mode: "Markdown",
       reply_markup: {
-        force_reply: true
+        inline_keyboard: [
+          [
+            {
+              text: "📩 Get SMS Notification",
+              callback_data: "sms_notification"
+            }
+          ]
+        ]
       }
     }
   );
-
-  smsWaiting.set(chatId, true);
 });
 
 bot.on("message", async (msg) => {
@@ -1119,17 +1120,21 @@ bot.on("message", async (msg) => {
 // Remember which user is waiting to send a phone number
 const smsWaiting = new Map();
 
-bot.on("callback_query", async (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const data = callbackQuery.data;
+bot.on("message", async (msg) => {
+  const chatId = msg.chat.id;
 
-  if (data === "sms_notification") {
+  if (!smsWaiting.get(chatId)) return;
+
+  const phone = msg.text?.trim();
+
+  if (!phone) return;
+
+  const phonePattern = /^\+2519\d{8}$/;
+
+  if (!phonePattern.test(phone)) {
     bot.sendMessage(
       chatId,
-      "📩 *SMS Notification*\n\n" +
-      "Please send your phone number in this format:\n\n" +
-      "`+251912345678`\n\n" +
-      "I will send you a learning reminder by SMS.",
+      "❌ Please send a valid Ethiopian phone number.\n\nExample:\n`+251912345678`",
       {
         parse_mode: "Markdown",
         reply_markup: {
@@ -1137,8 +1142,32 @@ bot.on("callback_query", async (callbackQuery) => {
         }
       }
     );
+    return;
+  }
 
-    smsWaiting.set(chatId, true);
+  smsWaiting.delete(chatId);
+
+  bot.sendMessage(chatId, "⏳ Sending your SMS notification...");
+
+  try {
+    await sendSms(
+      phone,
+      "Hello! This is a reminder from your Learning Assistant. " +
+      "You can ask questions, take quizzes, and get learning support anytime."
+    );
+
+    bot.sendMessage(
+      chatId,
+      "✅ SMS notification sent successfully!\n\nPlease check your phone."
+    );
+
+  } catch (error) {
+    console.error("SMS notification error:", error.message);
+
+    bot.sendMessage(
+      chatId,
+      "❌ Sorry, I could not send the SMS notification right now.\n\nPlease try again later."
+    );
   }
 });
 
