@@ -65,6 +65,105 @@ const quizzes = {
       ],
       correct: 3
     }
+  ],
+
+  internet: [
+    {
+      question: "What is the internet?",
+      options: [
+        "A global network of connected computers",
+        "A type of computer",
+        "A mobile phone",
+        "A website"
+      ],
+      correct: 0
+    },
+    {
+      question: "What do you need to use the internet?",
+      options: [
+        "An internet connection",
+        "A printer",
+        "A keyboard only",
+        "A radio"
+      ],
+      correct: 0
+    },
+    {
+      question: "Which one is a web browser?",
+      options: [
+        "Google Chrome",
+        "Microsoft Word",
+        "WhatsApp",
+        "Calculator"
+      ],
+      correct: 0
+    }
+  ],
+
+  safety: [
+    {
+      question: "What should you do if someone asks for your password?",
+      options: [
+        "Share it with them",
+        "Never share your password",
+        "Send it by SMS",
+        "Post it online"
+      ],
+      correct: 1
+    },
+    {
+      question: "Which password is strongest?",
+      options: [
+        "123456",
+        "password",
+        "MyName2026!",
+        "111111"
+      ],
+      correct: 2
+    },
+    {
+      question: "What should you do if a message looks suspicious?",
+      options: [
+        "Click the link quickly",
+        "Send money",
+        "Do not click and report it",
+        "Share your bank details"
+      ],
+      correct: 2
+    }
+  ],
+
+  email: [
+    {
+      question: "What is an email address?",
+      options: [
+        "A place to send and receive messages online",
+        "A phone number",
+        "A type of computer",
+        "A website"
+      ],
+      correct: 0
+    },
+    {
+      question: "Which one looks like an email address?",
+      options: [
+        "name@example.com",
+        "0712345678",
+        "www.google.com",
+        "Addis Ababa"
+      ],
+      correct: 0
+    },
+    {
+      question: "What should you check before opening an email link?",
+      options: [
+        "Nothing",
+        "If the sender and link are safe",
+        "Only the color",
+        "Only the time"
+      ],
+      correct: 1
+    }
   ]
 };
 
@@ -330,6 +429,9 @@ bot.on("message", async message => {
       "• /help — request human help\n" +
       "• /progress — see your progress\n" +
       "• /quiz downloading — take a quiz\n" +
+      "• /quiz internet — take a quiz\n" +
+      "• /quiz safety — take a quiz\n" +
+      "• /quiz email — take a quiz\n" +
       "• /jobs — see job alerts\n" +
       "• /accommodation — request interview support\n\n" +
       "Examples:\n" +
