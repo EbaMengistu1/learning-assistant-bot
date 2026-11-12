@@ -314,6 +314,9 @@ bot.on("message", async message => {
 
   const normalText = text.toLowerCase().trim();
 
+  console.log("BOT VERSION: v5 commands fixed");
+  console.log("Received message:", text);
+
   if (normalText === "/start") {
     bot.sendMessage(
       chatId,
