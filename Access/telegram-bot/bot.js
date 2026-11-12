@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v12 Clean SMS reminder");
+console.log("BOT VERSION: v13 Reminders and announcements");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -40,6 +40,8 @@ try {
   console.error("Could not load course-data.json:", error);
 }
 
+const botUsers = new Map();
+const userPhones = new Map();
 const userLessons = new Map();
 const userProgress = new Map();
 const userQuiz = new Map();
@@ -54,6 +56,8 @@ const stats = {
   accommodationRequests: 0,
   quizCompletions: 0,
   smsNotifications: 0,
+  telegramAnnouncements: 0,
+  smsAnnouncements: 0,
   topicCounts: {}
 };
 
@@ -595,15 +599,86 @@ bot.on("callback_query", async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
 
-  if (data === "sms_notification") {
+  if (data === "reminder_menu") {
+    const nextLesson = getNextLesson(chatId);
+
+    if (!nextLesson) {
+      bot.sendMessage(
+        chatId,
+        "🎉 Great job! You have completed all available lessons.\n\n" +
+        "Keep practicing with /quiz."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    bot.sendMessage(
+      chatId,
+      "📚 Your next lesson is:\n\n" +
+      nextLesson.title + "\n\n" +
+      "How would you like to receive your reminder?",
+
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🔔 Telegram Reminder",
+                callback_data: "telegram_reminder"
+              }
+            ],
+            [
+              {
+                text: "📩 SMS Reminder",
+                callback_data: "sms_reminder"
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "telegram_reminder") {
+    const nextLesson = getNextLesson(chatId);
+
+    if (nextLesson) {
+      bot.sendMessage(
+        chatId,
+        "📚 Learning reminder\n\n" +
+        "Your next lesson is: " + nextLesson.title + "\n\n" +
+        "Ask me: What is " + nextLesson.title + "?\n\n" +
+        "You can also take a quiz with /quiz."
+      );
+    } else {
+      bot.sendMessage(
+        chatId,
+        "🎉 Great job! You have completed all available lessons."
+      );
+    }
+
+    bot.answerCallbackQuery(callbackQuery.id, {
+      text: "Telegram reminder sent"
+    });
+
+    return;
+  }
+
+  if (data === "sms_reminder") {
     smsWaiting.set(chatId, true);
 
     bot.sendMessage(
       chatId,
       "📩 *SMS Learning Reminder*\n\n" +
-      "Please send your phone number in this format:\n\n" +
-      "`+251912345678`\n\n" +
-      "I will send you a reminder for your next lesson.",
+      "Please send your phone number in international format:\n\n" +
+      "`+251917696254`\n\n" +
+      "Or send /stop to cancel.",
       {
         parse_mode: "Markdown",
         reply_markup: {
@@ -771,17 +846,64 @@ bot.on("message", async message => {
 
   console.log("Received message:", text);
 
-  // ---------- PERSONALIZED SMS REMINDER ----------
+  // Save every Telegram user for announcements
+  botUsers.set(chatId, {
+    chatId: chatId,
+    firstName: message.from.first_name || "Learner",
+    username: message.from.username || null
+  });
+
+  // ---------- SMS REMINDER MODE ----------
 
   if (smsWaiting.get(chatId)) {
+
+    if (
+      normalText === "/start" ||
+      normalText === "/stop" ||
+      normalText === "/cancel"
+    ) {
+      smsWaiting.delete(chatId);
+
+      if (normalText === "/start") {
+        bot.sendMessage(
+          chatId,
+          "👋 Welcome back to your Learning Assistant!\n\n" +
+          "I can help you learn Internet Basics, answer questions, take quizzes, and find job alerts.\n\n" +
+          "📩 You can get a personalized learning reminder by Telegram or SMS.",
+
+          {
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "🔔 Get Reminder",
+                    callback_data: "reminder_menu"
+                  }
+                ]
+              ]
+            }
+          }
+        );
+      } else {
+        bot.sendMessage(
+          chatId,
+          "✅ SMS reminder cancelled.\n\nYou can use the bot normally now."
+        );
+      }
+
+      return;
+    }
+
     const phone = text.trim();
 
-    const phonePattern = /^\+2519\d{8}$/;
+    const phonePattern = /^\+[1-9]\d{7,14}$/;
 
     if (!phonePattern.test(phone)) {
       bot.sendMessage(
         chatId,
-        "❌ Please send a valid Ethiopian phone number.\n\nExample:\n`+251912345678`",
+        "❌ Please send a valid international phone number.\n\n" +
+        "Example:\n`+251917696254`\n\n" +
+        "Or send /stop to cancel.",
         {
           parse_mode: "Markdown",
           reply_markup: {
@@ -794,6 +916,7 @@ bot.on("message", async message => {
     }
 
     smsWaiting.delete(chatId);
+    userPhones.set(chatId, phone);
 
     bot.sendMessage(
       chatId,
@@ -848,22 +971,22 @@ bot.on("message", async message => {
     return;
   }
 
-  // ---------- CLEAN START COMMAND ----------
+  // ---------- START ----------
 
   if (normalText === "/start") {
     bot.sendMessage(
       chatId,
       "👋 Welcome to your Learning Assistant!\n\n" +
       "I can help you learn Internet Basics, answer questions, take quizzes, and find job alerts.\n\n" +
-      "📩 You can also get a personalized SMS learning reminder.",
+      "📩 You can get a personalized learning reminder by Telegram or SMS.",
 
       {
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: "📩 Get SMS Reminder",
-                callback_data: "sms_notification"
+                text: "🔔 Get Reminder",
+                callback_data: "reminder_menu"
               }
             ]
           ]
@@ -874,10 +997,67 @@ bot.on("message", async message => {
     return;
   }
 
-  // ---------- OTHER COMMANDS ----------
+  // ---------- ADMIN COMMANDS ----------
+
+  if (normalText === "/announce") {
+    if (String(chatId) !== String(ADMIN_CHAT_ID)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only the admin can send announcements."
+      );
+
+      return;
+    }
+
+    userState.set(chatId, "waiting_announcement");
+
+    bot.sendMessage(
+      chatId,
+      "📢 Please write the announcement you want to send to all bot users.\n\n" +
+      "It will be sent by Telegram.\n\n" +
+      "Send /cancel to stop."
+    );
+
+    return;
+  }
+
+  if (normalText === "/announce-sms") {
+    if (String(chatId) !== String(ADMIN_CHAT_ID)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only the admin can send SMS announcements."
+      );
+
+      return;
+    }
+
+    userState.set(chatId, "waiting_sms_announcement");
+
+    bot.sendMessage(
+      chatId,
+      "📢 Please write the SMS announcement you want to send to all saved phone numbers.\n\n" +
+      "Send /cancel to stop."
+    );
+
+    return;
+  }
+
+  if (normalText === "/cancel") {
+    userState.delete(chatId);
+    smsWaiting.delete(chatId);
+
+    bot.sendMessage(
+      chatId,
+      "✅ Cancelled. You can use the bot normally now."
+    );
+
+    return;
+  }
+
+  // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v12");
+    bot.sendMessage(chatId, "PONG v13");
     return;
   }
 
@@ -1010,7 +1190,9 @@ bot.on("message", async message => {
       "Help requests: " + stats.helpRequests + "\n" +
       "Accommodation requests: " + stats.accommodationRequests + "\n" +
       "Quiz completions: " + stats.quizCompletions + "\n" +
-      "SMS reminders sent: " + stats.smsNotifications + "\n\n" +
+      "SMS reminders sent: " + stats.smsNotifications + "\n" +
+      "Telegram announcements: " + stats.telegramAnnouncements + "\n" +
+      "SMS announcements: " + stats.smsAnnouncements + "\n\n" +
       "Most asked topics:\n" +
       topicText
     );
@@ -1019,6 +1201,84 @@ bot.on("message", async message => {
   }
 
   const currentState = userState.get(chatId);
+
+  if (currentState === "waiting_announcement") {
+    userState.delete(chatId);
+
+    const announcement = text.trim();
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const [userChatId] of botUsers) {
+      try {
+        await bot.sendMessage(
+          userChatId,
+          "📢 Announcement\n\n" + announcement
+        );
+
+        sent += 1;
+      } catch (error) {
+        console.error(
+          "Telegram announcement failed for:",
+          userChatId,
+          error.message
+        );
+
+        failed += 1;
+      }
+    }
+
+    stats.telegramAnnouncements += 1;
+
+    bot.sendMessage(
+      chatId,
+      "✅ Telegram announcement sent.\n\n" +
+      "Delivered: " + sent + "\n" +
+      "Failed: " + failed
+    );
+
+    return;
+  }
+
+  if (currentState === "waiting_sms_announcement") {
+    userState.delete(chatId);
+
+    const announcement = text.trim();
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const [userChatId, phone] of userPhones) {
+      try {
+        await sendSms(
+          phone,
+          "📢 Learning Assistant announcement:\n\n" + announcement
+        );
+
+        sent += 1;
+      } catch (error) {
+        console.error(
+          "SMS announcement failed for:",
+          phone,
+          error.message
+        );
+
+        failed += 1;
+      }
+    }
+
+    stats.smsAnnouncements += 1;
+
+    bot.sendMessage(
+      chatId,
+      "✅ SMS announcement process finished.\n\n" +
+      "SMS attempted: " + sent + "\n" +
+      "Failed: " + failed
+    );
+
+    return;
+  }
 
   if (currentState === "waiting_help_question") {
     userState.delete(chatId);
