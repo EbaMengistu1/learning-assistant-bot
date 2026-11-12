@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v17 Final Track 3 Learning Assistant");
+console.log("BOT VERSION: v18 Final Teacher-Student Track 3 Assistant");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -60,6 +60,8 @@ const stats = {
   smsNotifications: 0,
   telegramAnnouncements: 0,
   smsAnnouncements: 0,
+  individualTelegramMessages: 0,
+  individualSmsMessages: 0,
   topicCounts: {}
 };
 
@@ -557,9 +559,52 @@ function sendTeacherAnalytics(chatId) {
     "Quiz completions: " + stats.quizCompletions + "\n" +
     "SMS reminders sent: " + stats.smsNotifications + "\n" +
     "Telegram announcements: " + stats.telegramAnnouncements + "\n" +
-    "SMS announcements: " + stats.smsAnnouncements + "\n\n" +
+    "SMS announcements: " + stats.smsAnnouncements + "\n" +
+    "Individual Telegram messages: " + stats.individualTelegramMessages + "\n" +
+    "Individual SMS messages: " + stats.individualSmsMessages + "\n\n" +
     "Most asked topics:\n" +
     topicText
+  );
+}
+
+function sendStudentList(chatId) {
+  const students = Array.from(botUsers.entries()).filter(
+    ([id, user]) => user.role === "student"
+  );
+
+  if (students.length === 0) {
+    bot.sendMessage(
+      chatId,
+      "👥 No students have joined yet.\n\n" +
+      "Ask students to open the bot and send /start."
+    );
+
+    return;
+  }
+
+  const studentButtons = students.map(([studentChatId, user]) => {
+    const phone = userPhones.get(studentChatId);
+
+    return [
+      {
+        text:
+          "👤 " + (user.firstName || "Student") +
+          " | 📞 " + (phone || "No phone"),
+        callback_data: "student_" + studentChatId
+      }
+    ];
+  });
+
+  bot.sendMessage(
+    chatId,
+    "👥 Students\n\n" +
+    "Choose a student to contact individually:",
+
+    {
+      reply_markup: {
+        inline_keyboard: studentButtons
+      }
+    }
   );
 }
 
@@ -754,6 +799,12 @@ bot.on("callback_query", async callbackQuery => {
           inline_keyboard: [
             [
               {
+                text: "👥 View Students",
+                callback_data: "view_students"
+              }
+            ],
+            [
+              {
                 text: "📢 Send Telegram Announcement",
                 callback_data: "start_telegram_announcement"
               }
@@ -773,6 +824,140 @@ bot.on("callback_query", async callbackQuery => {
           ]
         }
       }
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "view_students") {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can view students."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    sendStudentList(chatId);
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data.startsWith("student_")) {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can message students."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    const studentChatId = data.replace("student_", "");
+    const user = botUsers.get(Number(studentChatId));
+    const phone = userPhones.get(Number(studentChatId));
+
+    const name = user ? user.firstName || "Student" : "Student";
+
+    const buttons = [
+      [
+        {
+          text: "🔔 Send Telegram Message",
+          callback_data: "message_student_" + studentChatId
+        }
+      ]
+    ];
+
+    if (phone) {
+      buttons.push([
+        {
+          text: "📩 Send SMS Message",
+          callback_data: "sms_student_" + studentChatId
+        }
+      ]);
+    }
+
+    bot.sendMessage(
+      chatId,
+      "👤 Student: " + name + "\n" +
+      "Telegram ID: " + studentChatId + "\n" +
+      "Phone: " + (phone || "Not saved") + "\n\n" +
+      "Choose how you want to contact this student:",
+
+      {
+        reply_markup: {
+          inline_keyboard: buttons
+        }
+      }
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data.startsWith("message_student_")) {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can message students."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    const studentChatId = data.replace("message_student_", "");
+
+    userState.set(
+      chatId,
+      "waiting_individual_telegram_" + studentChatId
+    );
+
+    bot.sendMessage(
+      chatId,
+      "✉️ Please write the Telegram message you want to send to this student.\n\n" +
+      "Send /cancel to stop."
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data.startsWith("sms_student_")) {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can send SMS messages."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    const studentChatId = data.replace("sms_student_", "");
+
+    userState.set(
+      chatId,
+      "waiting_individual_sms_" + studentChatId
+    );
+
+    bot.sendMessage(
+      chatId,
+      "📩 Please write the SMS message you want to send to this student.\n\n" +
+      "Send /cancel to stop."
     );
 
     bot.answerCallbackQuery(callbackQuery.id);
@@ -1482,6 +1667,12 @@ bot.on("message", async message => {
           inline_keyboard: [
             [
               {
+                text: "👥 View Students",
+                callback_data: "view_students"
+              }
+            ],
+            [
+              {
                 text: "📢 Send Telegram Announcement",
                 callback_data: "start_telegram_announcement"
               }
@@ -1502,6 +1693,21 @@ bot.on("message", async message => {
         }
       }
     );
+
+    return;
+  }
+
+  if (normalText === "/students") {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can view students."
+      );
+
+      return;
+    }
+
+    sendStudentList(chatId);
 
     return;
   }
@@ -1563,7 +1769,7 @@ bot.on("message", async message => {
   // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v17");
+    bot.sendMessage(chatId, "PONG v18");
     return;
   }
 
@@ -1675,33 +1881,98 @@ bot.on("message", async message => {
 
   const currentState = userState.get(chatId);
 
-  if (currentState === "waiting_screen_link") {
+  // ---------- INDIVIDUAL TEACHER MESSAGE ----------
+
+  if (
+    currentState &&
+    currentState.startsWith("waiting_individual_telegram_")
+  ) {
     userState.delete(chatId);
 
-    const meetingLink = text.trim();
+    const studentChatId = currentState.replace(
+      "waiting_individual_telegram_",
+      ""
+    );
 
-    if (!meetingLink.startsWith("http")) {
+    try {
+      await bot.sendMessage(
+        studentChatId,
+        "📩 Message from your teacher:\n\n" + text
+      );
+
+      stats.individualTelegramMessages += 1;
+
       bot.sendMessage(
         chatId,
-        "❌ Please send a valid meeting link.\n\n" +
-        "Example:\n`https://meet.google.com/your-meeting-link`"
+        "✅ Telegram message sent to student."
+      );
+    } catch (error) {
+      console.error(
+        "Individual Telegram message failed:",
+        error.message
+      );
+
+      bot.sendMessage(
+        chatId,
+        "❌ Could not send the Telegram message.\n\n" +
+        "The student may need to open the bot and press Start first."
+      );
+    }
+
+    return;
+  }
+
+  if (
+    currentState &&
+    currentState.startsWith("waiting_individual_sms_")
+  ) {
+    userState.delete(chatId);
+
+    const studentChatId = currentState.replace(
+      "waiting_individual_sms_",
+      ""
+    );
+
+    const phone = userPhones.get(Number(studentChatId));
+
+    if (!phone) {
+      bot.sendMessage(
+        chatId,
+        "❌ This student has not saved a phone number."
       );
 
       return;
     }
 
-    stats.screenShareRequests += 1;
+    try {
+      await sendSms(
+        phone,
+        "📩 Message from your teacher:\n\n" + text
+      );
 
-    sendScreenShareRequestToAdmin(chatId, meetingLink);
+      stats.individualSmsMessages += 1;
+      stats.smsNotifications += 1;
 
-    bot.sendMessage(
-      chatId,
-      "✅ Your screen-sharing request has been sent.\n\n" +
-      "A teacher or support person will use your link if they need to help you."
-    );
+      bot.sendMessage(
+        chatId,
+        "✅ SMS message sent to " + phone + "."
+      );
+    } catch (error) {
+      console.error(
+        "Individual SMS message failed:",
+        error.message
+      );
+
+      bot.sendMessage(
+        chatId,
+        "❌ Could not send the SMS message."
+      );
+    }
 
     return;
   }
+
+  // ---------- GROUP ANNOUNCEMENTS ----------
 
   if (currentState === "waiting_announcement") {
     userState.delete(chatId);
@@ -1780,6 +2051,36 @@ bot.on("message", async message => {
       "✅ SMS announcement process finished.\n\n" +
       "SMS attempted: " + sent + "\n" +
       "Failed: " + failed
+    );
+
+    return;
+  }
+
+  // ---------- SUPPORT REQUESTS ----------
+
+  if (currentState === "waiting_screen_link") {
+    userState.delete(chatId);
+
+    const meetingLink = text.trim();
+
+    if (!meetingLink.startsWith("http")) {
+      bot.sendMessage(
+        chatId,
+        "❌ Please send a valid meeting link.\n\n" +
+        "Example:\n`https://meet.google.com/your-meeting-link`"
+      );
+
+      return;
+    }
+
+    stats.screenShareRequests += 1;
+
+    sendScreenShareRequestToAdmin(chatId, meetingLink);
+
+    bot.sendMessage(
+      chatId,
+      "✅ Your screen-sharing request has been sent.\n\n" +
+      "A teacher or support person will use your link if they need to help you."
     );
 
     return;
@@ -1955,9 +2256,10 @@ function sendStartMenu(chatId, message) {
   if (isAdmin(chatId)) {
     menuText +=
       "👩‍🏫 Teacher Admin Panel\n\n" +
-      "You can manage learning announcements and view student activity.\n\n" +
+      "You can manage students, send announcements, contact individual students, and view analytics.\n\n" +
       "Commands:\n" +
       "• /admin — open teacher admin panel\n" +
+      "• /students — view and contact students\n" +
       "• /announce — send Telegram announcement to all students\n" +
       "• /announce-sms — send SMS announcement to saved phone numbers\n" +
       "• /teacher — view learning analytics\n" +
