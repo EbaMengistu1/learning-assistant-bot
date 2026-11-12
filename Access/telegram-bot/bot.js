@@ -638,7 +638,7 @@ bot.on("callback_query", async callbackQuery => {
       chatId,
       "📩 *SMS Learning Reminder*\n\n" +
       "Please send your phone number in this format:\n\n" +
-      "`+251912345678`\n\n" +
+      "`+251917696254`\n\n" +
       "I will send you a reminder for your next lesson.",
       {
         parse_mode: "Markdown",
