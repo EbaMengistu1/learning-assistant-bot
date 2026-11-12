@@ -581,10 +581,7 @@ bot.on("message", async message => {
       "Commands:\n" +
       "• /help — request human help\n" +
       "• /progress — see your progress\n" +
-      "• /quiz downloading — take a quiz\n" +
-      "• /quiz internet — take a quiz\n" +
-      "• /quiz safety — take a quiz\n" +
-      "• /quiz email — take a quiz\n" +
+      "• /quiz — choose a quiz\n" +
       "• /jobs — see job alerts\n" +
       "• /accommodation — request interview support\n" +
       "• /teacher — teacher analytics\n\n" +
@@ -643,29 +640,49 @@ bot.on("message", async message => {
   }
 
   if (normalText.startsWith("/quiz")) {
-    const parts = text.split(" ");
-    const quizName = parts[1];
+  const parts = text.split(" ");
+  const quizName = parts[1];
 
-    if (!quizName || !quizzes[quizName]) {
-      bot.sendMessage(
-        chatId,
-        "Please choose a quiz:\n\n" +
-        "• /quiz downloading\n" +
-        "• /quiz internet\n" +
-        "• /quiz safety\n" +
-        "• /quiz email"
-      );
 
-      return;
-    }
+  if (!quizName || !quizzes[quizName]) {
+    const quizButtons = [
+      [
+        {
+          text: "📥 Downloading Quiz",
+          callback_data: "start_quiz_downloading"
+        }
+      ],
+      [
+        {
+          text: "🌐 Internet Quiz",
+          callback_data: "start_quiz_internet"
+        }
+      ],
+      [
+        {
+          text: "🛡️ Online Safety Quiz",
+          callback_data: "start_quiz_safety"
+        }
+      ],
+      [
+        {
+          text: "📧 Email Quiz",
+          callback_data: "start_quiz_email"
+        }
+      ]
+    ];
 
-    userQuiz.set(chatId, {
-      name: quizName,
-      questionIndex: 0,
-      score: 0
-    });
 
-    sendQuizQuestion(chatId, quizName, 0);
+    bot.sendMessage(
+      chatId,
+      "Choose a quiz:",
+      {
+        reply_markup: {
+          inline_keyboard: quizButtons
+        }
+      }
+    );
+
 
     return;
   }
@@ -892,6 +909,37 @@ if (normalText === "/teacher" || normalText === "/teacher-stats") {
 bot.on("callback_query", async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
+
+    if (data.startsWith("start_quiz_")) {
+    const quizName = data.replace("start_quiz_", "");
+
+
+    if (!quizzes[quizName]) {
+      bot.sendMessage(chatId, "Quiz not found.");
+
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+
+      return;
+    }
+
+
+    userQuiz.set(chatId, {
+      name: quizName,
+      questionIndex: 0,
+      score: 0
+    });
+
+
+    sendQuizQuestion(chatId, quizName, 0);
+
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+
+    return;
+  }
 
   if (data === "full_answer") {
     const lesson = userLessons.get(chatId);
