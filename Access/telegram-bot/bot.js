@@ -867,32 +867,38 @@ bot.on("message", async message => {
       if (normalText === "/start") {
         bot.sendMessage(
           chatId,
-          "👋 Welcome back to your Learning Assistant!\n\n" +
-          "I can help you learn Internet Basics, answer questions, take quizzes, and find job alerts.\n\n" +
-          "📩 You can get a personalized learning reminder by Telegram or SMS.",
+          "Hello! I am your Learning Assistant.\n\n" +
+          "You can ask course questions or general questions.\n\n" +
+          "Commands:\n" +
+          "• /help — request human help\n" +
+          "• /progress — see your progress\n" +
+          "• /quiz — choose a quiz\n" +
+          "• /jobs — see job alerts\n" +
+          "• /accommodation — request interview support\n" +
+          "• /teacher — teacher analytics\n\n" +
+          "You can also ask course questions by SMS.\n\n" +
+          "Examples:\n" +
+          "• What is downloading?\n" +
+          "• What is the internet?\n" +
+          "• What is photosynthesis?\n" +
+          "• What is the capital of Kenya?",
 
           {
             reply_markup: {
               inline_keyboard: [
                 [
                   {
-                    text: "🔔 Get Reminder",
-                    callback_data: "reminder_menu"
+                    text: "📩 Get SMS Reminder",
+                    callback_data: "sms_notification"
                   }
                 ]
               ]
             }
           }
         );
-      } else {
-        bot.sendMessage(
-          chatId,
-          "✅ SMS reminder cancelled.\n\nYou can use the bot normally now."
-        );
-      }
 
-      return;
-    }
+        return;
+      }
 
     const phone = text.trim();
 
