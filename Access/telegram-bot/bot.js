@@ -1,6 +1,11 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 const path = require("path");
+const express = require("express");
+const app = express();
+
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 
 console.log("BOT VERSION: v7 teacher analytics");
 
@@ -495,7 +500,8 @@ bot.on("message", async message => {
       "• /quiz email — take a quiz\n" +
       "• /jobs — see job alerts\n" +
       "• /accommodation — request interview support\n" +
-      "• /teacher-stats — teacher analytics\n\n" +
+      "• /teacher-stats — teacher analytics\n" +
+      "• SMS: send a course question by SMS\n\n" +
       "Examples:\n" +
       "• What is downloading?\n" +
       "• What is the internet?\n" +
@@ -911,5 +917,34 @@ bot.on("callback_query", async callbackQuery => {
   }
 });
 
+app.post("/sms", (req, res) => {
+  const incomingMessage = req.body.text || req.body.Body || "";
+  const sender = req.body.from || req.body.From || "";
+
+  const lesson = findCourseAnswer(incomingMessage);
+
+  let reply;
+
+  if (lesson) {
+    reply = getSimpleAnswer(lesson);
+  } else {
+    reply =
+      "Sorry, I can answer Internet Basics questions by SMS. " +
+      "For more help, use our Telegram bot.";
+  }
+
+  console.log("SMS received:", incomingMessage);
+  console.log("SMS reply:", reply);
+
+  res.json({
+    message: reply
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("SMS webhook is running on port " + PORT);
+});
 
 console.log("Telegram bot is running.");
