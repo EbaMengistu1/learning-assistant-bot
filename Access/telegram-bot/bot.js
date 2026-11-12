@@ -6,7 +6,7 @@ const cors = require("cors");
 
 const db = require("./database");
 
-console.log("BOT VERSION: v21 FINAL ALL-IN-ONE TRACK 3 ASSISTANT");
+console.log("BOT VERSION: v22 FINAL MOST POWERFUL TRACK 3 ASSISTANT");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -768,7 +768,7 @@ async function sendSms(to, message) {
 app.get("/", (req, res) => {
   res.json({
     status: "Track 3 Assistant API is running",
-    version: "v21"
+    version: "v22"
   });
 });
 
@@ -963,6 +963,44 @@ app.post("/sms", async (req, res) => {
 bot.on("callback_query", async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
+
+  if (data === "open_quiz_menu") {
+    sendQuizMenu(chatId);
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "show_progress") {
+    const completed = userProgress.get(chatId) || [];
+
+    if (completed.length === 0) {
+      bot.sendMessage(
+        chatId,
+        "📚 You have not completed any lessons yet.\n\n" +
+        "Ask a course question, then tap:\n" +
+        "✅ Show Full Explanation"
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    const total = COURSE_DATA.lessons.length;
+
+    bot.sendMessage(
+      chatId,
+      "📚 Your progress\n\n" +
+      completed.map(title => "✅ " + title).join("\n") +
+      "\n\nCompleted: " + completed.length + " of " + total + " lessons"
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
 
   if (data === "student_learning") {
     sendLessonMenu(chatId);
@@ -1513,7 +1551,7 @@ bot.on("callback_query", async callbackQuery => {
             [
               {
                 text: "📝 Take Quiz",
-                callback_data: "start_quiz_downloading"
+                callback_data: "open_quiz_menu"
               }
             ]
           ]
@@ -2001,7 +2039,7 @@ bot.on("message", async message => {
   // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v21");
+    bot.sendMessage(chatId, "PONG v22");
     return;
   }
 
@@ -2587,17 +2625,9 @@ function sendStartMenu(chatId, message) {
     "🇪🇹 እንኳን ደህና መጡ!\n\n" +
     "ይህ ቦት ለትምህርት፣ ለሥራ እና ለድጋፍ ይረዳዎታል።\n\n" +
     "በአማርኛ ወይም በእንግሊዝኛ መጠየቅ ይችላሉ።\n\n" +
-    "ለምሳሌ ይጻፉ፦\n" +
-    "• ማውረድ ምን ማለት ነው?\n" +
-    "• ሥራ ለመመልከት እንዴት እችላለሁ?\n" +
-    "• ኢንተርኔት ምን ማለት ነው?\n\n" +
     "🇬🇧 Welcome!\n\n" +
     "This bot helps you learn, find jobs, and get support.\n\n" +
     "You can ask in Amharic or English.\n\n" +
-    "Examples:\n" +
-    "• What is downloading?\n" +
-    "• How do I apply for a job?\n" +
-    "• What is the internet?\n\n" +
     "Your role: " + role;
 
   const teacherWelcome =
@@ -2636,6 +2666,30 @@ function sendStartMenu(chatId, message) {
     ],
     [
       {
+        text: "🙋 እርዳታ አስፈልገኛል / I Need Help",
+        callback_data: "track3_need_person"
+      }
+    ],
+    [
+      {
+        text: "🖥️ ስክሪን ማጋራት / Share My Screen",
+        callback_data: "track3_share_screen"
+      }
+    ],
+    [
+      {
+        text: "📝 ፈተና / Take Quiz",
+        callback_data: "open_quiz_menu"
+      }
+    ],
+    [
+      {
+        text: "📊 የተማሪ ሂደት / My Progress",
+        callback_data: "show_progress"
+      }
+    ],
+    [
+      {
         text: "🟢 ቀላል መልስ / Simple Mode",
         callback_data: "toggle_simple_mode"
       }
@@ -2644,12 +2698,6 @@ function sendStartMenu(chatId, message) {
       {
         text: "📩 የSMS አስታዋሽ / SMS Reminder",
         callback_data: "sms_notification"
-      }
-    ],
-    [
-      {
-        text: "🙋 እርዳታ አስፈልገኛል / I Need Help",
-        callback_data: "track3_need_person"
       }
     ]
   ];
@@ -2669,7 +2717,7 @@ function sendStartMenu(chatId, message) {
     ],
     [
       {
-        text: "📢 ለሁሉም ተማሪ መልእክት / Announce",
+        text: "📢 ለሁሉም ተማሪ መልእክት / Telegram Announcement",
         callback_data: "start_telegram_announcement"
       }
     ],
@@ -2681,7 +2729,7 @@ function sendStartMenu(chatId, message) {
     ],
     [
       {
-        text: "📊 የትምህርት መረጃ / Analytics",
+        text: "📊 የትምህርት መረጃ / Teacher Analytics",
         callback_data: "view_teacher_analytics"
       }
     ],
@@ -2689,6 +2737,30 @@ function sendStartMenu(chatId, message) {
       {
         text: "🎯 የTrack 3 ድጋፍ / Track 3 Support",
         callback_data: "track3_menu"
+      }
+    ],
+    [
+      {
+        text: "📚 ትምህርቶች / Lessons",
+        callback_data: "student_learning"
+      }
+    ],
+    [
+      {
+        text: "💼 የሥራ ማስታወቂያ / Job Alerts",
+        callback_data: "track3_jobs"
+      }
+    ],
+    [
+      {
+        text: "📋 የቃለ መጠይቅ ድጋፍ / Interview Support",
+        callback_data: "track3_interview_support"
+      }
+    ],
+    [
+      {
+        text: "🟢 ቀላል መልስ / Simple Mode",
+        callback_data: "toggle_simple_mode"
       }
     ]
   ];
