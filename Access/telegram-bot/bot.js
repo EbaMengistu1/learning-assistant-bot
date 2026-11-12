@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v10 SMS notification support");
+console.log("BOT VERSION: v11 Personalized SMS reminders");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -345,6 +345,16 @@ function saveUserProgress(chatId, lessonTitle) {
   userProgress.set(chatId, completed);
 }
 
+function getNextLesson(chatId) {
+  const completed = userProgress.get(chatId) || [];
+
+  const nextLesson = COURSE_DATA.lessons.find(lesson => {
+    return !completed.includes(lesson.title);
+  });
+
+  return nextLesson;
+}
+
 function sendHelpRequestToAdmin(chatId, question) {
   if (!ADMIN_CHAT_ID) {
     return;
@@ -607,7 +617,7 @@ bot.onText(/\/start/, (msg) => {
         inline_keyboard: [
           [
             {
-              text: "📩 Get SMS Notification",
+              text: "📩 Get SMS Reminder",
               callback_data: "sms_notification"
             }
           ]
@@ -626,10 +636,10 @@ bot.on("callback_query", async callbackQuery => {
 
     bot.sendMessage(
       chatId,
-      "📩 *SMS Notification*\n\n" +
+      "📩 *SMS Learning Reminder*\n\n" +
       "Please send your phone number in this format:\n\n" +
       "`+251912345678`\n\n" +
-      "I will send you a learning reminder by SMS.",
+      "I will send you a reminder for your next lesson.",
       {
         parse_mode: "Markdown",
         reply_markup: {
@@ -797,7 +807,7 @@ bot.on("message", async message => {
 
   console.log("Received message:", text);
 
-  // ---------- SMS NOTIFICATION FLOW ----------
+  // ---------- PERSONALIZED SMS REMINDER ----------
 
   if (smsWaiting.get(chatId)) {
     const phone = text.trim();
@@ -823,30 +833,50 @@ bot.on("message", async message => {
 
     bot.sendMessage(
       chatId,
-      "⏳ Sending your SMS notification..."
+      "⏳ Sending your personalized learning reminder..."
     );
 
     try {
-      await sendSms(
-        phone,
-        "Hello! This is a reminder from your Learning Assistant. " +
-        "You can ask questions, take quizzes, and get learning support anytime."
-      );
+      const nextLesson = getNextLesson(chatId);
+
+      let smsMessage;
+
+      if (nextLesson) {
+        smsMessage =
+          "📚 Learning reminder\n\n" +
+          "Your next lesson is: " + nextLesson.title + "\n\n" +
+          "Ask me in Telegram about: " + nextLesson.title + "\n\n" +
+          "You can also take a quiz with /quiz.";
+      } else {
+        smsMessage =
+          "🎉 Great job! You have completed all available lessons.\n\n" +
+          "Keep practicing with /quiz in Telegram.";
+      }
+
+      await sendSms(phone, smsMessage);
 
       stats.smsNotifications += 1;
 
-      bot.sendMessage(
-        chatId,
-        "✅ SMS notification sent successfully!\n\n" +
-        "Please check your phone."
-      );
+      let confirmationMessage =
+        "✅ SMS reminder sent successfully!\n\n" +
+        "Please check your phone.";
+
+      if (nextLesson) {
+        confirmationMessage +=
+          "\n\n📚 Next lesson sent: " + nextLesson.title;
+      } else {
+        confirmationMessage +=
+          "\n\n🎉 You have completed all available lessons.";
+      }
+
+      bot.sendMessage(chatId, confirmationMessage);
 
     } catch (error) {
       console.error("SMS notification error:", error.message);
 
       bot.sendMessage(
         chatId,
-        "❌ Sorry, I could not send the SMS notification right now.\n\n" +
+        "❌ Sorry, I could not send the SMS reminder right now.\n\n" +
         "Please try again later."
       );
     }
@@ -857,7 +887,7 @@ bot.on("message", async message => {
   // ---------- NORMAL BOT COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v10");
+    bot.sendMessage(chatId, "PONG v11");
     return;
   }
 
@@ -990,7 +1020,7 @@ bot.on("message", async message => {
       "Help requests: " + stats.helpRequests + "\n" +
       "Accommodation requests: " + stats.accommodationRequests + "\n" +
       "Quiz completions: " + stats.quizCompletions + "\n" +
-      "SMS notifications: " + stats.smsNotifications + "\n\n" +
+      "SMS reminders sent: " + stats.smsNotifications + "\n\n" +
       "Most asked topics:\n" +
       topicText
     );
