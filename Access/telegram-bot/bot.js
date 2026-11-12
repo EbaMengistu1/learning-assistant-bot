@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v14 Final reminder system");
+console.log("BOT VERSION: v15 Teacher and Student roles");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -256,6 +256,10 @@ const jobs = [
   }
 ];
 
+function isAdmin(chatId) {
+  return String(chatId) === String(ADMIN_CHAT_ID);
+}
+
 function normalizeText(text) {
   return String(text)
     .toLowerCase()
@@ -450,6 +454,41 @@ function sendQuizMenu(chatId) {
   );
 }
 
+function sendTeacherAnalytics(chatId) {
+  let topicText = "No course questions yet.";
+
+  const topics = Object.keys(stats.topicCounts);
+
+  if (topics.length > 0) {
+    const sortedTopics = topics.sort((a, b) => {
+      return stats.topicCounts[b] - stats.topicCounts[a];
+    });
+
+    topicText = sortedTopics
+      .slice(0, 5)
+      .map(topic => {
+        return "• " + topic + ": " + stats.topicCounts[topic];
+      })
+      .join("\n");
+  }
+
+  bot.sendMessage(
+    chatId,
+    "📊 Teacher Analytics\n\n" +
+    "Total questions: " + stats.totalQuestions + "\n" +
+    "Course questions: " + stats.courseQuestions + "\n" +
+    "AI questions: " + stats.aiQuestions + "\n" +
+    "Help requests: " + stats.helpRequests + "\n" +
+    "Accommodation requests: " + stats.accommodationRequests + "\n" +
+    "Quiz completions: " + stats.quizCompletions + "\n" +
+    "SMS reminders sent: " + stats.smsNotifications + "\n" +
+    "Telegram announcements: " + stats.telegramAnnouncements + "\n" +
+    "SMS announcements: " + stats.smsAnnouncements + "\n\n" +
+    "Most asked topics:\n" +
+    topicText
+  );
+}
+
 async function askGroq(question) {
   if (!GROQ_API_KEY) {
     console.error("GROQ_API_KEY is missing in Railway Variables.");
@@ -598,6 +637,140 @@ app.post("/sms", async (req, res) => {
 bot.on("callback_query", async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
+
+  if (data === "student_learning") {
+    bot.sendMessage(
+      chatId,
+      "📚 What would you like to learn today?\n\n" +
+      "Try asking:\n" +
+      "• What is downloading?\n" +
+      "• What is the internet?\n" +
+      "• What is online safety?\n" +
+      "• What is email?\n\n" +
+      "You can also take a quiz with /quiz."
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "teacher_panel") {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can open this panel."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    bot.sendMessage(
+      chatId,
+      "👩‍🏫 Teacher Admin Panel\n\n" +
+      "Choose an action:",
+
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "📢 Send Telegram Announcement",
+                callback_data: "start_telegram_announcement"
+              }
+            ],
+            [
+              {
+                text: "📩 Send SMS Announcement",
+                callback_data: "start_sms_announcement"
+              }
+            ],
+            [
+              {
+                text: "📊 View Teacher Analytics",
+                callback_data: "view_teacher_analytics"
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "start_telegram_announcement") {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can send announcements."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    userState.set(chatId, "waiting_announcement");
+
+    bot.sendMessage(
+      chatId,
+      "📢 Please write the Telegram announcement for all students.\n\n" +
+      "Send /cancel to stop."
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "start_sms_announcement") {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can send SMS announcements."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    userState.set(chatId, "waiting_sms_announcement");
+
+    bot.sendMessage(
+      chatId,
+      "📩 Please write the SMS announcement for all saved phone numbers.\n\n" +
+      "Send /cancel to stop."
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "view_teacher_analytics") {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can view analytics."
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    sendTeacherAnalytics(chatId);
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
 
   if (data === "sms_notification") {
     bot.sendMessage(
@@ -834,7 +1007,8 @@ bot.on("message", async message => {
   botUsers.set(chatId, {
     chatId: chatId,
     firstName: message.from.first_name || "Learner",
-    username: message.from.username || null
+    username: message.from.username || null,
+    role: isAdmin(chatId) ? "teacher" : "student"
   });
 
   // ---------- SMS REMINDER MODE ----------
@@ -849,37 +1023,7 @@ bot.on("message", async message => {
       smsWaiting.delete(chatId);
 
       if (normalText === "/start") {
-        bot.sendMessage(
-          chatId,
-          "Hello! I am your Learning Assistant.\n\n" +
-          "You can ask course questions or general questions.\n\n" +
-          "Commands:\n" +
-          "• /help — request human help\n" +
-          "• /progress — see your progress\n" +
-          "• /quiz — choose a quiz\n" +
-          "• /jobs — see job alerts\n" +
-          "• /accommodation — request interview support\n" +
-          "• /teacher — teacher analytics\n\n" +
-          "You can also ask course questions by SMS.\n\n" +
-          "Examples:\n" +
-          "• What is downloading?\n" +
-          "• What is the internet?\n" +
-          "• What is photosynthesis?\n" +
-          "• What is the capital of Kenya?",
-
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: "📩 Get SMS Reminder",
-                    callback_data: "sms_notification"
-                  }
-                ]
-              ]
-            }
-          }
-        );
+        sendStartMenu(chatId, message);
       } else {
         bot.sendMessage(
           chatId,
@@ -970,31 +1114,47 @@ bot.on("message", async message => {
   // ---------- START ----------
 
   if (normalText === "/start") {
+    sendStartMenu(chatId, message);
+
+    return;
+  }
+
+  // ---------- ADMIN COMMANDS ----------
+
+  if (normalText === "/admin") {
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can open the admin panel."
+      );
+
+      return;
+    }
+
     bot.sendMessage(
       chatId,
-      "Hello! I am your Learning Assistant.\n\n" +
-      "You can ask course questions or general questions.\n\n" +
-      "Commands:\n" +
-      "• /help — request human help\n" +
-      "• /progress — see your progress\n" +
-      "• /quiz — choose a quiz\n" +
-      "• /jobs — see job alerts\n" +
-      "• /accommodation — request interview support\n" +
-      "• /teacher — teacher analytics\n\n" +
-      "You can also ask course questions by SMS.\n\n" +
-      "Examples:\n" +
-      "• What is downloading?\n" +
-      "• What is the internet?\n" +
-      "• What is photosynthesis?\n" +
-      "• What is the capital of Kenya?",
+      "👩‍🏫 Teacher Admin Panel\n\n" +
+      "Choose an action:",
 
       {
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: "📩 Get SMS Reminder",
-                callback_data: "sms_notification"
+                text: "📢 Send Telegram Announcement",
+                callback_data: "start_telegram_announcement"
+              }
+            ],
+            [
+              {
+                text: "📩 Send SMS Announcement",
+                callback_data: "start_sms_announcement"
+              }
+            ],
+            [
+              {
+                text: "📊 View Teacher Analytics",
+                callback_data: "view_teacher_analytics"
               }
             ]
           ]
@@ -1005,13 +1165,11 @@ bot.on("message", async message => {
     return;
   }
 
-  // ---------- ADMIN COMMANDS ----------
-
   if (normalText === "/announce") {
-    if (String(chatId) !== String(ADMIN_CHAT_ID)) {
+    if (!isAdmin(chatId)) {
       bot.sendMessage(
         chatId,
-        "❌ Only the admin can send announcements."
+        "❌ Only teachers and admins can send announcements."
       );
 
       return;
@@ -1021,8 +1179,7 @@ bot.on("message", async message => {
 
     bot.sendMessage(
       chatId,
-      "📢 Please write the announcement you want to send to all bot users.\n\n" +
-      "It will be sent by Telegram.\n\n" +
+      "📢 Please write the Telegram announcement for all students.\n\n" +
       "Send /cancel to stop."
     );
 
@@ -1030,10 +1187,10 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/announce-sms") {
-    if (String(chatId) !== String(ADMIN_CHAT_ID)) {
+    if (!isAdmin(chatId)) {
       bot.sendMessage(
         chatId,
-        "❌ Only the admin can send SMS announcements."
+        "❌ Only teachers and admins can send SMS announcements."
       );
 
       return;
@@ -1043,7 +1200,7 @@ bot.on("message", async message => {
 
     bot.sendMessage(
       chatId,
-      "📢 Please write the SMS announcement you want to send to all saved phone numbers.\n\n" +
+      "📩 Please write the SMS announcement for all saved phone numbers.\n\n" +
       "Send /cancel to stop."
     );
 
@@ -1065,7 +1222,7 @@ bot.on("message", async message => {
   // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v14");
+    bot.sendMessage(chatId, "PONG v15");
     return;
   }
 
@@ -1172,38 +1329,16 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/teacher" || normalText === "/teacher-stats") {
-    let topicText = "No course questions yet.";
+    if (!isAdmin(chatId)) {
+      bot.sendMessage(
+        chatId,
+        "❌ Only teachers and admins can view teacher analytics."
+      );
 
-    const topics = Object.keys(stats.topicCounts);
-
-    if (topics.length > 0) {
-      const sortedTopics = topics.sort((a, b) => {
-        return stats.topicCounts[b] - stats.topicCounts[a];
-      });
-
-      topicText = sortedTopics
-        .slice(0, 5)
-        .map(topic => {
-          return "• " + topic + ": " + stats.topicCounts[topic];
-        })
-        .join("\n");
+      return;
     }
 
-    bot.sendMessage(
-      chatId,
-      "📊 Teacher Analytics\n\n" +
-      "Total questions: " + stats.totalQuestions + "\n" +
-      "Course questions: " + stats.courseQuestions + "\n" +
-      "AI questions: " + stats.aiQuestions + "\n" +
-      "Help requests: " + stats.helpRequests + "\n" +
-      "Accommodation requests: " + stats.accommodationRequests + "\n" +
-      "Quiz completions: " + stats.quizCompletions + "\n" +
-      "SMS reminders sent: " + stats.smsNotifications + "\n" +
-      "Telegram announcements: " + stats.telegramAnnouncements + "\n" +
-      "SMS announcements: " + stats.smsAnnouncements + "\n\n" +
-      "Most asked topics:\n" +
-      topicText
-    );
+    sendTeacherAnalytics(chatId);
 
     return;
   }
@@ -1218,11 +1353,15 @@ bot.on("message", async message => {
     let sent = 0;
     let failed = 0;
 
-    for (const [userChatId] of botUsers) {
+    for (const [userChatId, user] of botUsers) {
+      if (user.role === "teacher") {
+        continue;
+      }
+
       try {
         await bot.sendMessage(
           userChatId,
-          "📢 Announcement\n\n" + announcement
+          "📢 Teacher Announcement\n\n" + announcement
         );
 
         sent += 1;
@@ -1241,7 +1380,7 @@ bot.on("message", async message => {
 
     bot.sendMessage(
       chatId,
-      "✅ Telegram announcement sent.\n\n" +
+      "✅ Telegram announcement sent to students.\n\n" +
       "Delivered: " + sent + "\n" +
       "Failed: " + failed
     );
@@ -1261,7 +1400,7 @@ bot.on("message", async message => {
       try {
         await sendSms(
           phone,
-          "📢 Learning Assistant announcement:\n\n" + announcement
+          "📢 Teacher announcement:\n\n" + announcement
         );
 
         sent += 1;
@@ -1420,6 +1559,101 @@ bot.on("message", async message => {
     );
   }
 });
+
+function sendStartMenu(chatId, message) {
+  const role = isAdmin(chatId) ? "Teacher / Admin" : "Student";
+
+  let menuText =
+    "👋 Welcome to your Learning Assistant!\n\n" +
+    "Your role: " + role + "\n\n";
+
+  if (isAdmin(chatId)) {
+    menuText +=
+      "👩‍🏫 Teacher Admin Panel\n\n" +
+      "You can manage learning announcements and view student activity.\n\n" +
+      "Commands:\n" +
+      "• /admin — open teacher admin panel\n" +
+      "• /announce — send Telegram announcement to all students\n" +
+      "• /announce-sms — send SMS announcement to saved phone numbers\n" +
+      "• /teacher — view learning analytics\n\n" +
+      "Student features:\n" +
+      "• /help — request human help\n" +
+      "• /progress — see your progress\n" +
+      "• /quiz — choose a quiz\n" +
+      "• /jobs — see job alerts\n" +
+      "• /accommodation — request interview support\n\n" +
+      "Examples:\n" +
+      "• What is downloading?\n" +
+      "• What is the internet?\n" +
+      "• What is photosynthesis?\n" +
+      "• What is the capital of Kenya?";
+
+    bot.sendMessage(
+      chatId,
+      menuText,
+
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🧑‍🏫 Open Teacher Panel",
+                callback_data: "teacher_panel"
+              }
+            ],
+            [
+              {
+                text: "📩 Get SMS Reminder",
+                callback_data: "sms_notification"
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+    return;
+  }
+
+  menuText +=
+    "👨‍🎓 Student Learning Panel\n\n" +
+    "You can learn Internet Basics, ask questions, take quizzes, get reminders, and find job alerts.\n\n" +
+    "Commands:\n" +
+    "• /help — request human help\n" +
+    "• /progress — see your progress\n" +
+    "• /quiz — choose a quiz\n" +
+    "• /jobs — see job alerts\n" +
+    "• /accommodation — request interview support\n\n" +
+    "Examples:\n" +
+    "• What is downloading?\n" +
+    "• What is the internet?\n" +
+    "• What is photosynthesis?\n" +
+    "• What is the capital of Kenya?";
+
+  bot.sendMessage(
+    chatId,
+    menuText,
+
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "📚 Start Learning",
+              callback_data: "student_learning"
+            }
+          ],
+          [
+            {
+              text: "📩 Get SMS Reminder",
+              callback_data: "sms_notification"
+            }
+          ]
+        ]
+      }
+    }
+  );
+}
 
 const PORT = process.env.PORT || 8080;
 
