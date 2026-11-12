@@ -1,0 +1,174 @@
+{
+  "lessons": [
+    {
+      "title": "Downloading",
+      "keywords": [
+        "download",
+        "downloading",
+        "download file",
+        "download a file",
+        "what is downloading",
+        "ማውረድ",
+        "ማውረድ ምንድን ነው"
+      ],
+      "simple": {
+        "en": "Downloading means saving a file from the internet to your device.",
+        "am": "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ነው።"
+      },
+      "answer": {
+        "en": "Downloading means copying a file from the internet and saving it on your phone or computer. After downloading, you can usually open the file even when you are offline.\n\nExamples include downloading a PDF, photo, video, song, or app.",
+        "am": "ማውረድ ማለት ፋይልን ከኢንተርኔት ተቀምጦ ወደ ስልክዎ ወይም ኮምፒውተርዎ ማስቀመጥ ነው። ከወረደ በኋላ ያለ ኢንተርኔት መክፈት ይችላሉ።\n\nለምሳሌ PDF፣ ፎቶ፣ ቪዲዮ፣ ዘፈን ወይም መተግበሪያ ማውረድ ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Downloading",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Internet",
+      "keywords": [
+        "internet",
+        "what is the internet",
+        "ኢንተርኔት",
+        "ኢንተርኔት ምንድን ነው"
+      ],
+      "simple": {
+        "en": "The internet is a worldwide network that connects computers and phones.",
+        "am": "ኢንተርኔት ማለት ኮምፒውተሮችን እና ስልኮችን የሚያገናኝ ዓለም አቀፍ አውታረ መረብ ነው።"
+      },
+      "answer": {
+        "en": "The internet is a global network that connects many devices. It lets people share websites, messages, videos, files, and other information.\n\nYou use the internet when you open a website, send an email, or watch an online video.",
+        "am": "ኢንተርኔት ማለት ብዙ መሣሪያዎችን የሚያገናኝ ዓለም አቀፍ አውታረ መረብ ነው። ድረ-ገጾችን፣ መልዕክቶችን፣ ቪዲዮዎችን እና ፋይሎችን ለመለዋወጥ ይረዳል።\n\nድረ-ገጽ ሲከፍቱ፣ ኢሜይል ሲልኩ ወይም ኦንላይን ቪዲዮ ሲያዩ ኢንተርኔት ይጠቀማሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Internet",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Hyperlink",
+      "keywords": [
+        "hyperlink",
+        "link",
+        "what is a hyperlink",
+        "what is a link",
+        "አገናኝ",
+        "አገናኝ ምንድን ነው"
+      ],
+      "simple": {
+        "en": "A hyperlink is a clickable link that takes you to another page.",
+        "am": "አገናኝ ማለት ወደ ሌላ ገጽ የሚወስድ በመጫን የሚችል አገናኝ ነው።"
+      },
+      "answer": {
+        "en": "A hyperlink, or link, is text or an image you can click. When you click it, it opens another webpage or file.\n\nLinks often appear blue and underlined, but they can look different on different websites.",
+        "am": "አገናኝ ማለት መጫን የሚችሉት ጽሑፍ ወይም ምስል ነው። ሲጫኑ ሌላ ድረ-ገጽ ወይም ፋይል ይከፍታል።\n\nአገናኞች ብዙ ጊዜ በሰማያዊ ቀለም እና በመስመር ይታያሉ፣ ነገር ግን በተለያዩ ድረ-ገጾች ላይ የተለያየ ሊሆኑ ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Hyperlink",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Online Safety",
+      "keywords": [
+        "safe online",
+        "online safety",
+        "stay safe online",
+        "how can i stay safe online",
+        "ደህንነት",
+        "በመስመር ላይ ደህንነት",
+        "በመስመር ላይ እንዴት ደህንነቴን እጠብቃለሁ"
+      ],
+      "simple": {
+        "en": "Use strong passwords, do not share private information, and avoid suspicious links.",
+        "am": "ጠንካራ የይለፍ ቃል ይጠቀሙ፣ የግል መረጃ አይካፈሉ እና አጠራጣሪ አገናኞችን ይቀርቡ።"
+      },
+      "answer": {
+        "en": "To stay safe online, use a strong password, do not share your password, do not click strange links, and do not share private information with strangers.\n\nAlso, check that a website is real before entering personal information.",
+        "am": "በመስመር ላይ ደህንነትዎን ለመጠበቅ ጠንካራ የይለፍ ቃል ይጠቀሙ፣ የይለፍ ቃልዎን አይካፈሉ፣ አጠራጣሪ አገናኞችን አይጫኑ እና የግል መረጃዎን ለማይታወቁ ሰዎች አይስጡ።\n\nእንዲሁም የግል መረጃ ከመስጠትዎ በፊት ድረ-ገጹ እውነተኛ መሆኑን ያረጋግጡ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Safety",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Computer",
+      "keywords": [
+        "computer",
+        "what is a computer",
+        "ኮምፒውተር",
+        "ኮምፒውተር ምንድን ነው"
+      ],
+      "simple": {
+        "en": "A computer is an electronic device that helps people store, find, and share information.",
+        "am": "ኮምፒውተር ማለት ሰዎች መረጃ እንዲያስቀምጡ፣ እንዲያገኙ እና እንዲያካፍሉ የሚረዳ ኤሌክትሮኒክ መሣሪያ ነው።"
+      },
+      "answer": {
+        "en": "A computer is an electronic device that can store, find, and share information. It can run programs, show websites, play videos, and help people learn and work.\n\nExamples include a desktop computer, laptop, tablet, and smartphone.",
+        "am": "ኮምፒውተር ማለት መረጃ ማስቀመጥ፣ መፈለግ እና ማካፈል የሚችል ኤሌክትሮኒክ መሣሪያ ነው። ፕሮግራሞችን ማስኬድ፣ ድረ-ገጾችን ማሳየት፣ ቪዲዮ ማጫወት እና ሰዎችን ለመማርና ለሥራ መርዳት ይችላል።\n\nዴስክቶፕ ኮምፒውተር፣ ላፕቶፕ፣ ታብሌት እና ስልክ ምሳሌዎች ናቸው።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Computer Basics",
+        "url": "https://edu.gcfglobal.org/en/computerbasics/"
+      }
+    },
+
+    {
+      "title": "Email",
+      "keywords": [
+        "email",
+        "e-mail",
+        "what is email",
+        "ኢሜይል",
+        "ኢሜይል ምንድን ነው"
+      ],
+      "simple": {
+        "en": "Email is a way to send messages and files using the internet.",
+        "am": "ኢሜይል ማለት መልዕክቶችን እና ፋይሎችን በኢንተርኔት ለመላክ የሚያግዝ መንገድ ነው።"
+      },
+      "answer": {
+        "en": "Email is a way to send messages and files using the internet. You need an email address, such as name@gmail.com.\n\nYou can use email to communicate with teachers, friends, family, and workplaces.",
+        "am": "ኢሜይል ማለት መልዕክቶችን እና ፋይሎችን በኢንተርኔት ለመላክ የሚያግዝ መንገድ ነው። እንደ name@gmail.com ያለ ኢሜይል አድራሻ ያስፈልጋል።\n\nከመምህሮች፣ ከጓደኞች፣ ከቤተሰብ እና ከሥራ ቦታዎች ጋር ለመግባባት ኢሜይል መጠቀም ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Email",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
+      "title": "Password",
+      "keywords": [
+        "password",
+        "strong password",
+        "what is a password",
+        "የይለፍ ቃል",
+        "ጠንካራ የይለፍ ቃል"
+      ],
+      "simple": {
+        "en": "A password is a secret word or code that protects your account.",
+        "am": "የይለፍ ቃል ማለት አካውንትዎን የሚጠብቅ ሚስጥራዊ ቃል ወይም ኮድ ነው።"
+      },
+      "answer": {
+        "en": "A password is a secret word or code that protects your account. Use a long password with letters, numbers, and symbols.\n\nDo not share your password with other people.",
+        "am": "የይለፍ ቃል ማለት አካውንትዎን የሚጠብቅ ሚስጥራዊ ቃል ወይም ኮድ ነው። ፊደላት፣ ቁጥሮች እና ምልክቶች ያሉት ረዥም የይለፍ ቃል ይጠቀሙ።\n\nየይለፍ ቃልዎን ለሌሎች ሰዎች አይካፈሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Safety",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    }
+  ]
+}
