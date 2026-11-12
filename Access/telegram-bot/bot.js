@@ -22,7 +22,7 @@ let COURSE_DATA = {
 
 try {
   COURSE_DATA = JSON.parse(
-    fs.readFileSync("course-data.json", "utf8")
+    fs.readFileSync(path.join(__dirname, "course-data.json"), "utf8")
   );
 
   console.log("Course lessons loaded:", COURSE_DATA.lessons.length);
