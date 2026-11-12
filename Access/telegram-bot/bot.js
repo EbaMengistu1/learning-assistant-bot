@@ -1,7 +1,7 @@
 const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 
-console.log("BOT VERSION: v6 commands fixed");
+console.log("BOT VERSION: v7 teacher analytics");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -34,6 +34,16 @@ const userLessons = new Map();
 const userProgress = new Map();
 const userQuiz = new Map();
 const userState = new Map();
+
+const stats = {
+  totalQuestions: 0,
+  courseQuestions: 0,
+  aiQuestions: 0,
+  helpRequests: 0,
+  accommodationRequests: 0,
+  quizCompletions: 0,
+  topicCounts: {}
+};
 
 
 const quizzes = {
@@ -465,12 +475,12 @@ bot.on("message", async message => {
 
   const normalText = text.toLowerCase().trim();
 
-  console.log("BOT VERSION: v6 commands fixed");
+  stats.totalQuestions += 1;
+
+  console.log("BOT VERSION: v7 teacher analytics");
   console.log("Received message:", text);
 
   if (normalText === "/start") {
-    console.log("START COMMAND RECEIVED");
-
     bot.sendMessage(
       chatId,
       "Hello! I am your Learning Assistant.\n\n" +
@@ -483,7 +493,8 @@ bot.on("message", async message => {
       "• /quiz safety — take a quiz\n" +
       "• /quiz email — take a quiz\n" +
       "• /jobs — see job alerts\n" +
-      "• /accommodation — request interview support\n\n" +
+      "• /accommodation — request interview support\n" +
+      "• /teacher-stats — teacher analytics\n\n" +
       "Examples:\n" +
       "• What is downloading?\n" +
       "• What is the internet?\n" +
@@ -495,13 +506,11 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v6");
+    bot.sendMessage(chatId, "PONG v7");
     return;
   }
 
   if (normalText === "/help") {
-    console.log("HELP COMMAND RECEIVED");
-
     userState.set(chatId, "waiting_help_question");
 
     bot.sendMessage(
@@ -514,8 +523,6 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/progress") {
-    console.log("PROGRESS COMMAND RECEIVED");
-
     const completed = userProgress.get(chatId) || [];
 
     if (completed.length === 0) {
@@ -542,8 +549,6 @@ bot.on("message", async message => {
   }
 
   if (normalText.startsWith("/quiz")) {
-    console.log("QUIZ COMMAND RECEIVED");
-
     const parts = text.split(" ");
     const quizName = parts[1];
 
@@ -598,8 +603,6 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/accommodation") {
-    console.log("ACCOMMODATION COMMAND RECEIVED");
-
     userState.set(chatId, "waiting_accommodation");
 
     bot.sendMessage(
@@ -617,10 +620,46 @@ bot.on("message", async message => {
     return;
   }
 
+  if (normalText === "/teacher-stats") {
+    let topicText = "No course questions yet.";
+
+    const topics = Object.keys(stats.topicCounts);
+
+    if (topics.length > 0) {
+      const sortedTopics = topics.sort((a, b) => {
+        return stats.topicCounts[b] - stats.topicCounts[a];
+      });
+
+      topicText = sortedTopics
+        .slice(0, 5)
+        .map(topic => {
+          return "• " + topic + ": " + stats.topicCounts[topic];
+        })
+        .join("\n");
+    }
+
+    bot.sendMessage(
+      chatId,
+      "📊 Teacher Analytics\n\n" +
+      "Total questions: " + stats.totalQuestions + "\n" +
+      "Course questions: " + stats.courseQuestions + "\n" +
+      "AI questions: " + stats.aiQuestions + "\n" +
+      "Help requests: " + stats.helpRequests + "\n" +
+      "Accommodation requests: " + stats.accommodationRequests + "\n" +
+      "Quiz completions: " + stats.quizCompletions + "\n\n" +
+      "Most asked topics:\n" +
+      topicText
+    );
+
+    return;
+  }
+
   const currentState = userState.get(chatId);
 
   if (currentState === "waiting_help_question") {
     userState.delete(chatId);
+
+    stats.helpRequests += 1;
 
     sendHelpRequestToAdmin(chatId, text);
 
@@ -657,6 +696,8 @@ bot.on("message", async message => {
 
     userState.delete(chatId);
 
+    stats.accommodationRequests += 1;
+
     sendAccommodationRequestToAdmin(chatId, accommodation);
 
     bot.sendMessage(
@@ -671,6 +712,16 @@ bot.on("message", async message => {
   const lesson = findCourseAnswer(text);
 
   if (lesson) {
+    stats.courseQuestions += 1;
+
+    const topic = lesson.title || "Unknown";
+
+    if (!stats.topicCounts[topic]) {
+      stats.topicCounts[topic] = 0;
+    }
+
+    stats.topicCounts[topic] += 1;
+
     userLessons.set(chatId, lesson);
 
     const simpleAnswer = getSimpleAnswer(lesson);
@@ -698,6 +749,8 @@ bot.on("message", async message => {
 
     return;
   }
+
+  stats.aiQuestions += 1;
 
   bot.sendMessage(chatId, "🔎 Thinking...");
 
@@ -840,6 +893,8 @@ bot.on("callback_query", async callbackQuery => {
       sendQuizQuestion(chatId, quizName, nextQuestion);
     } else {
       userQuiz.delete(chatId);
+
+      stats.quizCompletions += 1;
 
       bot.sendMessage(
         chatId,
