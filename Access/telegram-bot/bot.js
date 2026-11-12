@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v11 Personalized SMS reminders");
+console.log("BOT VERSION: v12 Clean SMS reminder");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -591,42 +591,6 @@ app.post("/sms", async (req, res) => {
   res.status(200).send("OK");
 });
 
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-
-  bot.sendMessage(
-    chatId,
-    "Hello! I am your Learning Assistant.\n\n" +
-    "You can ask course questions or general questions.\n\n" +
-    "Commands:\n" +
-    "• /help — request human help\n" +
-    "• /progress — see your progress\n" +
-    "• /quiz — choose a quiz\n" +
-    "• /jobs — see job alerts\n" +
-    "• /accommodation — request interview support\n" +
-    "• /teacher — teacher analytics\n\n" +
-    "You can also ask course questions by SMS.\n\n" +
-    "Examples:\n" +
-    "• What is downloading?\n" +
-    "• What is the internet?\n" +
-    "• What is photosynthesis?\n" +
-    "• What is the capital of Kenya?",
-
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "📩 Get SMS Reminder",
-              callback_data: "sms_notification"
-            }
-          ]
-        ]
-      }
-    }
-  );
-});
-
 bot.on("callback_query", async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
@@ -638,7 +602,7 @@ bot.on("callback_query", async callbackQuery => {
       chatId,
       "📩 *SMS Learning Reminder*\n\n" +
       "Please send your phone number in this format:\n\n" +
-      "`+251917696254`\n\n" +
+      "`+251912345678`\n\n" +
       "I will send you a reminder for your next lesson.",
       {
         parse_mode: "Markdown",
@@ -884,10 +848,36 @@ bot.on("message", async message => {
     return;
   }
 
-  // ---------- NORMAL BOT COMMANDS ----------
+  // ---------- CLEAN START COMMAND ----------
+
+  if (normalText === "/start") {
+    bot.sendMessage(
+      chatId,
+      "👋 Welcome to your Learning Assistant!\n\n" +
+      "I can help you learn Internet Basics, answer questions, take quizzes, and find job alerts.\n\n" +
+      "📩 You can also get a personalized SMS learning reminder.",
+
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "📩 Get SMS Reminder",
+                callback_data: "sms_notification"
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+    return;
+  }
+
+  // ---------- OTHER COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v11");
+    bot.sendMessage(chatId, "PONG v12");
     return;
   }
 
