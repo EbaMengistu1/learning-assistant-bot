@@ -112,6 +112,7 @@ function getSource(lesson) {
 
 async function askGroq(question) {
   if (!GROQ_API_KEY) {
+    console.error("GROQ_API_KEY is missing in Railway Variables.");
     return null;
   }
 
@@ -124,7 +125,7 @@ async function askGroq(question) {
         "Authorization": "Bearer " + GROQ_API_KEY
       },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
@@ -147,10 +148,26 @@ async function askGroq(question) {
   );
 
   if (!response.ok) {
-    throw new Error("Groq API error: " + response.status);
+    const errorText = await response.text();
+
+    console.error(
+      "Groq API error:",
+      response.status,
+      errorText
+    );
+
+    throw new Error(
+      "Groq API error: " + response.status + " — " + errorText
+    );
   }
 
   const data = await response.json();
+
+  if (!data.choices || !data.choices[0]) {
+    console.error("Groq returned no answer:", data);
+
+    return null;
+  }
 
   return data.choices[0].message.content.trim();
 }
@@ -236,7 +253,10 @@ bot.on("message", async message => {
       "• How can I stay safe online?"
     );
   } catch (error) {
-    console.error("Groq answer failed:", error);
+    console.error(
+      "Groq answer failed:",
+      error.message || error
+    );
 
     bot.sendMessage(
       chatId,
