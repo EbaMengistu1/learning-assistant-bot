@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v8 SMS support");
+console.log("BOT VERSION: v9 SMS support");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -55,7 +55,6 @@ const stats = {
   topicCounts: {}
 };
 
-
 const quizzes = {
   downloading: [
     {
@@ -86,7 +85,6 @@ const quizzes = {
       correct: 3
     }
   ],
-
   internet: [
     {
       question: "What is the internet?",
@@ -119,7 +117,6 @@ const quizzes = {
       correct: 0
     }
   ],
-
   safety: [
     {
       question: "What should you do if someone asks for your password?",
@@ -152,7 +149,6 @@ const quizzes = {
       correct: 2
     }
   ],
-
   email: [
     {
       question: "What is an email address?",
@@ -186,7 +182,6 @@ const quizzes = {
     }
   ]
 };
-
 
 const jobs = [
   {
@@ -255,7 +250,6 @@ const jobs = [
   }
 ];
 
-
 function normalizeText(text) {
   return String(text)
     .toLowerCase()
@@ -263,7 +257,6 @@ function normalizeText(text) {
     .replace(/\s+/g, " ")
     .trim();
 }
-
 
 function findCourseAnswer(question) {
   const questionText = normalizeText(question);
@@ -310,20 +303,17 @@ function findCourseAnswer(question) {
   return bestScore > 0 ? bestLesson : null;
 }
 
-
 function getSimpleAnswer(lesson) {
   const simple = lesson.simple || {};
 
   return simple.en || simple.am || "";
 }
 
-
 function getFullAnswer(lesson) {
   const answer = lesson.answer || {};
 
   return answer.en || answer.am || "";
 }
-
 
 function getSource(lesson) {
   const source = lesson.source || {};
@@ -343,7 +333,6 @@ function getSource(lesson) {
   return text;
 }
 
-
 function saveUserProgress(chatId, lessonTitle) {
   let completed = userProgress.get(chatId) || [];
 
@@ -353,7 +342,6 @@ function saveUserProgress(chatId, lessonTitle) {
 
   userProgress.set(chatId, completed);
 }
-
 
 function sendHelpRequestToAdmin(chatId, question) {
   if (!ADMIN_CHAT_ID) {
@@ -368,7 +356,6 @@ function sendHelpRequestToAdmin(chatId, question) {
   );
 }
 
-
 function sendAccommodationRequestToAdmin(chatId, accommodation) {
   if (!ADMIN_CHAT_ID) {
     return;
@@ -381,7 +368,6 @@ function sendAccommodationRequestToAdmin(chatId, accommodation) {
     "Need: " + accommodation
   );
 }
-
 
 function sendQuizQuestion(chatId, quizName, questionIndex) {
   const quiz = quizzes[quizName];
@@ -409,6 +395,44 @@ function sendQuizQuestion(chatId, quizName, questionIndex) {
   );
 }
 
+function sendQuizMenu(chatId) {
+  const quizButtons = [
+    [
+      {
+        text: "📥 Downloading Quiz",
+        callback_data: "start_quiz_downloading"
+      }
+    ],
+    [
+      {
+        text: "🌐 Internet Quiz",
+        callback_data: "start_quiz_internet"
+      }
+    ],
+    [
+      {
+        text: "🛡️ Online Safety Quiz",
+        callback_data: "start_quiz_safety"
+      }
+    ],
+    [
+      {
+        text: "📧 Email Quiz",
+        callback_data: "start_quiz_email"
+      }
+    ]
+  ];
+
+  bot.sendMessage(
+    chatId,
+    "Choose a quiz:",
+    {
+      reply_markup: {
+        inline_keyboard: quizButtons
+      }
+    }
+  );
+}
 
 async function askGroq(question) {
   if (!GROQ_API_KEY) {
@@ -474,7 +498,6 @@ async function askGroq(question) {
   return data.choices[0].message.content.trim();
 }
 
-
 async function sendSms(to, message) {
   if (!AT_USERNAME || !AT_API_KEY) {
     console.error("Africa's Talking username or API key is missing.");
@@ -526,7 +549,6 @@ async function sendSms(to, message) {
   }
 }
 
-
 app.post("/sms", async (req, res) => {
   const incomingMessage = req.body.text || "";
   const sender = req.body.from || "";
@@ -557,7 +579,6 @@ app.post("/sms", async (req, res) => {
   res.status(200).send("OK");
 });
 
-
 bot.on("message", async message => {
   const chatId = message.chat.id;
   const text = message.text;
@@ -570,7 +591,6 @@ bot.on("message", async message => {
 
   stats.totalQuestions += 1;
 
-  console.log("BOT VERSION: v8 SMS support");
   console.log("Received message:", text);
 
   if (normalText === "/start") {
@@ -597,7 +617,7 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v8");
+    bot.sendMessage(chatId, "PONG v9");
     return;
   }
 
@@ -640,49 +660,21 @@ bot.on("message", async message => {
   }
 
   if (normalText.startsWith("/quiz")) {
-  const parts = text.split(" ");
-  const quizName = parts[1];
+    const parts = text.split(" ");
+    const quizName = parts[1];
 
+    if (!quizName || !quizzes[quizName]) {
+      sendQuizMenu(chatId);
+      return;
+    }
 
-  if (!quizName || !quizzes[quizName]) {
-    const quizButtons = [
-      [
-        {
-          text: "📥 Downloading Quiz",
-          callback_data: "start_quiz_downloading"
-        }
-      ],
-      [
-        {
-          text: "🌐 Internet Quiz",
-          callback_data: "start_quiz_internet"
-        }
-      ],
-      [
-        {
-          text: "🛡️ Online Safety Quiz",
-          callback_data: "start_quiz_safety"
-        }
-      ],
-      [
-        {
-          text: "📧 Email Quiz",
-          callback_data: "start_quiz_email"
-        }
-      ]
-    ];
+    userQuiz.set(chatId, {
+      name: quizName,
+      questionIndex: 0,
+      score: 0
+    });
 
-
-    bot.sendMessage(
-      chatId,
-      "Choose a quiz:",
-      {
-        reply_markup: {
-          inline_keyboard: quizButtons
-        }
-      }
-    );
-
+    sendQuizQuestion(chatId, quizName, 0);
 
     return;
   }
@@ -731,44 +723,39 @@ bot.on("message", async message => {
     return;
   }
 
-if (normalText === "/teacher" || normalText === "/teacher-stats") {
-  let topicText = "No course questions yet.";
+  if (normalText === "/teacher" || normalText === "/teacher-stats") {
+    let topicText = "No course questions yet.";
 
+    const topics = Object.keys(stats.topicCounts);
 
-  const topics = Object.keys(stats.topicCounts);
+    if (topics.length > 0) {
+      const sortedTopics = topics.sort((a, b) => {
+        return stats.topicCounts[b] - stats.topicCounts[a];
+      });
 
+      topicText = sortedTopics
+        .slice(0, 5)
+        .map(topic => {
+          return "• " + topic + ": " + stats.topicCounts[topic];
+        })
+        .join("\n");
+    }
 
-  if (topics.length > 0) {
-    const sortedTopics = topics.sort((a, b) => {
-      return stats.topicCounts[b] - stats.topicCounts[a];
-    });
+    bot.sendMessage(
+      chatId,
+      "📊 Teacher Analytics\n\n" +
+      "Total questions: " + stats.totalQuestions + "\n" +
+      "Course questions: " + stats.courseQuestions + "\n" +
+      "AI questions: " + stats.aiQuestions + "\n" +
+      "Help requests: " + stats.helpRequests + "\n" +
+      "Accommodation requests: " + stats.accommodationRequests + "\n" +
+      "Quiz completions: " + stats.quizCompletions + "\n\n" +
+      "Most asked topics:\n" +
+      topicText
+    );
 
-
-    topicText = sortedTopics
-      .slice(0, 5)
-      .map(topic => {
-        return "• " + topic + ": " + stats.topicCounts[topic];
-      })
-      .join("\n");
+    return;
   }
-
-
-  bot.sendMessage(
-    chatId,
-    "📊 Teacher Analytics\n\n" +
-    "Total questions: " + stats.totalQuestions + "\n" +
-    "Course questions: " + stats.courseQuestions + "\n" +
-    "AI questions: " + stats.aiQuestions + "\n" +
-    "Help requests: " + stats.helpRequests + "\n" +
-    "Accommodation requests: " + stats.accommodationRequests + "\n" +
-    "Quiz completions: " + stats.quizCompletions + "\n\n" +
-    "Most asked topics:\n" +
-    topicText
-  );
-
-
-  return;
-}
 
   const currentState = userState.get(chatId);
 
@@ -903,27 +890,22 @@ if (normalText === "/teacher" || normalText === "/teacher-stats") {
       "Sorry, I could not answer that question right now. Please try again."
     );
   }
-}
-
+});
 
 bot.on("callback_query", async callbackQuery => {
   const chatId = callbackQuery.message.chat.id;
   const data = callbackQuery.data;
 
-    if (data.startsWith("start_quiz_")) {
+  if (data.startsWith("start_quiz_")) {
     const quizName = data.replace("start_quiz_", "");
-
 
     if (!quizzes[quizName]) {
       bot.sendMessage(chatId, "Quiz not found.");
 
-
       bot.answerCallbackQuery(callbackQuery.id);
-
 
       return;
     }
-
 
     userQuiz.set(chatId, {
       name: quizName,
@@ -931,12 +913,9 @@ bot.on("callback_query", async callbackQuery => {
       score: 0
     });
 
-
     sendQuizQuestion(chatId, quizName, 0);
 
-
     bot.answerCallbackQuery(callbackQuery.id);
-
 
     return;
   }
@@ -1057,12 +1036,10 @@ bot.on("callback_query", async callbackQuery => {
   }
 });
 
-
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
   console.log("SMS webhook is running on port " + PORT);
 });
 
-
-console.log("Telegram bot is running.")})
+console.log("Telegram bot is running.");
