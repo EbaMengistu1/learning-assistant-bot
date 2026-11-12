@@ -1,226 +1,997 @@
-const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
-const africastalking = require('africastalking');
+const TelegramBot = require("node-telegram-bot-api");
+const fs = require("fs");
+const path = require("path");
+const express = require("express");
 
-// ==============================
-// BOT VERSION
-// ==============================
-console.log('BOT VERSION: v9 SMS support');
+console.log("BOT VERSION: v8 SMS support");
 
-// ==============================
-// ENVIRONMENT VARIABLES
-// ==============================
-const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
-const atUsername = process.env.AT_USERNAME;
-const atApiKey = process.env.AT_API_KEY;
-const atSenderId = process.env.AT_SENDER_ID;
+const TOKEN = process.env.BOT_TOKEN;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+const AT_USERNAME = process.env.AT_USERNAME;
+const AT_API_KEY = process.env.AT_API_KEY;
+const AT_SENDER_ID = process.env.AT_SENDER_ID;
 
-if (!telegramToken) {
-  console.error('TELEGRAM_BOT_TOKEN is missing.');
+if (!TOKEN) {
+  console.error("BOT_TOKEN is missing. Add it in Railway Variables.");
   process.exit(1);
 }
 
-if (!atUsername || !atApiKey) {
-  console.error("Africa's Talking username or API key is missing.");
-  process.exit(1);
-}
-
-console.log("Africa's Talking username loaded:", atUsername);
-console.log("Africa's Talking API key loaded:", atApiKey ? 'Yes' : 'No');
-console.log("Africa's Talking sender ID loaded:", atSenderId || 'Not set');
-
-// ==============================
-// TELEGRAM BOT
-// ==============================
-const bot = new TelegramBot(telegramToken, { polling: true });
-
-console.log('Telegram bot is running.');
-
-// ==============================
-// COURSE LESSONS
-// ==============================
-const lessons = {
-  'what is downloading?': 'Downloading means saving a file from the internet to your device.',
-  'what is uploading?': 'Uploading means sending a file from your device to the internet.',
-  'what is the internet?': 'The internet is a global network that connects computers and phones so people can share information.',
-  'what is a website?': 'A website is a place on the internet where you can read information, watch videos, or use services.',
-  'what is a browser?': 'A browser is an app used to open websites. Examples are Chrome, Safari, and Firefox.',
-  'what is email?': 'Email is a way to send messages and files to people using the internet.',
-  'what is a password?': 'A password is a secret word or phrase used to protect your account.',
-  'what is wifi?': 'Wi-Fi is a wireless internet connection. It lets your phone or computer connect to the internet without cables.',
-  'what is a link?': 'A link is text or an image you can click to open another page or website.',
-  'what is a search engine?': 'A search engine helps you find information on the internet. Examples are Google and Bing.',
-  'what is an app?': 'An app is a program installed on a phone or computer. Examples are WhatsApp, Telegram, and Chrome.',
-  'what is a file?': 'A file is a document, photo, video, or other item saved on a device.',
-  'what is a download folder?': 'The download folder is where files saved from the internet are usually stored.',
-  'what is online safety?': 'Online safety means protecting your personal information, using strong passwords, and avoiding suspicious links.'
-};
-
-const courseIntro =
-  'Welcome to Internet Basics!\n\n' +
-  'Ask me a question such as:\n' +
-  '• What is downloading?\n' +
-  '• What is the internet?\n' +
-  '• What is a browser?\n' +
-  '• What is a password?\n\n' +
-  'Type /lessons to see available topics.';
-
-// ==============================
-// TELEGRAM COMMANDS
-// ==============================
-bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, courseIntro);
+const bot = new TelegramBot(TOKEN, {
+  polling: true
 });
-
-bot.onText(/\/lessons/, (msg) => {
-  const lessonList = Object.keys(lessons)
-    .map((question) => `• ${question.replace(/\?$/, '')}`)
-    .join('\n');
-
-  bot.sendMessage(
-    msg.chat.id,
-    'Available Internet Basics lessons:\n\n' + lessonList
-  );
-});
-
-bot.onText(/\/teacher/, (msg) => {
-  bot.sendMessage(
-    msg.chat.id,
-    'Teacher mode is active.\n\nAsk me any Internet Basics question.'
-  );
-});
-
-bot.onText(/\/stop/, (msg) => {
-  bot.sendMessage(
-    msg.chat.id,
-    'Teacher mode stopped. Send /start to begin again.'
-  );
-});
-
-// ==============================
-// TELEGRAM QUESTIONS
-// ==============================
-bot.on('message', (msg) => {
-  const text = msg.text;
-
-  if (!text || text.startsWith('/')) {
-    return;
-  }
-
-  const question = text.toLowerCase().trim();
-
-  if (lessons[question]) {
-    bot.sendMessage(msg.chat.id, lessons[question]);
-    return;
-  }
-
-  const matchedKey = Object.keys(lessons).find((key) => {
-    return question.includes(key.replace('?', '').trim());
-  });
-
-  if (matchedKey) {
-    bot.sendMessage(msg.chat.id, lessons[matchedKey]);
-    return;
-  }
-
-  bot.sendMessage(
-    msg.chat.id,
-    'Sorry, I can answer Internet Basics questions. Try asking:\n\nWhat is downloading?'
-  );
-});
-
-// ==============================
-// AFRICA'S TALKING SMS
-// ==============================
-const at = africastalking({
-  apiKey: atApiKey,
-  username: atUsername
-});
-
-const sms = at.SMS;
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-app.get('/', (req, res) => {
-  res.send('Learning Assistant SMS bot is running.');
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
+let COURSE_DATA = {
+  lessons: []
+};
+
+try {
+  COURSE_DATA = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "course-data.json"), "utf8")
+  );
+
+  console.log("Course lessons loaded:", COURSE_DATA.lessons.length);
+} catch (error) {
+  console.error("Could not load course-data.json:", error);
+}
+
+const userLessons = new Map();
+const userProgress = new Map();
+const userQuiz = new Map();
+const userState = new Map();
+
+const stats = {
+  totalQuestions: 0,
+  courseQuestions: 0,
+  aiQuestions: 0,
+  helpRequests: 0,
+  accommodationRequests: 0,
+  quizCompletions: 0,
+  topicCounts: {}
+};
+
+
+const quizzes = {
+  downloading: [
+    {
+      question: "What does downloading mean?",
+      options: [
+        "Sending a file to the internet",
+        "Saving a file from the internet to your device",
+        "Deleting a file"
+      ],
+      correct: 1
+    },
+    {
+      question: "After downloading a file, can you usually open it offline?",
+      options: [
+        "Yes",
+        "No"
+      ],
+      correct: 0
+    },
+    {
+      question: "Which one can you download?",
+      options: [
+        "A PDF",
+        "A photo",
+        "A video",
+        "All of the above"
+      ],
+      correct: 3
+    }
+  ],
+
+  internet: [
+    {
+      question: "What is the internet?",
+      options: [
+        "A global network of connected computers",
+        "A type of computer",
+        "A mobile phone",
+        "A website"
+      ],
+      correct: 0
+    },
+    {
+      question: "What do you need to use the internet?",
+      options: [
+        "An internet connection",
+        "A printer",
+        "A keyboard only",
+        "A radio"
+      ],
+      correct: 0
+    },
+    {
+      question: "Which one is a web browser?",
+      options: [
+        "Google Chrome",
+        "Microsoft Word",
+        "WhatsApp",
+        "Calculator"
+      ],
+      correct: 0
+    }
+  ],
+
+  safety: [
+    {
+      question: "What should you do if someone asks for your password?",
+      options: [
+        "Share it with them",
+        "Never share your password",
+        "Send it by SMS",
+        "Post it online"
+      ],
+      correct: 1
+    },
+    {
+      question: "Which password is strongest?",
+      options: [
+        "123456",
+        "password",
+        "MyName2026!",
+        "111111"
+      ],
+      correct: 2
+    },
+    {
+      question: "What should you do if a message looks suspicious?",
+      options: [
+        "Click the link quickly",
+        "Send money",
+        "Do not click and report it",
+        "Share your bank details"
+      ],
+      correct: 2
+    }
+  ],
+
+  email: [
+    {
+      question: "What is an email address?",
+      options: [
+        "A place to send and receive messages online",
+        "A phone number",
+        "A type of computer",
+        "A website"
+      ],
+      correct: 0
+    },
+    {
+      question: "Which one looks like an email address?",
+      options: [
+        "name@example.com",
+        "0712345678",
+        "www.google.com",
+        "Addis Ababa"
+      ],
+      correct: 0
+    },
+    {
+      question: "What should you check before opening an email link?",
+      options: [
+        "Nothing",
+        "If the sender and link are safe",
+        "Only the color",
+        "Only the time"
+      ],
+      correct: 1
+    }
+  ]
+};
+
+
+const jobs = [
+  {
+    title: "Data Entry Assistant",
+    organization: "Local Organization",
+    location: "Addis Ababa",
+    type: "Full-time",
+    deadline: "2026-11-30",
+    link: "https://example.com/apply-data-entry"
+  },
+  {
+    title: "Online English Tutor",
+    organization: "Learning Center",
+    location: "Remote",
+    type: "Part-time",
+    deadline: "2026-12-05",
+    link: "https://example.com/apply-english-tutor"
+  },
+  {
+    title: "Customer Service Representative",
+    organization: "Telecom Company",
+    location: "Addis Ababa",
+    type: "Full-time",
+    deadline: "2026-12-10",
+    link: "https://example.com/apply-customer-service"
+  },
+  {
+    title: "Amharic-English Translator",
+    organization: "Translation Agency",
+    location: "Remote",
+    type: "Freelance",
+    deadline: "2026-12-15",
+    link: "https://example.com/apply-translator"
+  },
+  {
+    title: "Graphic Designer",
+    organization: "Creative Agency",
+    location: "Addis Ababa",
+    type: "Full-time",
+    deadline: "2026-12-20",
+    link: "https://example.com/apply-graphic-designer"
+  },
+  {
+    title: "Social Media Assistant",
+    organization: "Digital Marketing Company",
+    location: "Remote",
+    type: "Part-time",
+    deadline: "2026-12-25",
+    link: "https://example.com/apply-social-media"
+  },
+  {
+    title: "Computer Teacher",
+    organization: "Community Training Center",
+    location: "Addis Ababa",
+    type: "Part-time",
+    deadline: "2026-12-30",
+    link: "https://example.com/apply-computer-teacher"
+  },
+  {
+    title: "Data Entry Assistant",
+    organization: "NGO",
+    location: "Remote",
+    type: "Remote",
+    deadline: "2027-01-05",
+    link: "https://example.com/apply-remote-data-entry"
+  }
+];
+
+
+function normalizeText(text) {
+  return String(text)
+    .toLowerCase()
+    .replace(/[?؟!.።,،]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
+function findCourseAnswer(question) {
+  const questionText = normalizeText(question);
+  const words = questionText.split(" ");
+
+  let bestLesson = null;
+  let bestScore = 0;
+
+  COURSE_DATA.lessons.forEach(lesson => {
+    let score = 0;
+
+    const keywords = lesson.keywords || [];
+
+    keywords.forEach(keyword => {
+      const keywordText = normalizeText(keyword);
+
+      if (!keywordText) {
+        return;
+      }
+
+      const keywordWords = keywordText.split(" ");
+
+      if (keywordWords.every(word => words.includes(word))) {
+        score += 2;
+      }
+    });
+
+    const lessonTitle = normalizeText(lesson.title || "");
+    const titleWords = lessonTitle.split(" ");
+
+    if (
+      titleWords.length > 0 &&
+      titleWords.every(word => words.includes(word))
+    ) {
+      score += 3;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestLesson = lesson;
+    }
+  });
+
+  return bestScore > 0 ? bestLesson : null;
+}
+
+
+function getSimpleAnswer(lesson) {
+  const simple = lesson.simple || {};
+
+  return simple.en || simple.am || "";
+}
+
+
+function getFullAnswer(lesson) {
+  const answer = lesson.answer || {};
+
+  return answer.en || answer.am || "";
+}
+
+
+function getSource(lesson) {
+  const source = lesson.source || {};
+
+  let text = "📚 Source: ";
+
+  text += source.lesson || lesson.title || "Course lesson";
+
+  if (source.section) {
+    text += " — " + source.section;
+  }
+
+  if (source.url) {
+    text += "\n🔗 " + source.url;
+  }
+
+  return text;
+}
+
+
+function saveUserProgress(chatId, lessonTitle) {
+  let completed = userProgress.get(chatId) || [];
+
+  if (!completed.includes(lessonTitle)) {
+    completed.push(lessonTitle);
+  }
+
+  userProgress.set(chatId, completed);
+}
+
+
+function sendHelpRequestToAdmin(chatId, question) {
+  if (!ADMIN_CHAT_ID) {
+    return;
+  }
+
+  bot.sendMessage(
+    ADMIN_CHAT_ID,
+    "🔔 New help request\n\n" +
+    "User ID: " + chatId + "\n" +
+    "Question: " + question
+  );
+}
+
+
+function sendAccommodationRequestToAdmin(chatId, accommodation) {
+  if (!ADMIN_CHAT_ID) {
+    return;
+  }
+
+  bot.sendMessage(
+    ADMIN_CHAT_ID,
+    "📋 Interview accommodation request\n\n" +
+    "User ID: " + chatId + "\n" +
+    "Need: " + accommodation
+  );
+}
+
+
+function sendQuizQuestion(chatId, quizName, questionIndex) {
+  const quiz = quizzes[quizName];
+  const question = quiz[questionIndex];
+
+  const buttons = question.options.map((option, index) => {
+    return [
+      {
+        text: option,
+        callback_data:
+          "quiz_" + quizName + "_" + questionIndex + "_" + index
+      }
+    ];
+  });
+
+  bot.sendMessage(
+    chatId,
+    "Question " + (questionIndex + 1) + " of " + quiz.length + "\n\n" +
+    question.question,
+    {
+      reply_markup: {
+        inline_keyboard: buttons
+      }
+    }
+  );
+}
+
+
+async function askGroq(question) {
+  if (!GROQ_API_KEY) {
+    console.error("GROQ_API_KEY is missing in Railway Variables.");
+    return null;
+  }
+
+  const cleanKey = GROQ_API_KEY.trim();
+
+  const response = await fetch(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + cleanKey
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-oss-20b",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a simple learning assistant for beginners. " +
+              "Answer clearly in simple English. " +
+              "If the learner writes in Amharic, answer in Amharic. " +
+              "Keep the answer short, helpful, and easy to understand. " +
+              "Do not give medical, legal, or financial advice."
+          },
+          {
+            role: "user",
+            content: question
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 500
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    console.error(
+      "Groq API error:",
+      response.status,
+      errorText
+    );
+
+    throw new Error(
+      "Groq API error: " + response.status + " — " + errorText
+    );
+  }
+
+  const data = await response.json();
+
+  if (!data.choices || !data.choices[0]) {
+    console.error("Groq returned no answer:", data);
+
+    return null;
+  }
+
+  return data.choices[0].message.content.trim();
+}
+
+
+async function sendSms(to, message) {
+  if (!AT_USERNAME || !AT_API_KEY) {
+    console.error("Africa's Talking username or API key is missing.");
+    return;
+  }
+
+  const body = new URLSearchParams();
+  body.append("username", AT_USERNAME);
+  body.append("to", to);
+  body.append("message", message);
+
+  if (AT_SENDER_ID) {
+    body.append("from", AT_SENDER_ID);
+  }
+
+  const response = await fetch(
+    "https://api.africastalking.com/version1/messaging",
+    {
+      method: "POST",
+      headers: {
+        "apiKey": AT_API_KEY,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+      },
+      body: body
+    }
+  );
+
+  const data = await response.text();
+
+  console.log("Africa's Talking response:", data);
+}
+
+
+app.post("/sms", async (req, res) => {
+  const incomingMessage = req.body.text || "";
+  const sender = req.body.from || "";
+
+  const lesson = findCourseAnswer(incomingMessage);
+
+  let reply;
+
+  if (lesson) {
+    reply = getSimpleAnswer(lesson);
+  } else {
+    reply =
+      "Sorry, I can answer Internet Basics questions by SMS. " +
+      "For more help, use our Telegram bot.";
+  }
+
+  console.log("SMS received:", incomingMessage);
+  console.log("SMS reply:", reply);
+
+  if (sender && reply) {
+    try {
+      await sendSms(sender, reply);
+    } catch (error) {
+      console.error("SMS send failed:", error);
+    }
+  }
+
+  res.status(200).send("OK");
 });
 
-app.post('/sms', async (req, res) => {
-  try {
-    const incomingMessage = req.body;
 
-    const fromNumber = incomingMessage.from;
-    const messageText = incomingMessage.text;
+bot.on("message", async message => {
+  const chatId = message.chat.id;
+  const text = message.text;
 
-    console.log('SMS received:', messageText);
+  if (!text) {
+    return;
+  }
 
-    if (!messageText || !fromNumber) {
-      return res.status(200).send('OK');
+  const normalText = text.toLowerCase().trim();
+
+  stats.totalQuestions += 1;
+
+  console.log("BOT VERSION: v8 SMS support");
+  console.log("Received message:", text);
+
+  if (normalText === "/start") {
+    bot.sendMessage(
+      chatId,
+      "Hello! I am your Learning Assistant.\n\n" +
+      "You can ask course questions or general questions.\n\n" +
+      "Commands:\n" +
+      "• /help — request human help\n" +
+      "• /progress — see your progress\n" +
+      "• /quiz downloading — take a quiz\n" +
+      "• /quiz internet — take a quiz\n" +
+      "• /quiz safety — take a quiz\n" +
+      "• /quiz email — take a quiz\n" +
+      "• /jobs — see job alerts\n" +
+      "• /accommodation — request interview support\n" +
+      "• /teacher-stats — teacher analytics\n\n" +
+      "You can also ask course questions by SMS.\n\n" +
+      "Examples:\n" +
+      "• What is downloading?\n" +
+      "• What is the internet?\n" +
+      "• What is photosynthesis?\n" +
+      "• What is the capital of Kenya?"
+    );
+
+    return;
+  }
+
+  if (normalText === "/ping") {
+    bot.sendMessage(chatId, "PONG v8");
+    return;
+  }
+
+  if (normalText === "/help") {
+    userState.set(chatId, "waiting_help_question");
+
+    bot.sendMessage(
+      chatId,
+      "Please write the question or problem you need help with.\n\n" +
+      "A teacher or support person will receive your request."
+    );
+
+    return;
+  }
+
+  if (normalText === "/progress") {
+    const completed = userProgress.get(chatId) || [];
+
+    if (completed.length === 0) {
+      bot.sendMessage(
+        chatId,
+        "📚 You have not completed any lessons yet.\n\n" +
+        "Ask a course question, then tap:\n" +
+        "✅ Yes, show full answer"
+      );
+
+      return;
     }
 
-    const question = messageText.toLowerCase().trim();
+    const total = COURSE_DATA.lessons.length;
 
-    let reply =
-      'Sorry, I can answer Internet Basics questions by SMS. Try asking: What is downloading?';
+    bot.sendMessage(
+      chatId,
+      "📚 Your progress\n\n" +
+      completed.map(title => "✅ " + title).join("\n") +
+      "\n\nCompleted: " + completed.length + " of " + total + " lessons"
+    );
 
-    if (lessons[question]) {
-      reply = lessons[question];
-    } else {
-      const matchedKey = Object.keys(lessons).find((key) => {
-        return question.includes(key.replace('?', '').trim());
+    return;
+  }
+
+  if (normalText.startsWith("/quiz")) {
+    const parts = text.split(" ");
+    const quizName = parts[1];
+
+    if (!quizName || !quizzes[quizName]) {
+      bot.sendMessage(
+        chatId,
+        "Please choose a quiz:\n\n" +
+        "• /quiz downloading\n" +
+        "• /quiz internet\n" +
+        "• /quiz safety\n" +
+        "• /quiz email"
+      );
+
+      return;
+    }
+
+    userQuiz.set(chatId, {
+      name: quizName,
+      questionIndex: 0,
+      score: 0
+    });
+
+    sendQuizQuestion(chatId, quizName, 0);
+
+    return;
+  }
+
+  if (normalText === "/jobs") {
+    let jobText = "💼 Job Alerts\n\n";
+    jobText += "Tap a job title to see details.\n\n";
+
+    const jobButtons = jobs.map((job, index) => {
+      return [
+        {
+          text: (index + 1) + ". " + job.title,
+          callback_data: "job_" + index
+        }
+      ];
+    });
+
+    bot.sendMessage(
+      chatId,
+      jobText,
+      {
+        reply_markup: {
+          inline_keyboard: jobButtons
+        }
+      }
+    );
+
+    return;
+  }
+
+  if (normalText === "/accommodation") {
+    userState.set(chatId, "waiting_accommodation");
+
+    bot.sendMessage(
+      chatId,
+      "What accommodation do you need for an interview?\n\n" +
+      "1. Extra time\n" +
+      "2. Screen reader support\n" +
+      "3. Sign language interpreter\n" +
+      "4. Quiet interview space\n" +
+      "5. Written questions\n" +
+      "6. Other\n\n" +
+      "Please reply with a number."
+    );
+
+    return;
+  }
+
+  if (normalText === "/teacher-stats") {
+    let topicText = "No course questions yet.";
+
+    const topics = Object.keys(stats.topicCounts);
+
+    if (topics.length > 0) {
+      const sortedTopics = topics.sort((a, b) => {
+        return stats.topicCounts[b] - stats.topicCounts[a];
       });
 
-      if (matchedKey) {
-        reply = lessons[matchedKey];
+      topicText = sortedTopics
+        .slice(0, 5)
+        .map(topic => {
+          return "• " + topic + ": " + stats.topicCounts[topic];
+        })
+        .join("\n");
+    }
+
+    bot.sendMessage(
+      chatId,
+      "📊 Teacher Analytics\n\n" +
+      "Total questions: " + stats.totalQuestions + "\n" +
+      "Course questions: " + stats.courseQuestions + "\n" +
+      "AI questions: " + stats.aiQuestions + "\n" +
+      "Help requests: " + stats.helpRequests + "\n" +
+      "Accommodation requests: " + stats.accommodationRequests + "\n" +
+      "Quiz completions: " + stats.quizCompletions + "\n\n" +
+      "Most asked topics:\n" +
+      topicText
+    );
+
+    return;
+  }
+
+  const currentState = userState.get(chatId);
+
+  if (currentState === "waiting_help_question") {
+    userState.delete(chatId);
+
+    stats.helpRequests += 1;
+
+    sendHelpRequestToAdmin(chatId, text);
+
+    bot.sendMessage(
+      chatId,
+      "✅ Your help request has been sent.\n\n" +
+      "A teacher or support person will contact you soon."
+    );
+
+    return;
+  }
+
+  if (currentState === "waiting_accommodation") {
+    const accommodationOptions = [
+      "Extra time",
+      "Screen reader support",
+      "Sign language interpreter",
+      "Quiet interview space",
+      "Written questions",
+      "Other"
+    ];
+
+    const choice = Number(text.trim());
+    const accommodation = accommodationOptions[choice - 1];
+
+    if (!accommodation) {
+      bot.sendMessage(
+        chatId,
+        "Please reply with a number from 1 to 6."
+      );
+
+      return;
+    }
+
+    userState.delete(chatId);
+
+    stats.accommodationRequests += 1;
+
+    sendAccommodationRequestToAdmin(chatId, accommodation);
+
+    bot.sendMessage(
+      chatId,
+      "✅ Your accommodation request has been sent.\n\n" +
+      "Need: " + accommodation
+    );
+
+    return;
+  }
+
+  const lesson = findCourseAnswer(text);
+
+  if (lesson) {
+    stats.courseQuestions += 1;
+
+    const topic = lesson.title || "Unknown";
+
+    if (!stats.topicCounts[topic]) {
+      stats.topicCounts[topic] = 0;
+    }
+
+    stats.topicCounts[topic] += 1;
+
+    userLessons.set(chatId, lesson);
+
+    const simpleAnswer = getSimpleAnswer(lesson);
+    const source = getSource(lesson);
+
+    bot.sendMessage(
+      chatId,
+      simpleAnswer +
+      "\n\n" +
+      source +
+      "\n\nWould you like the full explanation?",
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "✅ Yes, show full answer",
+                callback_data: "full_answer"
+              }
+            ]
+          ]
+        }
       }
+    );
+
+    return;
+  }
+
+  stats.aiQuestions += 1;
+
+  bot.sendMessage(chatId, "🔎 Thinking...");
+
+  try {
+    const groqAnswer = await askGroq(text);
+
+    if (groqAnswer) {
+      bot.sendMessage(
+        chatId,
+        groqAnswer +
+        "\n\n🤖 Answer generated by Groq."
+      );
+
+      return;
     }
 
-    console.log('SMS reply:', reply);
-
-    let recipient = fromNumber.toString().trim();
-
-    if (!recipient.startsWith('+')) {
-      recipient = '+' + recipient;
-    }
-
-    const smsOptions = {
-      to: [recipient],
-      message: reply
-    };
-
-    if (atSenderId) {
-      smsOptions.from = atSenderId;
-    }
-
-    try {
-      const response = await sms.send(smsOptions);
-
-      console.log("Africa's Talking response:", JSON.stringify(response));
-    } catch (smsError) {
-      console.error('SMS send error:', smsError.message);
-
-      if (smsError.response && smsError.response.data) {
-        console.error(
-          'SMS send error details:',
-          JSON.stringify(smsError.response.data)
-        );
-      }
-    }
-
-    res.status(200).send('OK');
+    bot.sendMessage(
+      chatId,
+      "I can help with questions from the Internet Basics course.\n\n" +
+      "Try asking:\n" +
+      "• What is downloading?\n" +
+      "• What is the internet?\n" +
+      "• What is a hyperlink?\n" +
+      "• How can I stay safe online?"
+    );
   } catch (error) {
-    console.error('SMS webhook error:', error.message);
-    res.status(200).send('OK');
+    console.error(
+      "Groq answer failed:",
+      error.message || error
+    );
+
+    bot.sendMessage(
+      chatId,
+      "Sorry, I could not answer that question right now. Please try again."
+    );
   }
 });
 
-// ==============================
-// START SERVER
-// ==============================
-const PORT = process.env.PORT || 8080;
+
+bot.on("callback_query", async callbackQuery => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data === "full_answer") {
+    const lesson = userLessons.get(chatId);
+
+    if (!lesson) {
+      bot.sendMessage(
+        chatId,
+        "Please first ask a course question, such as: What is downloading?"
+      );
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    saveUserProgress(chatId, lesson.title);
+
+    const fullAnswer = getFullAnswer(lesson);
+    const source = getSource(lesson);
+
+    bot.sendMessage(
+      chatId,
+      fullAnswer + "\n\n" + source
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id, {
+      text: "Full answer sent"
+    });
+
+    return;
+  }
+
+  if (data.startsWith("job_")) {
+    const jobIndex = Number(data.replace("job_", ""));
+
+    const job = jobs[jobIndex];
+
+    if (!job) {
+      bot.sendMessage(chatId, "Job not found.");
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    const jobDetails =
+      "💼 " + job.title + "\n\n" +
+      "Organization: " + job.organization + "\n" +
+      "Location: " + job.location + "\n" +
+      "Type: " + job.type + "\n" +
+      "Deadline: " + job.deadline + "\n\n" +
+      "Apply here:\n" +
+      job.link;
+
+    bot.sendMessage(chatId, jobDetails);
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data.startsWith("quiz_")) {
+    const parts = data.split("_");
+    const quizName = parts[1];
+    const questionIndex = Number(parts[2]);
+    const selectedOption = Number(parts[3]);
+
+    const quiz = quizzes[quizName];
+    const question = quiz[questionIndex];
+
+    const userQuizData = userQuiz.get(chatId);
+
+    if (!userQuizData) {
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    if (selectedOption === question.correct) {
+      userQuizData.score += 1;
+
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text: "✅ Correct!"
+      });
+    } else {
+      bot.answerCallbackQuery(callbackQuery.id, {
+        text:
+          "❌ Incorrect. Correct answer: " +
+          question.options[question.correct]
+      });
+    }
+
+    const nextQuestion = questionIndex + 1;
+
+    if (nextQuestion < quiz.length) {
+      userQuiz.set(chatId, userQuizData);
+
+      sendQuizQuestion(chatId, quizName, nextQuestion);
+    } else {
+      userQuiz.delete(chatId);
+
+      stats.quizCompletions += 1;
+
+      bot.sendMessage(
+        chatId,
+        "🎉 Quiz finished!\n\n" +
+        "Your score: " + userQuizData.score + " out of " + quiz.length + "\n\n" +
+        "Try another quiz:\n" +
+        "• /quiz downloading\n" +
+        "• /quiz internet\n" +
+        "• /quiz safety\n" +
+        "• /quiz email"
+      );
+    }
+  }
+});
+
+
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`SMS webhook is running on port ${PORT}`);
+  console.log("SMS webhook is running on port " + PORT);
 });
+
+
+console.log("Telegram bot is running.");
