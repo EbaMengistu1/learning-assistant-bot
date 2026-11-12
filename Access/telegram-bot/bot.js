@@ -173,15 +173,65 @@ const jobs = [
     title: "Data Entry Assistant",
     organization: "Local Organization",
     location: "Addis Ababa",
+    type: "Full-time",
     deadline: "2026-11-30",
-    link: "https://example.com/apply"
+    link: "https://example.com/apply-data-entry"
   },
   {
     title: "Online English Tutor",
     organization: "Learning Center",
     location: "Remote",
+    type: "Part-time",
     deadline: "2026-12-05",
-    link: "https://example.com/apply"
+    link: "https://example.com/apply-english-tutor"
+  },
+  {
+    title: "Customer Service Representative",
+    organization: "Telecom Company",
+    location: "Addis Ababa",
+    type: "Full-time",
+    deadline: "2026-12-10",
+    link: "https://example.com/apply-customer-service"
+  },
+  {
+    title: "Amharic-English Translator",
+    organization: "Translation Agency",
+    location: "Remote",
+    type: "Freelance",
+    deadline: "2026-12-15",
+    link: "https://example.com/apply-translator"
+  },
+  {
+    title: "Graphic Designer",
+    organization: "Creative Agency",
+    location: "Addis Ababa",
+    type: "Full-time",
+    deadline: "2026-12-20",
+    link: "https://example.com/apply-graphic-designer"
+  },
+  {
+    title: "Social Media Assistant",
+    organization: "Digital Marketing Company",
+    location: "Remote",
+    type: "Part-time",
+    deadline: "2026-12-25",
+    link: "https://example.com/apply-social-media"
+  },
+  {
+    title: "Computer Teacher",
+    organization: "Community Training Center",
+    location: "Addis Ababa",
+    type: "Part-time",
+    deadline: "2026-12-30",
+    link: "https://example.com/apply-computer-teacher"
+  },
+  {
+    title: "Data Entry Assistant",
+    organization: "NGO",
+    location: "Remote",
+    type: "Remote",
+    deadline: "2027-01-05",
+    link: "https://example.com/apply-remote-data-entry"
   }
 ];
 
@@ -519,20 +569,27 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/jobs") {
-    console.log("JOBS COMMAND RECEIVED");
-
     let jobText = "💼 Job Alerts\n\n";
+    jobText += "Tap a job title to see details.\n\n";
 
-    jobs.forEach((job, index) => {
-      jobText +=
-        (index + 1) + ". " + job.title + "\n" +
-        "Organization: " + job.organization + "\n" +
-        "Location: " + job.location + "\n" +
-        "Deadline: " + job.deadline + "\n" +
-        "Apply: " + job.link + "\n\n";
+    const jobButtons = jobs.map((job, index) => {
+      return [
+        {
+          text: (index + 1) + ". " + job.title,
+          callback_data: "job_" + index
+        }
+      ];
     });
 
-    bot.sendMessage(chatId, jobText);
+    bot.sendMessage(
+      chatId,
+      jobText,
+      {
+        reply_markup: {
+          inline_keyboard: jobButtons
+        }
+      }
+    );
 
     return;
   }
@@ -712,18 +769,30 @@ bot.on("callback_query", async callbackQuery => {
     return;
   }
 
-  if (data.startsWith("quiz_")) {
-    const parts = data.split("_");
-    const quizName = parts[1];
-    const questionIndex = Number(parts[2]);
-    const selectedOption = Number(parts[3]);
+  if (data.startsWith("job_")) {
+      const jobIndex = Number(data.replace("job_", ""));
 
-    const quiz = quizzes[quizName];
-    const question = quiz[questionIndex];
+      const job = jobs[jobIndex];
 
-    const userQuizData = userQuiz.get(chatId);
+      if (!job) {
+        bot.sendMessage(chatId, "Job not found.");
 
-    if (!userQuizData) {
+        bot.answerCallbackQuery(callbackQuery.id);
+
+        return;
+      }
+
+      const jobDetails =
+        "💼 " + job.title + "\n\n" +
+        "Organization: " + job.organization + "\n" +
+        "Location: " + job.location + "\n" +
+        "Type: " + job.type + "\n" +
+        "Deadline: " + job.deadline + "\n\n" +
+        "Apply here:\n" +
+        job.link;
+
+      bot.sendMessage(chatId, jobDetails);
+
       bot.answerCallbackQuery(callbackQuery.id);
 
       return;
