@@ -903,7 +903,7 @@ if (normalText === "/teacher" || normalText === "/teacher-stats") {
       "Sorry, I could not answer that question right now. Please try again."
     );
   }
-});
+}
 
 
 bot.on("callback_query", async callbackQuery => {
