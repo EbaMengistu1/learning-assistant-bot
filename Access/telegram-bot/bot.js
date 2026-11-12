@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const express = require("express");
 
-console.log("BOT VERSION: v16 Track 3 Accessible Learning and Employment Support");
+console.log("BOT VERSION: v17 Final Track 3 Learning Assistant");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -47,6 +47,7 @@ const userProgress = new Map();
 const userQuiz = new Map();
 const userState = new Map();
 const smsWaiting = new Map();
+const userQuestionLanguage = new Map();
 
 const stats = {
   totalQuestions: 0,
@@ -261,6 +262,11 @@ function isAdmin(chatId) {
   return String(chatId) === String(ADMIN_CHAT_ID);
 }
 
+function isAmharicQuestion(text) {
+  const amharicLetters = text.match(/[\u1200-\u137F]/g);
+  return Boolean(amharicLetters && amharicLetters.length > 0);
+}
+
 function normalizeText(text) {
   return String(text)
     .toLowerCase()
@@ -316,13 +322,11 @@ function findCourseAnswer(question) {
 
 function getSimpleAnswer(lesson) {
   const simple = lesson.simple || {};
-
   return simple.en || simple.am || "";
 }
 
 function getFullAnswer(lesson) {
   const answer = lesson.answer || {};
-
   return answer.en || answer.am || "";
 }
 
@@ -330,7 +334,6 @@ function getSource(lesson) {
   const source = lesson.source || {};
 
   let text = "📚 Source: ";
-
   text += source.lesson || lesson.title || "Course lesson";
 
   if (source.section) {
@@ -357,17 +360,13 @@ function saveUserProgress(chatId, lessonTitle) {
 function getNextLesson(chatId) {
   const completed = userProgress.get(chatId) || [];
 
-  const nextLesson = COURSE_DATA.lessons.find(lesson => {
+  return COURSE_DATA.lessons.find(lesson => {
     return !completed.includes(lesson.title);
   });
-
-  return nextLesson;
 }
 
 function sendHelpRequestToAdmin(chatId, question) {
-  if (!ADMIN_CHAT_ID) {
-    return;
-  }
+  if (!ADMIN_CHAT_ID) return;
 
   bot.sendMessage(
     ADMIN_CHAT_ID,
@@ -378,9 +377,7 @@ function sendHelpRequestToAdmin(chatId, question) {
 }
 
 function sendAccommodationRequestToAdmin(chatId, accommodation) {
-  if (!ADMIN_CHAT_ID) {
-    return;
-  }
+  if (!ADMIN_CHAT_ID) return;
 
   bot.sendMessage(
     ADMIN_CHAT_ID,
@@ -391,9 +388,7 @@ function sendAccommodationRequestToAdmin(chatId, accommodation) {
 }
 
 function sendScreenShareRequestToAdmin(chatId, meetingLink) {
-  if (!ADMIN_CHAT_ID) {
-    return;
-  }
+  if (!ADMIN_CHAT_ID) return;
 
   bot.sendMessage(
     ADMIN_CHAT_ID,
@@ -430,48 +425,69 @@ function sendQuizQuestion(chatId, quizName, questionIndex) {
 }
 
 function sendQuizMenu(chatId) {
-  const quizButtons = [
-    [
-      {
-        text: "📥 Downloading Quiz",
-        callback_data: "start_quiz_downloading"
+  bot.sendMessage(
+    chatId,
+    "📝 Choose a quiz:",
+
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "📥 Downloading Quiz",
+              callback_data: "start_quiz_downloading"
+            }
+          ],
+          [
+            {
+              text: "🌐 Internet Quiz",
+              callback_data: "start_quiz_internet"
+            }
+          ],
+          [
+            {
+              text: "🛡️ Online Safety Quiz",
+              callback_data: "start_quiz_safety"
+            }
+          ],
+          [
+            {
+              text: "📧 Email Quiz",
+              callback_data: "start_quiz_email"
+            }
+          ]
+        ]
       }
-    ],
-    [
-      {
-        text: "🌐 Internet Quiz",
-        callback_data: "start_quiz_internet"
-      }
-    ],
-    [
-      {
-        text: "🛡️ Online Safety Quiz",
-        callback_data: "start_quiz_safety"
-      }
-    ],
-    [
-      {
-        text: "📧 Email Quiz",
-        callback_data: "start_quiz_email"
-      }
-    ]
-  ];
+    }
+  );
+}
+
+function sendLessonMenu(chatId) {
+  const lessonButtons = COURSE_DATA.lessons
+    .slice(0, 10)
+    .map((lesson, index) => {
+      return [
+        {
+          text: "📚 " + lesson.title,
+          callback_data: "lesson_" + index
+        }
+      ];
+    });
 
   bot.sendMessage(
     chatId,
-    "Choose a quiz:",
+    "📚 Choose a lesson:\n\n" +
+    "You can also type your question in Amharic or English.",
+
     {
       reply_markup: {
-        inline_keyboard: quizButtons
+        inline_keyboard: lessonButtons
       }
     }
   );
 }
 
 function sendJobAlerts(chatId) {
-  let jobText = "💼 Job Alerts\n\n";
-  jobText += "Tap a job title to see details.\n\n";
-
   const jobButtons = jobs.map((job, index) => {
     return [
       {
@@ -483,7 +499,9 @@ function sendJobAlerts(chatId) {
 
   bot.sendMessage(
     chatId,
-    jobText,
+    "💼 Job Alerts\n\n" +
+    "Tap a job title to see details.",
+
     {
       reply_markup: {
         inline_keyboard: jobButtons
@@ -602,7 +620,6 @@ async function askGroq(question) {
 
   if (!data.choices || !data.choices[0]) {
     console.error("Groq returned no answer:", data);
-
     return null;
   }
 
@@ -669,11 +686,24 @@ app.post("/sms", async (req, res) => {
   let reply;
 
   if (lesson) {
-    reply = getSimpleAnswer(lesson);
+    const simple = lesson.simple || {};
+
+    if (isAmharicQuestion(incomingMessage)) {
+      reply =
+        (simple.am || "") +
+        "\n\n🇬🇧 English:\n" +
+        (simple.en || "");
+    } else {
+      reply =
+        (simple.en || "") +
+        "\n\n🇪🇹 አማርኛ:\n" +
+        (simple.am || "");
+    }
   } else {
     reply =
-      "Sorry, I can answer Internet Basics questions by SMS. " +
-      "For more help, use our Telegram bot.";
+      "Sorry, I can answer Internet Basics questions by SMS.\n\n" +
+      "For more help, use our Telegram bot.\n\n" +
+      "ለበለጠ እርዳታ የቴሌግራም ቦታችንን ይጠቀሙ።";
   }
 
   console.log("SMS received:", incomingMessage);
@@ -695,16 +725,7 @@ bot.on("callback_query", async callbackQuery => {
   const data = callbackQuery.data;
 
   if (data === "student_learning") {
-    bot.sendMessage(
-      chatId,
-      "📚 What would you like to learn today?\n\n" +
-      "Try asking:\n" +
-      "• What is downloading?\n" +
-      "• What is the internet?\n" +
-      "• What is online safety?\n" +
-      "• What is email?\n\n" +
-      "You can also take a quiz with /quiz."
-    );
+    sendLessonMenu(chatId);
 
     bot.answerCallbackQuery(callbackQuery.id);
 
@@ -905,17 +926,57 @@ bot.on("callback_query", async callbackQuery => {
     return;
   }
 
-  if (data === "track3_course_question") {
+  if (data === "track3_menu") {
     bot.sendMessage(
       chatId,
-      "📚 Ask your course question in Amharic or English.\n\n" +
-      "Examples:\n" +
-      "• What is downloading?\n" +
-      "• ማውረድ ምን ማለት ነው?\n" +
-      "• What is the internet?\n" +
-      "• What is online safety?\n\n" +
-      "I will show the answer and its source."
+      "🎯 Track 3: Accessible Learning and Employment Support\n\n" +
+      "Choose what you need:",
+
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "📚 Ask a Course Question",
+                callback_data: "track3_course_question"
+              }
+            ],
+            [
+              {
+                text: "🙋 Need a Person / Help",
+                callback_data: "track3_need_person"
+              }
+            ],
+            [
+              {
+                text: "🖥️ Share My Screen",
+                callback_data: "track3_share_screen"
+              }
+            ],
+            [
+              {
+                text: "💼 Job Alerts",
+                callback_data: "track3_jobs"
+              }
+            ],
+            [
+              {
+                text: "📋 Interview Support",
+                callback_data: "track3_interview_support"
+              }
+            ]
+          ]
+        }
+      }
     );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
+  if (data === "track3_course_question") {
+    sendLessonMenu(chatId);
 
     bot.answerCallbackQuery(callbackQuery.id);
 
@@ -941,9 +1002,7 @@ bot.on("callback_query", async callbackQuery => {
     bot.sendMessage(
       chatId,
       "🖥️ Screen sharing is optional.\n\n" +
-      "You can choose:\n\n" +
-      "1. Yes, I want to share my screen\n" +
-      "2. No, I do not want to share my screen",
+      "You can choose:",
 
       {
         reply_markup: {
@@ -1014,6 +1073,61 @@ bot.on("callback_query", async callbackQuery => {
     return;
   }
 
+  if (data.startsWith("lesson_")) {
+    const lessonIndex = Number(data.replace("lesson_", ""));
+    const lesson = COURSE_DATA.lessons[lessonIndex];
+
+    if (!lesson) {
+      bot.sendMessage(chatId, "Lesson not found.");
+
+      bot.answerCallbackQuery(callbackQuery.id);
+
+      return;
+    }
+
+    userLessons.set(chatId, lesson);
+
+    const simple = lesson.simple || {};
+    const englishSimple = simple.en || "";
+    const amharicSimple = simple.am || "";
+
+    const source = getSource(lesson);
+
+    bot.sendMessage(
+      chatId,
+      "📚 " + lesson.title + "\n\n" +
+      "🇬🇧 English:\n" +
+      englishSimple +
+      "\n\n🇪🇹 አማርኛ:\n" +
+      amharicSimple +
+      "\n\n" +
+      source,
+
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "✅ Show Full Explanation",
+                callback_data: "full_answer"
+              }
+            ],
+            [
+              {
+                text: "📝 Take Quiz",
+                callback_data: "start_quiz_downloading"
+              }
+            ]
+          ]
+        }
+      }
+    );
+
+    bot.answerCallbackQuery(callbackQuery.id);
+
+    return;
+  }
+
   if (data.startsWith("start_quiz_")) {
     const quizName = data.replace("start_quiz_", "");
 
@@ -1044,7 +1158,7 @@ bot.on("callback_query", async callbackQuery => {
     if (!lesson) {
       bot.sendMessage(
         chatId,
-        "Please first ask a course question, such as: What is downloading?"
+        "Please first choose or ask about a lesson."
       );
 
       bot.answerCallbackQuery(callbackQuery.id);
@@ -1054,7 +1168,26 @@ bot.on("callback_query", async callbackQuery => {
 
     saveUserProgress(chatId, lesson.title);
 
-    const fullAnswer = getFullAnswer(lesson);
+    const answer = lesson.answer || {};
+    const englishFull = answer.en || "";
+    const amharicFull = answer.am || "";
+
+    const language = userQuestionLanguage.get(chatId) || "english";
+
+    let fullAnswer;
+
+    if (language === "amharic") {
+      fullAnswer =
+        amharicFull +
+        "\n\n🇬🇧 English:\n" +
+        englishFull;
+    } else {
+      fullAnswer =
+        englishFull +
+        "\n\n🇪🇹 አማርኛ:\n" +
+        amharicFull;
+    }
+
     const source = getSource(lesson);
 
     bot.sendMessage(
@@ -1071,7 +1204,6 @@ bot.on("callback_query", async callbackQuery => {
 
   if (data.startsWith("job_")) {
     const jobIndex = Number(data.replace("job_", ""));
-
     const job = jobs[jobIndex];
 
     if (!job) {
@@ -1082,16 +1214,16 @@ bot.on("callback_query", async callbackQuery => {
       return;
     }
 
-    const jobDetails =
+    bot.sendMessage(
+      chatId,
       "💼 " + job.title + "\n\n" +
       "Organization: " + job.organization + "\n" +
       "Location: " + job.location + "\n" +
       "Type: " + job.type + "\n" +
       "Deadline: " + job.deadline + "\n\n" +
       "Apply here:\n" +
-      job.link;
-
-    bot.sendMessage(chatId, jobDetails);
+      job.link
+    );
 
     bot.answerCallbackQuery(callbackQuery.id);
 
@@ -1144,11 +1276,7 @@ bot.on("callback_query", async callbackQuery => {
         chatId,
         "🎉 Quiz finished!\n\n" +
         "Your score: " + userQuizData.score + " out of " + quiz.length + "\n\n" +
-        "Try another quiz:\n" +
-        "• /quiz downloading\n" +
-        "• /quiz internet\n" +
-        "• /quiz safety\n" +
-        "• /quiz email"
+        "Try another quiz with /quiz."
       );
     }
   }
@@ -1168,7 +1296,6 @@ bot.on("message", async message => {
 
   console.log("Received message:", text);
 
-  // Save every Telegram user for announcements
   botUsers.set(chatId, {
     chatId: chatId,
     firstName: message.from.first_name || "Learner",
@@ -1290,15 +1417,7 @@ bot.on("message", async message => {
     bot.sendMessage(
       chatId,
       "🎯 Track 3: Accessible Learning and Employment Support\n\n" +
-      "This tool helps students learn, get support, and prepare for work.\n\n" +
-      "Features:\n" +
-      "• Ask a course question in Amharic or English\n" +
-      "• Get answers from approved course material\n" +
-      "• See the source of each answer\n" +
-      "• Request help from a teacher with one button\n" +
-      "• Choose whether to share your screen\n" +
-      "• Get job alerts\n" +
-      "• Request interview support",
+      "Choose what you need:",
 
       {
         reply_markup: {
@@ -1341,7 +1460,7 @@ bot.on("message", async message => {
     return;
   }
 
-  // ---------- ADMIN COMMANDS ----------
+  // ---------- ADMIN ----------
 
   if (normalText === "/admin") {
     if (!isAdmin(chatId)) {
@@ -1444,7 +1563,7 @@ bot.on("message", async message => {
   // ---------- NORMAL COMMANDS ----------
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v16");
+    bot.sendMessage(chatId, "PONG v17");
     return;
   }
 
@@ -1468,7 +1587,7 @@ bot.on("message", async message => {
 
     bot.sendMessage(
       chatId,
-      "Please write the question or problem you need help with.\n\n" +
+      "🙋 Please write the question or problem you need help with.\n\n" +
       "A teacher or support person will receive your request."
     );
 
@@ -1483,7 +1602,7 @@ bot.on("message", async message => {
         chatId,
         "📚 You have not completed any lessons yet.\n\n" +
         "Ask a course question, then tap:\n" +
-        "✅ Yes, show full answer"
+        "✅ Show Full Explanation"
       );
 
       return;
@@ -1523,6 +1642,12 @@ bot.on("message", async message => {
 
   if (normalText === "/jobs") {
     sendJobAlerts(chatId);
+
+    return;
+  }
+
+  if (normalText === "/lessons") {
+    sendLessonMenu(chatId);
 
     return;
   }
@@ -1713,6 +1838,8 @@ bot.on("message", async message => {
     return;
   }
 
+  // ---------- COURSE ANSWERS ----------
+
   const lesson = findCourseAnswer(text);
 
   if (lesson) {
@@ -1728,7 +1855,29 @@ bot.on("message", async message => {
 
     userLessons.set(chatId, lesson);
 
-    const simpleAnswer = getSimpleAnswer(lesson);
+    userQuestionLanguage.set(
+      chatId,
+      isAmharicQuestion(text) ? "amharic" : "english"
+    );
+
+    const simple = lesson.simple || {};
+    const englishSimple = simple.en || "";
+    const amharicSimple = simple.am || "";
+
+    let simpleAnswer;
+
+    if (isAmharicQuestion(text)) {
+      simpleAnswer =
+        amharicSimple +
+        "\n\n🇬🇧 English:\n" +
+        englishSimple;
+    } else {
+      simpleAnswer =
+        englishSimple +
+        "\n\n🇪🇹 አማርኛ:\n" +
+        amharicSimple;
+    }
+
     const source = getSource(lesson);
 
     bot.sendMessage(
@@ -1737,12 +1886,13 @@ bot.on("message", async message => {
       "\n\n" +
       source +
       "\n\nWould you like the full explanation?",
+
       {
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: "✅ Yes, show full answer",
+                text: "✅ Show Full Explanation",
                 callback_data: "full_answer"
               }
             ]
@@ -1753,6 +1903,8 @@ bot.on("message", async message => {
 
     return;
   }
+
+  // ---------- AI ANSWER ----------
 
   stats.aiQuestions += 1;
 
@@ -1811,6 +1963,7 @@ function sendStartMenu(chatId, message) {
       "• /teacher — view learning analytics\n" +
       "• /track3 — Track 3 learning and employment support\n\n" +
       "Student features:\n" +
+      "• /lessons — choose a lesson\n" +
       "• /help — request human help\n" +
       "• /progress — see your progress\n" +
       "• /quiz — choose a quiz\n" +
@@ -1818,8 +1971,8 @@ function sendStartMenu(chatId, message) {
       "• /accommodation — request interview support\n\n" +
       "Examples:\n" +
       "• What is downloading?\n" +
+      "• ማውረድ ምን ማለት ነው?\n" +
       "• What is the internet?\n" +
-      "• What is photosynthesis?\n" +
       "• What is the capital of Kenya?";
 
     bot.sendMessage(
@@ -1857,8 +2010,9 @@ function sendStartMenu(chatId, message) {
 
   menuText +=
     "👨‍🎓 Student Learning Panel\n\n" +
-    "You can learn Internet Basics, ask questions, take quizzes, get reminders, and find job alerts.\n\n" +
+    "You can learn Internet Basics, ask questions in Amharic or English, take quizzes, get reminders, and find job alerts.\n\n" +
     "Commands:\n" +
+    "• /lessons — choose a lesson\n" +
     "• /help — request human help\n" +
     "• /progress — see your progress\n" +
     "• /quiz — choose a quiz\n" +
@@ -1867,8 +2021,8 @@ function sendStartMenu(chatId, message) {
     "• /track3 — Track 3 learning and employment support\n\n" +
     "Examples:\n" +
     "• What is downloading?\n" +
+    "• ማውረድ ምን ማለት ነው?\n" +
     "• What is the internet?\n" +
-    "• What is photosynthesis?\n" +
     "• What is the capital of Kenya?";
 
   bot.sendMessage(
