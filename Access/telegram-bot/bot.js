@@ -2,16 +2,15 @@ const TelegramBot = require("node-telegram-bot-api");
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
-const app = express();
 
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-
-console.log("BOT VERSION: v7 teacher analytics");
+console.log("BOT VERSION: v8 SMS support");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+const AT_USERNAME = process.env.AT_USERNAME;
+const AT_API_KEY = process.env.AT_API_KEY;
+const AT_SENDER_ID = process.env.AT_SENDER_ID;
 
 if (!TOKEN) {
   console.error("BOT_TOKEN is missing. Add it in Railway Variables.");
@@ -21,6 +20,11 @@ if (!TOKEN) {
 const bot = new TelegramBot(TOKEN, {
   polling: true
 });
+
+const app = express();
+
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
 
 let COURSE_DATA = {
   lessons: []
@@ -471,6 +475,71 @@ async function askGroq(question) {
 }
 
 
+async function sendSms(to, message) {
+  if (!AT_USERNAME || !AT_API_KEY) {
+    console.error("Africa's Talking username or API key is missing.");
+    return;
+  }
+
+  const body = new URLSearchParams();
+  body.append("username", AT_USERNAME);
+  body.append("to", to);
+  body.append("message", message);
+
+  if (AT_SENDER_ID) {
+    body.append("from", AT_SENDER_ID);
+  }
+
+  const response = await fetch(
+    "https://api.africastalking.com/version1/messaging",
+    {
+      method: "POST",
+      headers: {
+        "apiKey": AT_API_KEY,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+      },
+      body: body
+    }
+  );
+
+  const data = await response.text();
+
+  console.log("Africa's Talking response:", data);
+}
+
+
+app.post("/sms", async (req, res) => {
+  const incomingMessage = req.body.text || "";
+  const sender = req.body.from || "";
+
+  const lesson = findCourseAnswer(incomingMessage);
+
+  let reply;
+
+  if (lesson) {
+    reply = getSimpleAnswer(lesson);
+  } else {
+    reply =
+      "Sorry, I can answer Internet Basics questions by SMS. " +
+      "For more help, use our Telegram bot.";
+  }
+
+  console.log("SMS received:", incomingMessage);
+  console.log("SMS reply:", reply);
+
+  if (sender && reply) {
+    try {
+      await sendSms(sender, reply);
+    } catch (error) {
+      console.error("SMS send failed:", error);
+    }
+  }
+
+  res.status(200).send("OK");
+});
+
+
 bot.on("message", async message => {
   const chatId = message.chat.id;
   const text = message.text;
@@ -483,7 +552,7 @@ bot.on("message", async message => {
 
   stats.totalQuestions += 1;
 
-  console.log("BOT VERSION: v7 teacher analytics");
+  console.log("BOT VERSION: v8 SMS support");
   console.log("Received message:", text);
 
   if (normalText === "/start") {
@@ -500,8 +569,8 @@ bot.on("message", async message => {
       "• /quiz email — take a quiz\n" +
       "• /jobs — see job alerts\n" +
       "• /accommodation — request interview support\n" +
-      "• /teacher-stats — teacher analytics\n" +
-      "• SMS: send a course question by SMS\n\n" +
+      "• /teacher-stats — teacher analytics\n\n" +
+      "You can also ask course questions by SMS.\n\n" +
       "Examples:\n" +
       "• What is downloading?\n" +
       "• What is the internet?\n" +
@@ -513,7 +582,7 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v7");
+    bot.sendMessage(chatId, "PONG v8");
     return;
   }
 
@@ -917,34 +986,12 @@ bot.on("callback_query", async callbackQuery => {
   }
 });
 
-app.post("/sms", (req, res) => {
-  const incomingMessage = req.body.text || req.body.Body || "";
-  const sender = req.body.from || req.body.From || "";
-
-  const lesson = findCourseAnswer(incomingMessage);
-
-  let reply;
-
-  if (lesson) {
-    reply = getSimpleAnswer(lesson);
-  } else {
-    reply =
-      "Sorry, I can answer Internet Basics questions by SMS. " +
-      "For more help, use our Telegram bot.";
-  }
-
-  console.log("SMS received:", incomingMessage);
-  console.log("SMS reply:", reply);
-
-  res.json({
-    message: reply
-  });
-});
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log("SMS webhook is running on port " + PORT);
 });
+
 
 console.log("Telegram bot is running.");
