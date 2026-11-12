@@ -481,31 +481,49 @@ async function sendSms(to, message) {
     return;
   }
 
+  const username = AT_USERNAME.trim();
+  const apiKey = AT_API_KEY.trim();
+  const senderId = AT_SENDER_ID ? AT_SENDER_ID.trim() : "";
+
+  console.log("Sending SMS using:");
+  console.log("Username:", username);
+  console.log("API key starts with:", apiKey.substring(0, 8));
+  console.log("Sender ID:", senderId || "Not set");
+
   const body = new URLSearchParams();
-  body.append("username", AT_USERNAME);
+  body.append("username", username);
   body.append("to", to);
   body.append("message", message);
 
-  if (AT_SENDER_ID) {
-    body.append("from", AT_SENDER_ID);
+  if (senderId) {
+    body.append("from", senderId);
   }
 
-  const response = await fetch(
-    "https://api.africastalking.com/version1/messaging",
-    {
-      method: "POST",
-      headers: {
-        "apiKey": AT_API_KEY,
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept": "application/json"
-      },
-      body: body
+  try {
+    const response = await fetch(
+      "https://api.africastalking.com/version1/messaging",
+      {
+        method: "POST",
+        headers: {
+          "apiKey": apiKey,
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json"
+        },
+        body: body
+      }
+    );
+
+    const responseText = await response.text();
+
+    console.log("Africa's Talking status:", response.status);
+    console.log("Africa's Talking response:", responseText);
+
+    if (!response.ok) {
+      console.error("Africa's Talking rejected the request.");
     }
-  );
-
-  const data = await response.text();
-
-  console.log("Africa's Talking response:", data);
+  } catch (error) {
+    console.error("SMS send failed:", error.message);
+  }
 }
 
 
