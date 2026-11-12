@@ -8,7 +8,7 @@ const africastalking = require('africastalking');
 console.log('BOT VERSION: v9 SMS support');
 
 // ==============================
-// ENVIRONMENT CHECK
+// ENVIRONMENT VARIABLES
 // ==============================
 const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
 const atUsername = process.env.AT_USERNAME;
