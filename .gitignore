@@ -1,1 +1,14 @@
-node_modules
+# Secret environment variables
+.env
+.env.*
+*.env
+
+# Node dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
