@@ -1034,33 +1034,6 @@ bot.on("message", async message => {
       return;
     }
 
-    if (normalText === "/cancel") {
-      userState.delete(chatId);
-      smsWaiting.delete(chatId);
-
-      bot.sendMessage(
-        chatId,
-        "✅ Cancelled. You can use the bot normally now."
-      );
-
-      return;
-    }
-
-    if (normalText === "/myid") {
-      bot.sendMessage(
-        chatId,
-        "🆔 Your Telegram Chat ID is:\n\n" +
-        "`" + chatId + "`\n\n" +
-        "Copy this number and add it in Railway as:\n\n" +
-        "`ADMIN_CHAT_ID`",
-        {
-          parse_mode: "Markdown"
-        }
-      );
-
-      return;
-    }
-
     const phone = text.trim();
 
     const phonePattern = /^\+[1-9]\d{7,14}$/;
@@ -1235,6 +1208,36 @@ bot.on("message", async message => {
   }
 
   if (normalText === "/cancel") {
+  userState.delete(chatId);
+  smsWaiting.delete(chatId);
+
+  bot.sendMessage(
+    chatId,
+    "✅ Cancelled. You can use the bot normally now."
+  );
+
+  return;
+}
+
+if (normalText === "/myid") {
+  bot.sendMessage(
+    chatId,
+    "🆔 Your Telegram Chat ID is:\n\n" +
+    "`" + chatId + "`\n\n" +
+    "Copy this number and add it in Railway as:\n\n" +
+    "`ADMIN_CHAT_ID`",
+    {
+      parse_mode: "Markdown"
+    }
+  );
+
+  return;
+}
+
+  if (normalText === "/ping") {
+    bot.sendMessage(chatId, "PONG v15");
+    return;
+  }if (normalText === "/cancel") {
     userState.delete(chatId);
     smsWaiting.delete(chatId);
 
@@ -1246,22 +1249,23 @@ bot.on("message", async message => {
     return;
   }
 
-  // ---------- NORMAL COMMANDS ----------
+  if (normalText === "/myid") {
+    bot.sendMessage(
+      chatId,
+      "🆔 Your Telegram Chat ID is:\n\n" +
+      "`" + chatId + "`\n\n" +
+      "Copy this number and add it in Railway as:\n\n" +
+      "`ADMIN_CHAT_ID`",
+      {
+        parse_mode: "Markdown"
+      }
+    );
 
-  if (normalText === "/ping") {
-    bot.sendMessage(chatId, "PONG v15");
     return;
   }
 
-  if (normalText === "/help") {
-    userState.set(chatId, "waiting_help_question");
-
-    bot.sendMessage(
-      chatId,
-      "Please write the question or problem you need help with.\n\n" +
-      "A teacher or support person will receive your request."
-    );
-
+  if (normalText === "/ping") {
+    bot.sendMessage(chatId, "PONG v15");
     return;
   }
 
