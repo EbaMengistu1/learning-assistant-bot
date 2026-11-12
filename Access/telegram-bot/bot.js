@@ -2,10 +2,6 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const africastalking = require('africastalking');
 
-const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
-const africastalking = require('africastalking');
-
 // ==============================
 // BOT VERSION
 // ==============================
@@ -25,13 +21,13 @@ if (!telegramToken) {
 }
 
 if (!atUsername || !atApiKey) {
-  console.error('Africa\'s Talking username or API key is missing.');
+  console.error("Africa's Talking username or API key is missing.");
   process.exit(1);
 }
 
-console.log('Africa\'s Talking username loaded:', atUsername);
-console.log('Africa\'s Talking API key loaded:', atApiKey ? 'Yes' : 'No');
-console.log('Africa\'s Talking sender ID loaded:', atSenderId || 'Not set');
+console.log("Africa's Talking username loaded:", atUsername);
+console.log("Africa's Talking API key loaded:", atApiKey ? 'Yes' : 'No');
+console.log("Africa's Talking sender ID loaded:", atSenderId || 'Not set');
 
 // ==============================
 // TELEGRAM BOT
@@ -183,20 +179,17 @@ app.post('/sms', async (req, res) => {
 
     console.log('SMS reply:', reply);
 
-    // Make sure the number has only one + sign
     let recipient = fromNumber.toString().trim();
 
     if (!recipient.startsWith('+')) {
       recipient = '+' + recipient;
     }
 
-    // Prepare SMS options
     const smsOptions = {
       to: [recipient],
       message: reply
     };
 
-    // Only add sender ID if it exists
     if (atSenderId) {
       smsOptions.from = atSenderId;
     }
@@ -208,7 +201,7 @@ app.post('/sms', async (req, res) => {
     } catch (smsError) {
       console.error('SMS send error:', smsError.message);
 
-      if (smsError.response) {
+      if (smsError.response && smsError.response.data) {
         console.error(
           'SMS send error details:',
           JSON.stringify(smsError.response.data)
