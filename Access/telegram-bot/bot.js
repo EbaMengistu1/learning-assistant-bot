@@ -1034,6 +1034,18 @@ bot.on("message", async message => {
       return;
     }
 
+    if (normalText === "/cancel") {
+      userState.delete(chatId);
+      smsWaiting.delete(chatId);
+
+      bot.sendMessage(
+        chatId,
+        "✅ Cancelled. You can use the bot normally now."
+      );
+
+      return;
+    }
+
     if (normalText === "/myid") {
       bot.sendMessage(
         chatId,
