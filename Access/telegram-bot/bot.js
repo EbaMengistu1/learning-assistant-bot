@@ -1038,6 +1038,110 @@ bot.on("callback_query", async callbackQuery => {
 
 const PORT = process.env.PORT || 8080;
 
+// ---------- NEW: SMS NOTIFICATION BUTTON ----------
+
+bot.onText(/\/sms/, (msg) => {
+  const chatId = msg.chat.id;
+
+  bot.sendMessage(
+    chatId,
+    "📩 *SMS Notification*\n\n" +
+    "Please send your phone number in this format:\n\n" +
+    "`+251912345678`\n\n" +
+    "I will send you a learning reminder by SMS.",
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        force_reply: true
+      }
+    }
+  );
+
+  smsWaiting.set(chatId, true);
+});
+
+bot.on("message", async (msg) => {
+  const chatId = msg.chat.id;
+
+  if (!smsWaiting.get(chatId)) return;
+
+  const phone = msg.text?.trim();
+
+  if (!phone) return;
+
+  // Only accept Ethiopian-style phone numbers
+  const phonePattern = /^\+2519\d{8}$/;
+
+  if (!phonePattern.test(phone)) {
+    bot.sendMessage(
+      chatId,
+      "❌ Please send a valid Ethiopian phone number.\n\nExample:\n`+251912345678`",
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          force_reply: true
+        }
+      }
+    );
+    return;
+  }
+
+  smsWaiting.delete(chatId);
+
+  bot.sendMessage(
+    chatId,
+    "⏳ Sending your SMS notification..."
+  );
+
+  try {
+    await sendSms(
+      phone,
+      "Hello! This is a reminder from your Learning Assistant. " +
+      "You can ask questions, take quizzes, and get learning support anytime."
+    );
+
+    bot.sendMessage(
+      chatId,
+      "✅ SMS notification sent successfully!\n\n" +
+      "Please check your phone."
+    );
+
+  } catch (error) {
+    console.error("SMS notification error:", error.message);
+
+    bot.sendMessage(
+      chatId,
+      "❌ Sorry, I could not send the SMS notification right now.\n\nPlease try again later."
+    );
+  }
+});
+
+// Remember which user is waiting to send a phone number
+const smsWaiting = new Map();
+
+bot.on("callback_query", async (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const data = callbackQuery.data;
+
+  if (data === "sms_notification") {
+    bot.sendMessage(
+      chatId,
+      "📩 *SMS Notification*\n\n" +
+      "Please send your phone number in this format:\n\n" +
+      "`+251912345678`\n\n" +
+      "I will send you a learning reminder by SMS.",
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          force_reply: true
+        }
+      }
+    );
+
+    smsWaiting.set(chatId, true);
+  }
+});
+
 app.listen(PORT, () => {
   console.log("SMS webhook is running on port " + PORT);
 });
