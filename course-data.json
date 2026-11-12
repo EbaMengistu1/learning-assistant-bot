@@ -271,6 +271,50 @@
     },
 
     {
+      "title": "Solar System",
+      "keywords": [
+        "solar system",
+        "what is the solar system",
+        "የፀሐይ ሥርዓት"
+      ],
+      "simple": {
+        "en": "The solar system is the Sun and everything that orbits it.",
+        "am": "የፀሐይ ሥርዓት ማለት ፀሐይን እና ዙሪያዋን የሚያዙ ነገሮች ሁሉ ነው።"
+      },
+      "answer": {
+        "en": "The solar system includes the Sun, eight planets, dwarf planets, asteroids, and comets. The Sun’s gravity keeps them moving around it.",
+        "am": "የፀሐይ ሥርዓት ፀሐይን፣ Ꮀምና ፕላኔቶችን፣ የተራቅ ፕላኔቶችን፣ አስቴሮይዶችን እና ኮሜቶችን ያካትታል። የፀሐይ ስበት እነሱን ዙሪያዋ እንዲያዙ ይጠብቃል።"
+      },
+      "source": {
+        "lesson": "Science Basics",
+        "section": "Solar System",
+        "url": "https://science.nasa.gov/solar-system/"
+      }
+    },
+
+    {
+      "title": "Search Engine",
+      "keywords": [
+        "search engine",
+        "google",
+        "what is a search engine"
+      ],
+      "simple": {
+        "en": "A search engine helps you find information on the internet.",
+        "am": "የፍለጋ ሞተር መረጃ ለመፈለግ ይረዳል።"
+      },
+      "answer": {
+        "en": "A search engine helps you find websites and information on the internet. You type words into the search box, and it shows results.\n\nExamples include Google, Bing, and DuckDuckGo.",
+        "am": "የፍለጋ ሞተር ድረ-ገጾችን እና መረጃን በኢንተርኔት ለመፈለግ ይረዳል። ቃላት በፍለጋ ሳጥኑ ውስጥ ይጻፉ እና ውጤቶችን ያሳያል።\n\nGoogle፣ Bing እና DuckDuckGo ምሳሌዎች ናቸው።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Search Engines",
+        "url": "https://edu.gcfglobal.org/en/internetbasics/"
+      }
+    },
+
+    {
       "title": "Online Privacy",
       "keywords": [
         "online privacy",
