@@ -56,14 +56,17 @@ function findCourseAnswer(question) {
         return;
       }
 
-      if (questionText.includes(keywordText)) {
+      const words = questionText.split(" ");
+
+      if (words.includes(keywordText)) {
         score += 2;
       }
     });
 
     const lessonTitle = normalizeText(lesson.title || "");
+    const titleWords = lessonTitle.split(" ");
 
-    if (questionText.includes(lessonTitle)) {
+    if (titleWords.length > 0 && titleWords.every(word => words.includes(word))) {
       score += 3;
     }
 
