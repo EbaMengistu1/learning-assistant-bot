@@ -26,6 +26,13 @@ const AT_SENDER_ID = (process.env.AT_SENDER_ID || "").trim();
 
 const PORT = Number(process.env.PORT) || 8080;
 
+const TEACHER_CHAT_IDS = new Set(
+  (process.env.TEACHER_CHAT_IDS || "")
+    .split(",")
+    .map(id => id.trim())
+    .filter(id => /^\d+$/.test(id))
+);
+
 if (!TOKEN) {
   console.error("BOT_TOKEN is missing.");
   process.exit(1);
@@ -134,9 +141,17 @@ const stats = {
   topicCounts: {}
 };
 
-function isAdmin(chatId) {
+function isOwner(chatId) {
   return Boolean(ADMIN_CHAT_ID) &&
     String(chatId) === String(ADMIN_CHAT_ID);
+}
+
+function isAdmin(chatId) {
+  const id = String(chatId);
+
+  if (!/^\d+$/.test(id)) return false;
+
+  return isOwner(id) || TEACHER_CHAT_IDS.has(id);
 }
 
 function languageCode(value, text = "") {
@@ -1872,12 +1887,37 @@ async function handleMessage(message) {
   }
 
   if (command === "/ping") return send(chatId, "PONG v23");
-  if (command === "/myid") return send(chatId, `Your chat ID: ${chatId}`);
+  if (command === "/myid") {
+  const role = isOwner(chatId)
+    ? "Owner / Teacher Admin"
+    : isAdmin(chatId)
+      ? "Approved Teacher"
+      : "Student";
+
+  return send(
+    chatId,
+    `Your Telegram ID: ${chatId}\nRole: ${role}\n\n` +
+    "Teacher access requires owner approval. Share this ID privately with the owner. Do not share bot tokens, passwords, or API keys."
+  );
+}
   if (command === "/track3") return sendTrackMenu(chatId);
   if (command === "/lessons") return sendLessonMenu(chatId);
   if (command === "/jobs") return sendJobAlerts(chatId);
   if (command === "/progress") return sendProgress(chatId);
   if (command === "/admin") return sendTeacherPanel(chatId);
+
+  if (command === "/teachers") {
+  if (!isOwner(chatId)) {
+    return send(chatId, "Only the owner can view the teacher approval list.");
+  }
+
+  return send(
+    chatId,
+    `Owner ID: ${ADMIN_CHAT_ID}\n\nApproved additional teachers:\n` +
+    ([...TEACHER_CHAT_IDS].join("\n") || "None") +
+    "\n\nAdd or remove IDs in the Railway variable TEACHER_CHAT_IDS."
+  );
+}
 
   if (command === "/quiz") {
     return startQuiz(chatId, text.split(/\s+/)[1]);
