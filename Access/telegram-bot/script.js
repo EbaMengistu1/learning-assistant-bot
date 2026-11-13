@@ -1,1794 +1,1812 @@
 "use strict";
 
 (() => {
-  /* =========================================================
-     LEARNING AND EMPLOYMENT — FINAL POWERFUL SCRIPT.JS
-     Railway + Telegram @EbaMengistuBot + Track 3
-     ========================================================= */
+  /*
+   * Prevent this script from initializing twice.
+   * Remove older inline scripts and other reading handlers too.
+   */
+  const APP_KEY = "__learningEmploymentApp";
 
-  const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
-
-  const API_BASE_URL =
-    "https://learning-assistant-bot-production.up.railway.app";
-
-  const $ = id => document.getElementById(id);
-
-  const questionInput = $("question");
-  const answerBox = $("answer");
-  const getAnswerBtn = $("getAnswerBtn");
-  const clearBtn = $("clearBtn");
-  const copyBtn = $("copyBtn");
-  const languageToggleBtn = $("languageToggleBtn");
-  const speakAmharicBtn = $("speakAmharicBtn");
-  const speakEnglishBtn = $("speakEnglishBtn");
-  const voiceAmharicBtn = $("voiceAmharicBtn");
-  const voiceEnglishBtn = $("voiceEnglishBtn");
-  const contrastBtn = $("contrastBtn");
-  const fontSmall = $("fontSmall");
-  const fontNormal = $("fontNormal");
-  const fontLarge = $("fontLarge");
-  const helpBtn = $("helpBtn");
-  const screenShareBtn = $("screenShareBtn");
-  const downloadBtn = $("downloadBtn");
-  const jobAlertForm = $("jobAlertForm");
-  const accommodationForm = $("accommodationForm");
-  const teacherStats = $("teacherStats");
-  const liveRegion = $("liveRegion");
-  const voiceStatus = $("voiceStatus");
-
-  const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v14";
-  const SETTINGS_KEY = "learningSettings_v14";
-  const CHAT_ID_KEY = "learningChatId_v14";
-
-  let language = "am";
-  let fontSize = 1.05;
-  let requestVersion = 0;
-  let recognition = null;
-  let recognitionButton = null;
-  let speakingLanguage = null;
-  let speechVersion = 0;
-  let cancelAudio = null;
-  let copiedQuestion = "";
-
-  const audio = new Audio();
-  const flashTimers = new WeakMap();
-  let audioContext = null;
-
-  /* =========================================================
-     OFFLINE COURSE FAQ
-     ========================================================= */
-
-  const courseFAQ = {
-    "what is downloading": {
-      en: "Downloading means saving a file from the internet to your device.",
-      am: "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ማለት ነው።",
-      source: "Computer Basics — Page 12"
-    },
-
-    "what is email": {
-      en: "Email is a way to send and receive messages using the internet.",
-      am: "ኢሜይል በኢንተርኔት መልዕክት ለመላክ እና ለመቀበል የሚያግዝ መንገድ ነው።",
-      source: "Internet and Email — Page 5"
-    },
-
-    "what is a job interview": {
-      en: "A job interview is a meeting where an employer asks you questions about your skills and experience.",
-      am: "የሥራ ቃለ መጠይቅ አስተዋዋቂ ስለ ክህሎትዎና ልምድዎ ጥያቄ የሚጠይቅበት ስብሰባ ነው።",
-      source: "Jobs and Interviews — Page 3"
-    },
-
-    "how do i apply for a job": {
-      en: "Read the job advertisement, prepare your CV, write a short cover letter if needed, and submit your application before the deadline.",
-      am: "የሥራ ማስታወቂያውን ያንብቡ፣ CVዎን ያዘጋጁ፣ አስፈላጊ ከሆነ አጭር የምልጠኛ ደብዳቤ ይጻፉ እና መደበኛውን ጊዜ ሳይበቃ ያስገቡ።",
-      source: "Jobs and Interviews — Page 7"
-    }
-  };
-
-  /* =========================================================
-     LANGUAGE TEXT
-     ========================================================= */
-
-  const labels = {
-    am: {
-      question: "ጥያቄዎን ይጻፉ",
-      answer: "መልስ",
-      questionPlaceholder: "ለምሳሌ፦ ማውረድ ምን ማለት ነው?",
-      answerPlaceholder: "መልሱ እዚህ ይታያል...",
-      getAnswer: "🤖 መልስ አግኝ",
-      clear: "🧹 አጽዳ",
-      copy: "📋 ቅዳ",
-      micAm: "🎤 አማርኛ",
-      micEn: "🎤 English",
-      speakAm: "🔊 አማርኛ",
-      speakEn: "🔊 English",
-      help: "🙋 እርዳታ አስፈልገኛል",
-      screen: "🖥️ ስክሪን ማጋራት",
-      download: "⬇️ አውርድ",
-      listening: "⏹ እያዳመጥኩ ነው...",
-      stop: "⏹ አቁም"
-    },
-
-    en: {
-      question: "Ask your question",
-      answer: "Answer",
-      questionPlaceholder: "Example: What is downloading?",
-      answerPlaceholder: "Your answer will appear here...",
-      getAnswer: "🤖 Get Answer",
-      clear: "🧹 Clear",
-      copy: "📋 Copy",
-      micAm: "🎤 Amharic",
-      micEn: "🎤 English",
-      speakAm: "🔊 Amharic",
-      speakEn: "🔊 English",
-      help: "🙋 I Need Help",
-      screen: "🖥️ Share My Screen",
-      download: "⬇️ Download",
-      listening: "⏹ Listening...",
-      stop: "⏹ Stop"
-    }
-  };
-
-  /* =========================================================
-     SETTINGS
-     ========================================================= */
-
-  function readSettings() {
-    try {
-      return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
-    } catch {
-      return {};
-    }
+  if (window[APP_KEY]) {
+    console.warn("Learning app is already initialized.");
+    return;
   }
 
-  function saveSetting(key, value) {
-    const settings = readSettings();
-    settings[key] = value;
+  window[APP_KEY] = { initialized: false };
 
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch {
-      // Storage may be unavailable.
-    }
-  }
+  function init() {
+    if (window[APP_KEY].initialized) return;
+    window[APP_KEY].initialized = true;
 
-  function getChatId() {
-    let chatId = readSettings().chatId;
+    /* ======================================================
+       CONFIGURATION
+       ====================================================== */
 
-    if (!chatId) {
-      chatId = `web-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 10)}`;
+    const API_BASE =
+      "https://learning-assistant-bot-production.up.railway.app";
 
-      saveSetting("chatId", chatId);
+    const TELEGRAM_URL = "https://t.me/EbaMengistuBot";
+
+    const SETTINGS_KEY = "learning_settings_final";
+    const CACHE_KEY = "learning_answers_final";
+
+    const $ = id => document.getElementById(id);
+
+    const ids = [
+      "question",
+      "answer",
+      "getAnswerBtn",
+      "clearBtn",
+      "copyBtn",
+      "languageToggleBtn",
+      "speakAmharicBtn",
+      "speakEnglishBtn",
+      "voiceAmharicBtn",
+      "voiceEnglishBtn",
+      "contrastBtn",
+      "fontSmall",
+      "fontNormal",
+      "fontLarge",
+      "helpBtn",
+      "screenShareBtn",
+      "downloadBtn",
+      "jobAlertForm",
+      "jobAlertBtn",
+      "accommodationForm",
+      "accommodationBtn",
+      "teacherStats",
+      "liveRegion",
+      "voiceStatus"
+    ];
+
+    const el = Object.fromEntries(ids.map(id => [id, $(id)]));
+
+    if (!el.question || !el.answer) {
+      console.error("Missing #question or #answer.");
+      return;
     }
 
-    return chatId;
-  }
+    const ETHIOPIC = /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/;
 
-  /* =========================================================
-     HELPERS
-     ========================================================= */
-
-  function announce(text) {
-    if (liveRegion) liveRegion.textContent = text;
-  }
-
-  function status(amharic, english, type = "info") {
-    const text = language === "am" ? amharic : english;
-
-    if (voiceStatus) {
-      voiceStatus.textContent = text;
-      voiceStatus.className = `voice-status ${type}`;
+    function readStorage(key, fallback) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key));
+        return value && typeof value === "object"
+          ? value
+          : fallback;
+      } catch {
+        return fallback;
+      }
     }
 
-    announce(text);
-  }
-
-  function resizeAnswer() {
-    if (!answerBox) return;
-
-    answerBox.style.height = "auto";
-    answerBox.style.height =
-      Math.max(210, answerBox.scrollHeight + 8) + "px";
-  }
-
-  function showAnswer(text) {
-    if (!answerBox) return;
-
-    answerBox.value = String(text);
-    resizeAnswer();
-    announce(text);
-  }
-
-  function clearQuestionAndAnswer() {
-    if (questionInput) questionInput.value = "";
-
-    if (answerBox) {
-      answerBox.value = "";
-      answerBox.style.height = "";
+    function writeStorage(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // Storage is optional.
+      }
     }
 
-    copiedQuestion = "";
-    requestVersion++;
+    const settings = readStorage(SETTINGS_KEY, {});
 
-    stopRecognition();
-    stopAllSpeech();
+    let language = settings.language === "en" ? "en" : "am";
 
-    if (getAnswerBtn) {
-      getAnswerBtn.disabled = false;
-      getAnswerBtn.removeAttribute("aria-busy");
-    }
-
-    status("ጽሑፉ ተጽድቷል።", "Cleared.");
-    questionInput?.focus();
-  }
-
-  function on(element, handler) {
-    element?.addEventListener("click", handler);
-  }
-
-  function flashButton(button) {
-    if (!button) return;
-
-    clearTimeout(flashTimers.get(button));
-
-    button.classList.remove("button-flash");
-    void button.offsetWidth;
-    button.classList.add("button-flash");
-
-    flashTimers.set(
-      button,
-      setTimeout(() => button.classList.remove("button-flash"), 600)
+    let fontSize = Math.max(
+      0.9,
+      Math.min(1.8, Number(settings.fontSize) || 1.05)
     );
-  }
 
-  function selectButton(button) {
-    document.querySelectorAll("button").forEach(item => {
-      item.classList.remove("active-primary", "active");
+    const chatId =
+      settings.chatId ||
+      `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+    settings.chatId = chatId;
+    writeStorage(SETTINGS_KEY, settings);
+
+    let copiedQuestion = "";
+    let currentAnswer = null;
+    let answerVersion = 0;
+    let answerController = null;
+
+    /* ======================================================
+       HELPERS
+       ====================================================== */
+
+    function saveSetting(key, value) {
+      settings[key] = value;
+      writeStorage(SETTINGS_KEY, settings);
+    }
+
+    function announce(text) {
+      if (el.liveRegion) {
+        el.liveRegion.textContent = text;
+      }
+    }
+
+    function status(am, en, type = "info", target = el.voiceStatus) {
+      const text = language === "am" ? am : en;
+
+      if (target) {
+        target.textContent = text;
+        target.className = `voice-status ${type}`;
+      }
+
+      announce(text);
+    }
+
+    function on(id, handler) {
+      el[id]?.addEventListener("click", handler);
+    }
+
+    function detectLanguage(text) {
+      if (ETHIOPIC.test(text)) return "am";
+      if (/[A-Za-z]/.test(text)) return "en";
+      return language;
+    }
+
+    function setBusy(button, busy) {
+      if (!button) return;
+
+      button.disabled = busy;
+
+      if (busy) button.setAttribute("aria-busy", "true");
+      else button.removeAttribute("aria-busy");
+    }
+
+    function makeFormStatus(form) {
+      if (!form) return null;
+
+      const node = document.createElement("p");
+      node.className = "voice-status";
+      node.setAttribute("role", "status");
+      node.setAttribute("aria-live", "polite");
+
+      form.insertAdjacentElement("afterend", node);
+      return node;
+    }
+
+    const jobStatus = makeFormStatus(el.jobAlertForm);
+    const accommodationStatus = makeFormStatus(el.accommodationForm);
+
+    /* ======================================================
+       BUTTON EFFECTS
+       ====================================================== */
+
+    document.querySelectorAll("button").forEach(button => {
+      button.classList.remove("active-primary", "button-flash");
+
+      button.addEventListener("click", () => {
+        document.querySelectorAll("button.active-primary").forEach(
+          item => item.classList.remove("active-primary")
+        );
+
+        if (button.id === "getAnswerBtn") return;
+
+        button.classList.add("active-primary");
+        button.classList.remove("button-flash");
+        void button.offsetWidth;
+        button.classList.add("button-flash");
+
+        setTimeout(
+          () => button.classList.remove("button-flash"),
+          650
+        );
+      });
     });
 
-    if (button && button !== getAnswerBtn) {
-      button.classList.add("active-primary");
+    /* ======================================================
+       LANGUAGE / ACCESSIBILITY
+       ====================================================== */
+
+    const labels = {
+      am: {
+        question: "ጥያቄዎን ይጻፉ",
+        answer: "መልስ",
+        questionPlaceholder: "ለምሳሌ፦ ማውረድ ምን ማለት ነው?",
+        answerPlaceholder: "መልሱ እዚህ ይታያል...",
+        getAnswerBtn: "መልስ አግኝ",
+        clearBtn: "አጽዳ",
+        copyBtn: "ጥያቄውን ቅዳ",
+        helpBtn: "እርዳታ አስፈልገኛል",
+        screenShareBtn: "የስብሰባ ሊንክ ላክ",
+        downloadBtn: "አውርድ",
+        micAm: "በአማርኛ ተናገር",
+        micEn: "በእንግሊዝኛ ተናገር",
+        readAm: "አማርኛ አንብብ",
+        readEn: "English አንብብ",
+        stop: "አቁም",
+        listening: "እያዳመጥኩ ነው..."
+      },
+
+      en: {
+        question: "Ask your question",
+        answer: "Answer",
+        questionPlaceholder: "Example: What is downloading?",
+        answerPlaceholder: "Your answer will appear here...",
+        getAnswerBtn: "Get Answer",
+        clearBtn: "Clear",
+        copyBtn: "Copy Question",
+        helpBtn: "I Need Help",
+        screenShareBtn: "Send Meeting Link",
+        downloadBtn: "Download",
+        micAm: "Speak Amharic",
+        micEn: "Speak English",
+        readAm: "Read Amharic",
+        readEn: "Read English",
+        stop: "Stop",
+        listening: "Listening..."
+      }
+    };
+
+    function updateLanguage() {
+      const t = labels[language];
+      document.documentElement.lang = language;
+
+      const qLabel = document.querySelector('label[for="question"]');
+      const aLabel = document.querySelector('label[for="answer"]');
+
+      if (qLabel) qLabel.textContent = t.question;
+      if (aLabel) aLabel.textContent = t.answer;
+
+      el.question.placeholder = t.questionPlaceholder;
+      el.answer.placeholder = t.answerPlaceholder;
+
+      [
+        "getAnswerBtn",
+        "clearBtn",
+        "copyBtn",
+        "helpBtn",
+        "screenShareBtn",
+        "downloadBtn"
+      ].forEach(id => {
+        if (el[id]) el[id].textContent = t[id];
+      });
+
+      updateMediaButtons();
+      updateConnectionBadge();
     }
-  }
 
-  function bindButton(button) {
-    if (!button) return;
+    function updateMediaButtons() {
+      const t = labels[language];
 
-    button.classList.remove("active-primary", "active");
+      if (el.speakAmharicBtn) {
+        el.speakAmharicBtn.textContent =
+          readingLanguage === "am" ? t.stop : t.readAm;
 
-    button.addEventListener("click", () => {
-      selectButton(button);
-      flashButton(button);
+        el.speakAmharicBtn.setAttribute(
+          "aria-pressed",
+          String(readingLanguage === "am")
+        );
+      }
+
+      if (el.speakEnglishBtn) {
+        el.speakEnglishBtn.textContent =
+          readingLanguage === "en" ? t.stop : t.readEn;
+
+        el.speakEnglishBtn.setAttribute(
+          "aria-pressed",
+          String(readingLanguage === "en")
+        );
+      }
+
+      if (el.voiceAmharicBtn) {
+        el.voiceAmharicBtn.textContent =
+          recognitionSession?.lang === "am"
+            ? t.listening
+            : t.micAm;
+
+        el.voiceAmharicBtn.setAttribute(
+          "aria-pressed",
+          String(recognitionSession?.lang === "am")
+        );
+      }
+
+      if (el.voiceEnglishBtn) {
+        el.voiceEnglishBtn.textContent =
+          recognitionSession?.lang === "en"
+            ? t.listening
+            : t.micEn;
+
+        el.voiceEnglishBtn.setAttribute(
+          "aria-pressed",
+          String(recognitionSession?.lang === "en")
+        );
+      }
+    }
+
+    function updateConnectionBadge() {
+      let badge = $("netBadge");
+
+      if (!badge) {
+        badge = document.createElement("p");
+        badge.id = "netBadge";
+        badge.setAttribute("role", "status");
+        $("main")?.prepend(badge);
+      }
+
+      const online = navigator.onLine !== false;
+
+      badge.textContent = language === "am"
+        ? online ? "ግንኙነት አለ" : "ከመስመር ውጭ"
+        : online ? "Online" : "Offline";
+
+      badge.style.color =
+        document.body.classList.contains("high-contrast")
+          ? "#ffd166"
+          : online ? "#176139" : "#a32222";
+    }
+
+    function applyFont() {
+      el.question.style.fontSize = `${fontSize}rem`;
+      el.answer.style.fontSize = `${fontSize}rem`;
+      saveSetting("fontSize", fontSize);
+    }
+
+    on("fontSmall", () => {
+      fontSize = Math.max(0.9, fontSize - 0.08);
+      applyFont();
     });
-  }
 
-  document.querySelectorAll("button").forEach(bindButton);
+    on("fontNormal", () => {
+      fontSize = 1.05;
+      applyFont();
+    });
 
-  function setText(element, text) {
-    if (element) element.textContent = text;
-  }
+    on("fontLarge", () => {
+      fontSize = Math.min(1.8, fontSize + 0.08);
+      applyFont();
+    });
 
-  /* =========================================================
-     LANGUAGE SWITCH
-     ========================================================= */
+    on("contrastBtn", () => {
+      const enabled = document.body.classList.toggle("high-contrast");
 
-  function applyLanguage() {
-    const t = labels[language];
+      saveSetting("highContrast", enabled);
+      el.contrastBtn.setAttribute("aria-pressed", String(enabled));
+      updateConnectionBadge();
+    });
 
-    document.documentElement.lang = language;
+    on("languageToggleBtn", () => {
+      language = language === "am" ? "en" : "am";
 
-    setText(document.querySelector('label[for="question"]'), t.question);
-    setText(document.querySelector('label[for="answer"]'), t.answer);
+      saveSetting("language", language);
+      updateLanguage();
 
-    if (questionInput) {
-      questionInput.placeholder = t.questionPlaceholder;
-    }
+      status("አማርኛ ተመርጧል።", "English selected.");
+    });
 
-    if (answerBox) {
-      answerBox.placeholder = t.answerPlaceholder;
-    }
+    window.addEventListener("online", updateConnectionBadge);
+    window.addEventListener("offline", updateConnectionBadge);
 
-    setText(getAnswerBtn, t.getAnswer);
-    setText(clearBtn, t.clear);
-    setText(copyBtn, t.copy);
-    setText(helpBtn, t.help);
-    setText(screenShareBtn, t.screen);
-    setText(downloadBtn, t.download);
+    /* ======================================================
+       NETWORK
+       ====================================================== */
 
-    setText(
-      voiceAmharicBtn,
-      recognitionButton === voiceAmharicBtn ? t.listening : t.micAm
-    );
+    async function request(
+      path,
+      { method = "GET", body, signal, timeout = 20000 } = {}
+    ) {
+      const controller = new AbortController();
 
-    setText(
-      voiceEnglishBtn,
-      recognitionButton === voiceEnglishBtn ? t.listening : t.micEn
-    );
+      const abort = () => controller.abort();
 
-    setText(
-      speakAmharicBtn,
-      speakingLanguage === "am" ? t.stop : t.speakAm
-    );
+      if (signal?.aborted) controller.abort();
+      else signal?.addEventListener("abort", abort, { once: true });
 
-    setText(
-      speakEnglishBtn,
-      speakingLanguage === "en" ? t.stop : t.speakEn
-    );
+      const timer = setTimeout(abort, timeout);
 
-    saveSetting("language", language);
-    updateConnectionBadge();
-  }
+      try {
+        const response = await fetch(`${API_BASE}${path}`, {
+          method,
+          headers: body
+            ? { "Content-Type": "application/json" }
+            : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal
+        });
 
-  on(languageToggleBtn, () => {
-    language = language === "am" ? "en" : "am";
-    applyLanguage();
-
-    languageToggleBtn.classList.remove("language-flash");
-    void languageToggleBtn.offsetWidth;
-    languageToggleBtn.classList.add("language-flash");
-
-    setTimeout(
-      () => languageToggleBtn.classList.remove("language-flash"),
-      1600
-    );
-
-    status(
-      "አማርኛ ተመርጧል።",
-      "English selected."
-    );
-  });
-
-  /* =========================================================
-     FONT SIZE AND CONTRAST
-     ========================================================= */
-
-  function changeFontSize(change = 0, reset = false) {
-    fontSize = reset
-      ? 1.05
-      : Math.max(0.9, Math.min(1.8, fontSize + change));
-
-    if (questionInput) {
-      questionInput.style.fontSize = `${fontSize}rem`;
-    }
-
-    if (answerBox) {
-      answerBox.style.fontSize = `${fontSize}rem`;
-    }
-
-    saveSetting("fontSize", fontSize);
-    resizeAnswer();
-  }
-
-  on(fontSmall, () => changeFontSize(-0.08));
-  on(fontNormal, () => changeFontSize(0, true));
-  on(fontLarge, () => changeFontSize(0.08));
-
-  function updateConnectionBadge() {
-    let badge = $("netBadge");
-
-    if (!badge) {
-      badge = document.createElement("p");
-      badge.id = "netBadge";
-      badge.setAttribute("role", "status");
-      badge.style.textAlign = "center";
-      $("main")?.prepend(badge);
-    }
-
-    const online = navigator.onLine !== false;
-
-    badge.textContent = language === "am"
-      ? online
-        ? "🟢 ኢንተርኔት አለ"
-        : "🔴 ኢንተርኔት የለም"
-      : online
-        ? "🟢 Online"
-        : "🔴 Offline";
-
-    badge.style.color = document.body.classList.contains("high-contrast")
-      ? "#ffd166"
-      : online ? "#166534" : "#b91c1c";
-  }
-
-  window.addEventListener("online", updateConnectionBadge);
-  window.addEventListener("offline", updateConnectionBadge);
-
-  function updateContrastButton() {
-    contrastBtn?.setAttribute(
-      "aria-pressed",
-      String(document.body.classList.contains("high-contrast"))
-    );
-  }
-
-  on(contrastBtn, () => {
-    document.body.classList.toggle("high-contrast");
-    updateContrastButton();
-    updateConnectionBadge();
-  });
-
-  /* =========================================================
-     NICE VOICE BEEP
-     ========================================================= */
-
-  function getContext() {
-    const AudioContextClass =
-      window.AudioContext || window.webkitAudioContext;
-
-    if (!AudioContextClass) return null;
-
-    if (!audioContext) {
-      audioContext = new AudioContextClass();
-    }
-
-    if (audioContext.state === "suspended") {
-      audioContext.resume().catch(() => {});
-    }
-
-    return audioContext;
-  }
-
-  function playBeep(type = "start") {
-    const context = getContext();
-
-    if (!context) return;
-
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-
-    const now = context.currentTime;
-
-    const settings = type === "start"
-      ? {
-          frequency: 660,
-          endFrequency: 880,
-          duration: 0.18,
-          volume: 0.07
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
-      : {
-          frequency: 880,
-          endFrequency: 620,
-          duration: 0.22,
-          volume: 0.06
-        };
 
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(settings.frequency, now);
-    oscillator.frequency.exponentialRampToValueAtTime(
-      settings.endFrequency,
-      now + settings.duration
-    );
+        const raw = await response.text();
 
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(
-      settings.volume,
-      now + 0.03
-    );
-    gain.gain.exponentialRampToValueAtTime(
-      0.0001,
-      now + settings.duration
-    );
+        if (!raw.trim()) return {};
 
-    oscillator.connect(gain);
-    gain.connect(context.destination);
+        let data;
 
-    oscillator.start(now);
-    oscillator.stop(now + settings.duration + 0.02);
-  }
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          throw new Error("Server response was not JSON.");
+        }
 
-  /* =========================================================
-     OFFLINE CACHE
-     ========================================================= */
+        if (data?.success === false || data?.ok === false) {
+          throw new Error("The server rejected this request.");
+        }
 
-  function readCache() {
-    try {
-      const data = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
-      return data && typeof data === "object" ? data : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function cacheAnswer(key, value) {
-    const cache = readCache();
-    cache[key] = value;
-
-    const keys = Object.keys(cache);
-
-    while (keys.length > 100) {
-      delete cache[keys.shift()];
-    }
-
-    try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-    } catch {
-      // Storage may be unavailable.
-    }
-  }
-
-  /* =========================================================
-     RAILWAY API
-     ========================================================= */
-
-  async function apiRequest(endpoint, data, timeout = 20000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(data),
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async function apiGet(endpoint, timeout = 15000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  /* =========================================================
-     TRANSLATION
-     ========================================================= */
-
-  function splitText(text, limit = 180) {
-    const words = String(text).trim().split(/\s+/);
-    const chunks = [];
-    let chunk = "";
-
-    for (let word of words) {
-      if (chunk && `${chunk} ${word}`.length > limit) {
-        chunks.push(chunk);
-        chunk = "";
-      }
-
-      while (word.length > limit) {
-        chunks.push(word.slice(0, limit));
-        word = word.slice(limit);
-      }
-
-      if (word) {
-        chunk = chunk ? `${chunk} ${word}` : word;
+        return data;
+      } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
       }
     }
 
-    if (chunk) chunks.push(chunk);
-    return chunks;
-  }
+    /* ======================================================
+       ANSWER DISPLAY — NO AUTOMATIC EXPANSION
+       ====================================================== */
 
-  async function translateText(text, from, to) {
-    const output = [];
+    function renderAnswer(record, firstLanguage) {
+      currentAnswer = record;
 
-    for (const chunk of splitText(text, 400)) {
-      const url =
-        "https://translate.googleapis.com/translate_a/single" +
-        "?client=gtx&dt=t" +
-        `&sl=${from}&tl=${to}&q=${encodeURIComponent(chunk)}`;
+      const first = firstLanguage === "am"
+        ? record.am
+        : record.en;
 
-      const response = await fetch(url);
-      const data = await response.json();
+      const second = firstLanguage === "am"
+        ? record.en
+        : record.am;
 
-      const translated = data[0]
-        .map(part => part[0] || "")
-        .join("");
+      const parts = [first, second].filter(Boolean);
 
-      if (!translated.trim()) {
-        throw new Error("Translation unavailable");
+      if (record.source) {
+        parts.push(`Source / ምንጭ: ${record.source}`);
       }
 
-      output.push(translated);
+      const questionScroll = el.question.scrollTop;
+
+      el.answer.value = parts.join("\n\n");
+      el.answer.style.removeProperty("height");
+      el.answer.scrollTop = 0;
+      el.answer.scrollLeft = 0;
+
+      el.question.scrollTop = questionScroll;
+
+      announce(
+        firstLanguage === "am"
+          ? "መልሱ ዝግጁ ነው።"
+          : "Your answer is ready."
+      );
     }
 
-    return output.join(" ");
-  }
+    function displayMessage(am, en, firstLanguage = language) {
+      renderAnswer({ am, en, source: "" }, firstLanguage);
+    }
 
-  /* =========================================================
-     MATH
-     ========================================================= */
+    /* ======================================================
+       LOCAL BILINGUAL ANSWERS
+       Sources are honestly labelled as built-in content.
+       ====================================================== */
 
-  function solveMath(question) {
-    const expression = question.toLowerCase()
-      .replace(/^(what is|calculate|solve)\s+/i, "")
-      .replace(/\?$/g, "")
-      .replace(/\bmultiplied by\b|\btimes\b|ሲባዛ/g, "*")
-      .replace(/\bdivided by\b|ሲካፈል/g, "/")
-      .replace(/\bplus\b|ሲደመር/g, "+")
-      .replace(/\bminus\b|ሲቀነስ/g, "-")
-      .replace(/×/g, "*")
-      .replace(/÷/g, "/")
-      .trim();
+    const FAQ = [
+      {
+        match: q => /download|ማውረድ/.test(q),
+        en: "Downloading means saving a file from the internet to your device.",
+        am: "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ማለት ነው።"
+      },
+      {
+        match: q => /what is (?:an? )?e-?mail|ኢሜይል ምን/.test(q),
+        en: "Email lets you send and receive electronic messages over the internet.",
+        am: "ኢሜይል በኢንተርኔት የኤሌክትሮኒክስ መልዕክቶችን ለመላክና ለመቀበል ያገለግላል።"
+      },
+      {
+        match: q => /what is a job interview|ቃለ መጠይቅ ምን/.test(q),
+        en: "A job interview is a conversation in which an employer asks about your skills, experience, and suitability for a job.",
+        am: "የሥራ ቃለ መጠይቅ አሠሪው ስለ ክህሎትዎ፣ ልምድዎና ለሥራው ብቁ ስለመሆንዎ የሚጠይቅበት ውይይት ነው።"
+      },
+      {
+        match: q => /how (?:do|can) i apply for a job|ለሥራ እንዴት/.test(q),
+        en: "Read the job advertisement, prepare your CV, include a cover letter if requested, and apply before the deadline.",
+        am: "የሥራ ማስታወቂያውን ያንብቡ፣ CVዎን ያዘጋጁ፣ ከተጠየቀ የማመልከቻ ደብዳቤ ያክሉ፣ ከመጨረሻው ቀን በፊትም ያመልክቱ።"
+      }
+    ];
 
-    if (!/^[\d\s.+*/()-]+$/.test(expression)) return null;
-    if (!/[+*/-]/.test(expression)) return null;
+    function solveMath(question) {
+      const text = question
+        .toLowerCase()
+        .replace(/^(what is|calculate|solve)\s+/, "")
+        .replace(/[?፧]$/, "")
+        .replace(/\bplus\b/g, "+")
+        .replace(/\bminus\b/g, "-")
+        .replace(/\btimes\b|×/g, "*")
+        .replace(/\bdivided by\b|÷/g, "/")
+        .replace(/\s+/g, "");
 
-    const tokens = expression.match(/\d*\.?\d+|[()+*/-]/g) || [];
-    let index = 0;
+      if (
+        text.length > 200 ||
+        !/^[\d.+*/()-]+$/.test(text) ||
+        !/[+*/-]/.test(text)
+      ) return null;
 
-    function factor() {
-      const token = tokens[index++];
+      const tokens = text.match(/\d+(?:\.\d*)?|\.\d+|[()+*/-]/g);
 
-      if (token === "+") return factor();
-      if (token === "-") return -factor();
+      if (!tokens || tokens.join("") !== text) return null;
 
-      if (token === "(") {
-        const value = sum();
+      let index = 0;
 
-        if (tokens[index++] !== ")") {
-          throw new Error("Missing bracket");
+      function factor() {
+        const token = tokens[index++];
+
+        if (token === "+") return factor();
+        if (token === "-") return -factor();
+
+        if (token === "(") {
+          const result = sum();
+          if (tokens[index++] !== ")") throw new Error("Bracket");
+          return result;
+        }
+
+        if (!token || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token)) {
+          throw new Error("Number");
+        }
+
+        return Number(token);
+      }
+
+      function product() {
+        let value = factor();
+
+        while (tokens[index] === "*" || tokens[index] === "/") {
+          const op = tokens[index++];
+          const right = factor();
+          value = op === "*" ? value * right : value / right;
         }
 
         return value;
       }
 
-      if (!token || !/^\d*\.?\d+$/.test(token)) {
-        throw new Error("Invalid number");
+      function sum() {
+        let value = product();
+
+        while (tokens[index] === "+" || tokens[index] === "-") {
+          const op = tokens[index++];
+          const right = product();
+          value = op === "+" ? value + right : value - right;
+        }
+
+        return value;
       }
 
-      return Number(token);
+      try {
+        const result = sum();
+
+        return index === tokens.length && Number.isFinite(result)
+          ? Number(result.toPrecision(12))
+          : null;
+      } catch {
+        return null;
+      }
     }
 
-    function product() {
-      let value = factor();
+    function localAnswer(question) {
+      const math = solveMath(question);
 
-      while (["*", "/"].includes(tokens[index])) {
-        const operator = tokens[index++];
-        const right = factor();
-
-        value = operator === "*"
-          ? value * right
-          : value / right;
+      if (math !== null) {
+        return {
+          am: `መልሱ ${math} ነው።`,
+          en: `The answer is ${math}.`,
+          source: "Built-in arithmetic calculator"
+        };
       }
 
-      return value;
-    }
+      const item = FAQ.find(
+        entry => entry.match(question.toLowerCase())
+      );
 
-    function sum() {
-      let value = product();
-
-      while (["+", "-"].includes(tokens[index])) {
-        const operator = tokens[index++];
-        const right = product();
-
-        value = operator === "+"
-          ? value + right
-          : value - right;
-      }
-
-      return value;
-    }
-
-    try {
-      const value = sum();
-
-      return index === tokens.length && Number.isFinite(value)
-        ? Number(value.toPrecision(12))
+      return item
+        ? {
+            am: item.am,
+            en: item.en,
+            source: "Built-in learning FAQ"
+          }
         : null;
-    } catch {
-      return null;
-    }
-  }
-
-  /* =========================================================
-     COURSE ANSWERS
-     ========================================================= */
-
-  function findCourseAnswer(question) {
-    const q = question.toLowerCase().trim();
-
-    for (const [key, answer] of Object.entries(courseFAQ)) {
-      if (q.includes(key)) {
-        return language === "am"
-          ? `${answer.am}\n\n${answer.en}\n\n📚 ምንጭ: ${answer.source}`
-          : `${answer.en}\n\n${answer.am}\n\n📚 Source: ${answer.source}`;
-      }
     }
 
-    const math = solveMath(q);
+    /*
+     * Preferred /api/ask response:
+     * {
+     *   answerAm: "...",
+     *   answerEn: "...",
+     *   source: "..."
+     * }
+     *
+     * Plain answer strings are also displayed, but the frontend
+     * cannot invent a missing translation.
+     */
+    function normalizeAnswer(data) {
+      const structured =
+        data.answer && typeof data.answer === "object"
+          ? data.answer
+          : data;
 
-    if (math !== null) {
-      return language === "am"
-        ? `መልሱ ${math} ነው።\n\nThe answer is ${math}.\n\n📚 ምንጭ: Built-in course calculator`
-        : `The answer is ${math}.\n\nመልሱ ${math} ነው።\n\n📚 Source: Built-in course calculator`;
-    }
+      let am = String(
+        structured.answerAm || structured.am || ""
+      ).trim();
 
-    return null;
-  }
+      let en = String(
+        structured.answerEn || structured.en || ""
+      ).trim();
 
-  async function getRailwayAnswer(question) {
-    const data = await apiRequest("/api/ask", {
-      chatId: getChatId(),
-      question,
-      language
-    });
+      const raw =
+        typeof data.answer === "string"
+          ? data.answer
+          : typeof data.response === "string"
+            ? data.response
+            : typeof data.text === "string"
+              ? data.text
+              : "";
 
-    const answer =
-      data.answer ||
-      data.response ||
-      data.text;
+      if (!am && !en && raw) {
+        const blocks = raw.split(/\n\s*\n/);
 
-    if (!answer) {
-      throw new Error("No answer returned by Railway API");
-    }
+        am = blocks.filter(block => ETHIOPIC.test(block)).join("\n\n");
+        en = blocks.filter(
+          block => /[A-Za-z]/.test(block) && !ETHIOPIC.test(block)
+        ).join("\n\n");
 
-    const source = data.source || data.citation;
-
-    return source
-      ? `${answer}\n\n📚 Source / ምንጭ: ${source}`
-      : answer;
-  }
-
-  async function getWebAnswer(question) {
-    const englishQuestion = ETHIOPIC.test(question)
-      ? await translateText(question, "am", "en")
-      : question;
-
-    const query = englishQuestion
-      .replace(
-        /^(what is|what are|who is|explain|define|tell me about)\s+/i,
-        ""
-      )
-      .replace(/[?]/g, "")
-      .trim();
-
-    const searchUrl =
-      "https://en.wikipedia.org/w/api.php" +
-      "?action=query&list=search&format=json&origin=*&srlimit=1" +
-      `&srsearch=${encodeURIComponent(query)}`;
-
-    const searchResponse = await fetch(searchUrl);
-    const searchData = await searchResponse.json();
-
-    const hit = searchData.query?.search?.[0];
-
-    if (!hit) {
-      throw new Error("No matching information");
-    }
-
-    const pageUrl =
-      "https://en.wikipedia.org/w/api.php" +
-      "?action=query&prop=extracts&explaintext=1&exintro=1" +
-      "&format=json&origin=*&redirects=1" +
-      `&titles=${encodeURIComponent(hit.title)}`;
-
-    const pageResponse = await fetch(pageUrl);
-    const pageData = await pageResponse.json();
-
-    const page = Object.values(pageData.query?.pages || {})[0];
-    const extract = page?.extract?.trim();
-
-    if (!extract) {
-      throw new Error("No article text");
-    }
-
-    const sentences = extract.match(/[^.!?]+[.!?]+(?:\s|$)/g);
-    const english = (
-      sentences ? sentences.slice(0, 2).join("") : extract
-    ).trim().slice(0, 900);
-
-    let amharic;
-
-    try {
-      amharic = await translateText(english, "en", "am");
-    } catch {
-      amharic = "የአማርኛ ትርጉም አሁን አልተገኘም።";
-    }
-
-    const source =
-      "https://en.wikipedia.org/wiki/" +
-      encodeURIComponent(hit.title.replace(/ /g, "_"));
-
-    return language === "am"
-      ? `${amharic}\n\n${english}\n\n📚 ምንጭ: ${hit.title}\n${source}`
-      : `${english}\n\n${amharic}\n\n📚 Source: ${hit.title}\n${source}`;
-  }
-
-  async function getAnswer() {
-    const question = questionInput?.value.trim() || "";
-    const version = ++requestVersion;
-
-    stopAllSpeech();
-    stopRecognition();
-
-    if (!question) {
-      showAnswer(language === "am"
-        ? "እባክዎ የትምህርት ጥያቄ ይጻፉ።\n\nPlease type a course question."
-        : "Please type a course question.\n\nእባክዎ የትምህርት ጥያቄ ይጻፉ።"
-      );
-
-      questionInput?.focus();
-      return;
-    }
-
-    const cacheKey = question.toLowerCase();
-    const cached = readCache()[cacheKey];
-    const local = findCourseAnswer(question);
-
-    if (local) {
-      showAnswer(local);
-      return;
-    }
-
-    if (typeof cached === "string") {
-      showAnswer(cached);
-      return;
-    }
-
-    if (navigator.onLine === false) {
-      showAnswer(language === "am"
-        ? "ይህ ጥያቄ ኢንተርኔት ያስፈልገዋል። መሠረታዊ የትምህርት መልሶች ያለ ኢንተርኔት ይሰራሉ።\n\nThis question needs internet. Basic course answers still work offline."
-        : "This question needs internet. Basic course answers still work offline.\n\nይህ ጥያቄ ኢንተርኔት ያስፈልገዋል። መሠረታዊ የትምህርት መልሶች ያለ ኢንተርኔት ይሰራሉ።"
-      );
-
-      return;
-    }
-
-    showAnswer(language === "am"
-      ? "🔎 እየፈለግሁ ነው..."
-      : "🔎 Searching..."
-    );
-
-    if (getAnswerBtn) {
-      getAnswerBtn.disabled = true;
-      getAnswerBtn.setAttribute("aria-busy", "true");
-    }
-
-    try {
-      const railwayAnswer = await getRailwayAnswer(question);
-      cacheAnswer(cacheKey, railwayAnswer);
-
-      if (version === requestVersion) {
-        showAnswer(railwayAnswer);
+        if (!am && !en) en = raw;
       }
 
-      return;
-    } catch (railwayError) {
-      console.warn("Railway API failed:", railwayError);
-    }
+      if (!am && !en) throw new Error("No answer text.");
 
-    try {
-      const webAnswer = await getWebAnswer(question);
-      cacheAnswer(cacheKey, webAnswer);
+      const sourceValue = data.source || data.citation || "";
 
-      if (version === requestVersion) {
-        showAnswer(webAnswer);
-      }
-    } catch (webError) {
-      console.warn("Web answer failed:", webError);
-
-      if (version === requestVersion) {
-        showAnswer(language === "am"
-          ? "ይህን በትምህርት መረጃ ውስጥ ማግኘት አልቻልኩም። መምህር ለመጠየቅ እርዳታ አስፈልገኛል ይጫኑ።\n\nI could not find this in the course material. Press I Need Help to ask a teacher on Telegram."
-          : "I could not find this in the course material. Press I Need Help to ask a teacher on Telegram.\n\nይህን በትምህርት መረጃ ውስጥ ማግኘት አልቻልኩም። መምህር ለመጠየቅ እርዳታ አስፈልገኛል ይጫኑ።"
-        );
-      }
-    } finally {
-      if (version === requestVersion && getAnswerBtn) {
-        getAnswerBtn.disabled = false;
-        getAnswerBtn.removeAttribute("aria-busy");
-      }
-    }
-  }
-
-  on(getAnswerBtn, getAnswer);
-
-  questionInput?.addEventListener("keydown", event => {
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.preventDefault();
-      getAnswerBtn?.click();
-    }
-  });
-
-  /* =========================================================
-     SOFT READ ALOUD
-     ========================================================= */
-
-  function stopAllSpeech() {
-    speechVersion++;
-    speakingLanguage = null;
-
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-
-    cancelAudio?.();
-    audio.pause();
-    audio.removeAttribute("src");
-    audio.load();
-
-    speakAmharicBtn?.setAttribute("aria-pressed", "false");
-    speakEnglishBtn?.setAttribute("aria-pressed", "false");
-    applyLanguage();
-  }
-
-  function getVoices() {
-    return new Promise(resolve => {
-      if (!("speechSynthesis" in window)) {
-        resolve([]);
-        return;
-      }
-
-      const synth = window.speechSynthesis;
-
-      if (synth.getVoices().length) {
-        resolve(synth.getVoices());
-        return;
-      }
-
-      function finish() {
-        clearTimeout(timer);
-        synth.removeEventListener("voiceschanged", finish);
-        resolve(synth.getVoices());
-      }
-
-      const timer = setTimeout(finish, 1200);
-      synth.addEventListener("voiceschanged", finish);
-    });
-  }
-
-  function playAudio(url, version) {
-    return new Promise((resolve, reject) => {
-      let settled = false;
-
-      function finish(error) {
-        if (settled) return;
-
-        settled = true;
-        clearTimeout(timer);
-
-        audio.onended = null;
-        audio.onerror = null;
-        cancelAudio = null;
-
-        error ? reject(error) : resolve();
-      }
-
-      const timer = setTimeout(
-        () => finish(new Error("Audio timeout")),
-        60000
-      );
-
-      cancelAudio = () => finish(new Error("Cancelled"));
-      audio.onended = () => finish();
-      audio.onerror = () => finish(new Error("Audio unavailable"));
-
-      if (version !== speechVersion) {
-        finish(new Error("Cancelled"));
-        return;
-      }
-
-      audio.src = url;
-      audio.play().catch(finish);
-    });
-  }
-
-  function extractLanguage(text, lang) {
-    return text.split(/\n\s*📚/)[0]
-      .split(/\n\s*\n/)
-      .filter(part => lang === "am"
-        ? ETHIOPIC.test(part)
-        : /[A-Za-z]/.test(part) && !ETHIOPIC.test(part))
-      .join("\n\n")
-      .trim();
-  }
-
-  function speakDevice(text, voice, lang, version) {
-    return new Promise((resolve, reject) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-
-      utterance.voice = voice;
-      utterance.lang = lang === "am" ? "am-ET" : "en-US";
-
-      utterance.rate = 0.88;
-      utterance.pitch = 1.02;
-      utterance.volume = 0.9;
-
-      const timer = setTimeout(() => {
-        if (version === speechVersion) {
-          window.speechSynthesis.cancel();
-        }
-
-        reject(new Error("Voice did not start"));
-      }, 5000);
-
-      utterance.onstart = () => clearTimeout(timer);
-
-      utterance.onend = () => {
-        clearTimeout(timer);
-        resolve();
+      return {
+        am,
+        en,
+        source: typeof sourceValue === "string" ? sourceValue : ""
       };
-
-      utterance.onerror = event => {
-        clearTimeout(timer);
-        reject(new Error(event.error));
-      };
-
-      window.speechSynthesis.speak(utterance);
-    });
-  }
-
-  async function readAloud(lang) {
-    if (speakingLanguage === lang) {
-      stopAllSpeech();
-      return;
     }
 
-    stopRecognition();
-    stopAllSpeech();
+    async function getAnswer() {
+      stopReading();
+      stopRecognition();
 
-    const text = extractLanguage(answerBox?.value || "", lang);
+      const question = el.question.value.trim();
+      const firstLanguage = detectLanguage(question);
+      const version = ++answerVersion;
 
-    if (!text) {
-      status(
-        "ለማንበብ በዚህ ቋንቋ ጽሑፍ የለም።",
-        "No text in this language is available to read.",
-        "warn"
-      );
+      answerController?.abort();
+      answerController = null;
+      setBusy(el.getAnswerBtn, false);
 
-      return;
-    }
-
-    const version = speechVersion;
-    speakingLanguage = lang;
-
-    const button = lang === "am" ? speakAmharicBtn : speakEnglishBtn;
-    button?.setAttribute("aria-pressed", "true");
-    applyLanguage();
-
-    try {
-      const voices = (await getVoices())
-        .filter(voice => voice.lang.toLowerCase().startsWith(lang))
-        .sort((a, b) =>
-          Number(b.localService) - Number(a.localService)
+      if (!question) {
+        displayMessage(
+          "እባክዎ ጥያቄ ይጻፉ።",
+          "Please type a question."
         );
 
-      if (version !== speechVersion) return;
+        el.question.focus({ preventScroll: true });
+        return;
+      }
 
-      for (const voice of voices.slice(0, 3)) {
-        try {
-          await speakDevice(text, voice, lang, version);
-          return;
-        } catch {
-          if (version !== speechVersion) return;
-        }
+      const local = localAnswer(question);
+
+      if (local) {
+        renderAnswer(local, firstLanguage);
+        return;
+      }
+
+      const cacheKey = `${firstLanguage}:${question.toLowerCase()}`;
+      const cache = readStorage(CACHE_KEY, {});
+
+      if (cache[cacheKey]?.answer) {
+        renderAnswer(cache[cacheKey].answer, firstLanguage);
+        return;
       }
 
       if (navigator.onLine === false) {
-        throw new Error("No offline voice");
+        displayMessage(
+          "ይህ ጥያቄ ኢንተርኔት ያስፈልገዋል።",
+          "This question needs an internet connection.",
+          firstLanguage
+        );
+
+        return;
       }
 
-      for (const chunk of splitText(text)) {
-        if (version !== speechVersion) return;
+      currentAnswer = null;
+      el.answer.value = firstLanguage === "am"
+        ? "እየፈለግሁ ነው..."
+        : "Getting your answer...";
 
-        const url =
-          "https://translate.google.com/translate_tts" +
-          "?ie=UTF-8&client=tw-ob" +
-          `&tl=${lang}&q=${encodeURIComponent(chunk)}`;
+      el.answer.scrollTop = 0;
+      setBusy(el.getAnswerBtn, true);
 
-        await playAudio(url, version);
+      const controller = new AbortController();
+      answerController = controller;
+
+      try {
+        const data = await request("/api/ask", {
+          method: "POST",
+          signal: controller.signal,
+          body: {
+            chatId,
+            question,
+            language: firstLanguage,
+            responseLanguages: [firstLanguage, firstLanguage === "am" ? "en" : "am"]
+          }
+        });
+
+        if (version !== answerVersion) return;
+
+        const record = normalizeAnswer(data);
+        renderAnswer(record, firstLanguage);
+
+        cache[cacheKey] = {
+          answer: record,
+          savedAt: Date.now()
+        };
+
+        const entries = Object.entries(cache)
+          .sort((a, b) => b[1].savedAt - a[1].savedAt)
+          .slice(0, 60);
+
+        writeStorage(CACHE_KEY, Object.fromEntries(entries));
+
+        if (!record.am || !record.en) {
+          status(
+            "አገልጋዩ በአንድ ቋንቋ ብቻ መልሷል።",
+            "The server returned only one language.",
+            "warn"
+          );
+        }
+      } catch (error) {
+        if (version !== answerVersion) return;
+
+        displayMessage(
+          "መልስ ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም እርዳታ ይጠይቁ።",
+          "The answer service is unavailable. Try again or use I Need Help.",
+          firstLanguage
+        );
+
+        console.warn("Answer request failed:", error.message);
+      } finally {
+        if (version === answerVersion) {
+          answerController = null;
+          setBusy(el.getAnswerBtn, false);
+        }
       }
-    } catch (error) {
-      if (version === speechVersion) {
-        console.warn("Read aloud failed:", error);
+    }
+
+    on("getAnswerBtn", getAnswer);
+
+    el.question.addEventListener("keydown", event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        event.preventDefault();
+        if (!el.getAnswerBtn?.disabled) getAnswer();
+      }
+    });
+
+    /* ======================================================
+       ONE SPEECH CONTROLLER — NO COMPETING AUDIO FALLBACK
+       ====================================================== */
+
+    let speechRun = 0;
+    let readingLanguage = null;
+    let activeUtterance = null;
+    let cancelSpeechWait = null;
+
+    const speechSettings = {
+      en: { locale: "en-US", rate: 0.88, pitch: 0.94, volume: 0.8 },
+      am: { locale: "am-ET", rate: 0.85, pitch: 0.94, volume: 0.8 }
+    };
+
+    const preferredNames = {
+      en: ["David", "Mark", "Guy", "Ryan", "George", "Daniel"],
+      am: ["Ameha"]
+    };
+
+    function stopReading() {
+      speechRun++;
+      readingLanguage = null;
+
+      const cancel = cancelSpeechWait;
+      cancelSpeechWait = null;
+      cancel?.();
+
+      if (activeUtterance) {
+        activeUtterance.onend = null;
+        activeUtterance.onerror = null;
+        activeUtterance = null;
+      }
+
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        // Speech is unavailable.
+      }
+
+      updateMediaButtons();
+    }
+
+    function loadVoices(run) {
+      return new Promise(resolve => {
+        const synth = window.speechSynthesis;
+        let finished = false;
+        let timer;
+
+        function finish(voices) {
+          if (finished) return;
+          finished = true;
+
+          clearTimeout(timer);
+          synth.removeEventListener("voiceschanged", check);
+
+          if (cancelSpeechWait === cancel) {
+            cancelSpeechWait = null;
+          }
+
+          resolve(voices);
+        }
+
+        function cancel() {
+          finish([]);
+        }
+
+        function check() {
+          if (run !== speechRun) {
+            finish([]);
+            return;
+          }
+
+          const voices = synth.getVoices();
+          if (voices.length) finish(voices);
+        }
+
+        cancelSpeechWait = cancel;
+        synth.addEventListener("voiceschanged", check);
+
+        timer = setTimeout(
+          () => finish(run === speechRun ? synth.getVoices() : []),
+          1500
+        );
+
+        check();
+      });
+    }
+
+    function chooseVoice(voices, lang) {
+      function score(voice) {
+        let value = voice.localService ? 3 : 0;
+        const name = voice.name.toLowerCase();
+
+        preferredNames[lang].forEach((preferred, index) => {
+          if (name.includes(preferred.toLowerCase())) {
+            value += 100 - index;
+          }
+        });
+
+        if (
+          voice.lang.toLowerCase().replace(/_/g, "-") ===
+          speechSettings[lang].locale.toLowerCase()
+        ) value += 10;
+
+        return value;
+      }
+
+      return voices
+        .filter(voice => {
+          const code = voice.lang.toLowerCase().replace(/_/g, "-");
+          return code === lang || code.startsWith(`${lang}-`);
+        })
+        .sort((a, b) => score(b) - score(a))[0] || null;
+    }
+
+    function readingText(lang) {
+      if (currentAnswer) return currentAnswer[lang] || "";
+
+      return el.answer.value
+        .split(/\n\s*(?:Source|ምንጭ|📚)/i)[0]
+        .split(/\n+/)
+        .filter(line => lang === "am"
+          ? ETHIOPIC.test(line)
+          : /[A-Za-z]/.test(line) && !ETHIOPIC.test(line))
+        .join("\n");
+    }
+
+    function speechChunks(text) {
+      const sentences = text
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[*#`]/g, "")
+        .match(/[^.!?።፧\n]+[.!?።፧]?/g) || [];
+
+      const output = [];
+
+      for (const sentence of sentences) {
+        let chunk = "";
+
+        for (const word of sentence.trim().split(/\s+/)) {
+          if (chunk && `${chunk} ${word}`.length > 180) {
+            output.push(chunk);
+            chunk = "";
+          }
+
+          chunk = chunk ? `${chunk} ${word}` : word;
+        }
+
+        if (chunk) output.push(chunk);
+      }
+
+      return output;
+    }
+
+    function speakChunk(text, voice, lang, run) {
+      return new Promise((resolve, reject) => {
+        if (run !== speechRun) {
+          resolve(false);
+          return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        const config = speechSettings[lang];
+        let settled = false;
+
+        utterance.voice = voice;
+        utterance.lang = voice.lang || config.locale;
+        utterance.rate = config.rate;
+        utterance.pitch = config.pitch;
+        utterance.volume = config.volume;
+
+        function finish(error, completed = true) {
+          if (settled) return;
+          settled = true;
+
+          clearTimeout(timer);
+          utterance.onend = null;
+          utterance.onerror = null;
+
+          if (activeUtterance === utterance) activeUtterance = null;
+          if (cancelSpeechWait === cancel) cancelSpeechWait = null;
+
+          if (error) reject(error);
+          else resolve(completed);
+        }
+
+        function cancel() {
+          finish(null, false);
+        }
+
+        const timer = setTimeout(() => {
+          if (run !== speechRun) {
+            finish(null, false);
+            return;
+          }
+
+          finish(new Error("Speech timed out."));
+          window.speechSynthesis.cancel();
+        }, 60000);
+
+        utterance.onend = () => finish(null, true);
+
+        utterance.onerror = event => {
+          if (
+            run !== speechRun ||
+            event.error === "canceled" ||
+            event.error === "interrupted"
+          ) {
+            finish(null, false);
+          } else {
+            finish(new Error(event.error || "Speech failed."));
+          }
+        };
+
+        activeUtterance = utterance;
+        cancelSpeechWait = cancel;
+
+        try {
+          window.speechSynthesis.speak(utterance);
+        } catch (error) {
+          finish(error);
+        }
+      });
+    }
+
+    async function readAloud(lang) {
+      const sameLanguage = readingLanguage === lang;
+
+      stopReading();
+      if (sameLanguage) return;
+
+      stopRecognition();
+
+      if (
+        !("speechSynthesis" in window) ||
+        !("SpeechSynthesisUtterance" in window)
+      ) {
+        status(
+          "ይህ አሳሽ የድምፅ ንባብን አይደግፍም።",
+          "Reading aloud is unavailable in this browser.",
+          "warn"
+        );
+        return;
+      }
+
+      const text = readingText(lang).trim();
+
+      if (!text) {
+        status(
+          "በተመረጠው ቋንቋ የመልስ ጽሑፍ የለም።",
+          "There is no answer text in that language.",
+          "warn"
+        );
+        return;
+      }
+
+      const run = speechRun;
+      readingLanguage = lang;
+      updateMediaButtons();
+
+      try {
+        const voices = await loadVoices(run);
+        if (run !== speechRun) return;
+
+        const voice = chooseVoice(voices, lang);
+
+        if (!voice) {
+          status(
+            "በዚህ መሣሪያ ለተመረጠው ቋንቋ የንባብ ድምፅ አልተገኘም።",
+            `No ${lang === "am" ? "Amharic" : "English"} reading voice is available on this device.`,
+            "warn"
+          );
+          return;
+        }
+
+        for (const chunk of speechChunks(text)) {
+          if (run !== speechRun) return;
+
+          const completed = await speakChunk(chunk, voice, lang, run);
+
+          if (!completed || run !== speechRun) return;
+        }
+      } catch (error) {
+        if (run === speechRun) {
+          status(
+            "የድምፅ ንባቡ አልተሳካም።",
+            "Reading could not finish. Please try again.",
+            "warn"
+          );
+
+          console.warn("Speech failed:", error.message);
+        }
+      } finally {
+        if (run === speechRun) {
+          readingLanguage = null;
+          updateMediaButtons();
+        }
+      }
+    }
+
+    on("speakAmharicBtn", () => readAloud("am"));
+    on("speakEnglishBtn", () => readAloud("en"));
+
+    /* ======================================================
+       MICROPHONE — SOFT START / END TONES
+       ====================================================== */
+
+    let audioContext = null;
+    let recognitionSession = null;
+
+    function unlockAudio() {
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (!AudioContextClass) return;
+
+      try {
+        audioContext ||= new AudioContextClass();
+        audioContext.resume().catch(() => {});
+      } catch {
+        // Beeps are optional.
+      }
+    }
+
+    function beep(start) {
+      if (!audioContext || audioContext.state !== "running") return;
+
+      try {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const time = audioContext.currentTime;
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(start ? 620 : 820, time);
+        osc.frequency.exponentialRampToValueAtTime(
+          start ? 820 : 580,
+          time + 0.16
+        );
+
+        gain.gain.setValueAtTime(0.0001, time);
+        gain.gain.exponentialRampToValueAtTime(0.045, time + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
+
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+
+        osc.onended = () => {
+          osc.disconnect();
+          gain.disconnect();
+        };
+
+        osc.start(time);
+        osc.stop(time + 0.2);
+      } catch {
+        // Do not interrupt recording when audio is unavailable.
+      }
+    }
+
+    function finishRecognition(session) {
+      if (!session || session.finished) return;
+      session.finished = true;
+
+      if (session.started) beep(false);
+
+      if (recognitionSession === session) {
+        recognitionSession = null;
+      }
+
+      updateMediaButtons();
+    }
+
+    function stopRecognition() {
+      const session = recognitionSession;
+      if (!session) return;
+
+      recognitionSession = null;
+      session.recognizer.onresult = null;
+
+      try {
+        session.recognizer.abort();
+      } catch {
+        // Already stopped.
+      }
+
+      finishRecognition(session);
+    }
+
+    function startRecognition(lang) {
+      const previousLang = recognitionSession?.lang;
+
+      stopRecognition();
+      if (previousLang === lang) return;
+
+      stopReading();
+      unlockAudio();
+
+      const Recognizer =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!Recognizer) {
+        status(
+          "የድምፅ ግብዓት አይገኝም። እባክዎ ጥያቄዎን ይጻፉ።",
+          "Voice input is unavailable. Please type your question.",
+          "warn"
+        );
+        return;
+      }
+
+      const recognizer = new Recognizer();
+
+      const session = {
+        recognizer,
+        lang,
+        started: false,
+        finished: false,
+        received: false,
+        failed: false
+      };
+
+      recognitionSession = session;
+
+      recognizer.lang = lang === "am" ? "am-ET" : "en-US";
+      recognizer.continuous = false;
+      recognizer.interimResults = false;
+
+      recognizer.onstart = () => {
+        if (recognitionSession !== session) {
+          try { recognizer.abort(); } catch {}
+          return;
+        }
+
+        session.started = true;
+        beep(true);
+        updateMediaButtons();
+
+        status("እባክዎ ይናገሩ።", "Listening. Please speak.");
+      };
+
+      recognizer.onresult = event => {
+        if (recognitionSession !== session) return;
+
+        const transcript = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join(" ")
+          .trim();
+
+        if (!transcript) return;
+
+        session.received = true;
+
+        el.question.value = [
+          el.question.value.trim(),
+          transcript
+        ].filter(Boolean).join(" ");
 
         status(
-          "ድምፅ አሁን አልተገኘም። ጽሑፉን ማንበብ ይችላሉ።",
-          "Voice is unavailable right now. The text remains on screen.",
+          "ጥያቄዎ ተጽፏል። መልስ አግኝ ይጫኑ።",
+          "Your words were added. Press Get Answer.",
+          "ok"
+        );
+      };
+
+      recognizer.onerror = event => {
+        if (recognitionSession !== session) return;
+        session.failed = true;
+
+        if (event.error !== "aborted") {
+          status(
+            "የድምፅ ግብዓት አልተሳካም። ፈቃድና ግንኙነትዎን ያረጋግጡ።",
+            `Voice input failed: ${event.error}. Check microphone permission and connection.`,
+            "warn"
+          );
+        }
+      };
+
+      recognizer.onend = () => {
+        const wasCurrent = recognitionSession === session;
+        finishRecognition(session);
+
+        if (wasCurrent && !session.received && !session.failed) {
+          status(
+            "ንግግር አልተገኘም። እንደገና ይሞክሩ።",
+            "No speech was captured. Please try again.",
+            "warn"
+          );
+        }
+      };
+
+      updateMediaButtons();
+
+      try {
+        recognizer.start();
+      } catch {
+        finishRecognition(session);
+
+        status(
+          "ማይክሮፎኑን መጀመር አልተቻለም።",
+          "The microphone could not start.",
           "warn"
         );
       }
-    } finally {
-      if (version === speechVersion) {
-        speakingLanguage = null;
-        button?.setAttribute("aria-pressed", "false");
-        applyLanguage();
-      }
     }
-  }
 
-  on(speakAmharicBtn, () => readAloud("am"));
-  on(speakEnglishBtn, () => readAloud("en"));
+    on("voiceAmharicBtn", () => startRecognition("am"));
+    on("voiceEnglishBtn", () => startRecognition("en"));
 
-  /* =========================================================
-     VOICE INPUT WITH START AND END BEEP
-     ========================================================= */
+    /* ======================================================
+       CLEAR / COPY
+       ====================================================== */
 
-  function stopRecognition() {
-    const previous = recognition;
-    recognition = null;
-    recognitionButton = null;
+    function clearAll() {
+      answerVersion++;
+      answerController?.abort();
+      answerController = null;
 
-    if (previous) {
-      previous.onresult = null;
+      // Clear first, independently of speech support.
+      el.question.value = "";
+      el.answer.value = "";
 
+      el.question.scrollTop = 0;
+      el.answer.scrollTop = 0;
+      el.answer.style.removeProperty("height");
+
+      currentAnswer = null;
+      copiedQuestion = "";
+
+      stopReading();
+      stopRecognition();
+      setBusy(el.getAnswerBtn, false);
+
+      status("ጽሑፉ ተጽድቷል።", "Question and answer cleared.");
+      el.question.focus({ preventScroll: true });
+    }
+
+    on("clearBtn", clearAll);
+
+    async function copyText(text) {
       try {
-        previous.abort();
+        await navigator.clipboard.writeText(text);
+        return true;
       } catch {
-        // Recognition may already have ended.
+        return false;
       }
     }
 
-    voiceAmharicBtn?.setAttribute("aria-pressed", "false");
-    voiceEnglishBtn?.setAttribute("aria-pressed", "false");
-    applyLanguage();
-  }
+    on("copyBtn", async () => {
+      const question = el.question.value.trim();
 
-  async function startVoice(lang, button) {
-    if (recognition) {
-      stopRecognition();
-      return;
-    }
-
-    const Recognizer =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!Recognizer) {
-      status(
-        "ይህ አሳሽ የድምፅ ግብዓትን አይደግፍም። እባክዎ ይጻፉ።",
-        "Voice input is unavailable in this browser. Please type.",
-        "warn"
-      );
-
-      return;
-    }
-
-    stopAllSpeech();
-
-    const current = new Recognizer();
-    recognition = current;
-    recognitionButton = button;
-
-    current.lang = lang;
-    current.continuous = false;
-    current.interimResults = false;
-
-    button?.setAttribute("aria-pressed", "true");
-    applyLanguage();
-
-    current.onstart = () => {
-      playBeep("start");
-
-      status(
-        "🎤 እያዳመጥኩ ነው። እባክዎ ይናገሩ።",
-        "🎤 Listening. Please speak."
-      );
-    };
-
-    current.onresult = event => {
-      if (recognition !== current) return;
-
-      const text = event.results[0][0].transcript.trim();
-
-      if (questionInput) {
-        questionInput.value +=
-          (questionInput.value && !/\s$/.test(questionInput.value)
-            ? " "
-            : "") + text;
+      if (!question) {
+        status(
+          "እባክዎ መጀመሪያ ጥያቄ ይጻፉ።",
+          "Please type a question first.",
+          "warn"
+        );
+        return;
       }
 
-      playBeep("end");
+      copiedQuestion = question;
+      const copied = await copyText(question);
 
       status(
-        "✅ ተመዝግቧል። መልስ አግኝ ይጫኑ።",
-        "✅ Got it. Press Get Answer.",
-        "ok"
+        copied
+          ? "ጥያቄው ተቀድቷል።"
+          : "ጥያቄው ለእርዳታ ተዘጋጅቷል፤ ወደ ቅንጭብ ሰሌዳ ግን አልተቀዳም።",
+        copied
+          ? "Question copied."
+          : "Question saved for Help, but clipboard access was unavailable.",
+        copied ? "ok" : "warn"
       );
-    };
-
-    current.onerror = event => {
-      if (recognition !== current || event.error === "aborted") return;
-
-      status(
-        "የድምፅ ግብዓት አልተሳካም። የማይክሮፎን ፈቃድና ግንኙነትዎን ያረጋግጡ።",
-        `Voice input failed (${event.error}). Check microphone permission and connection.`,
-        "warn"
-      );
-    };
-
-    current.onend = () => {
-      if (recognition !== current) return;
-
-      recognition = null;
-      recognitionButton = null;
-      button?.setAttribute("aria-pressed", "false");
-      applyLanguage();
-    };
-
-    try {
-      if (typeof Recognizer.available === "function") {
-        try {
-          const availability = await Recognizer.available({
-            langs: [lang],
-            processLocally: true
-          });
-
-          if (recognition !== current) return;
-          if (availability === "available") current.processLocally = true;
-        } catch {
-          // Use default browser recognition.
-        }
-      }
-
-      if (recognition !== current) return;
-      current.start();
-    } catch (error) {
-      console.warn("Microphone failed:", error);
-      stopRecognition();
-
-      status(
-        "ማይክሮፎኑን መጀመር አልተቻለም።",
-        "Could not start the microphone.",
-        "warn"
-      );
-    }
-  }
-
-  on(voiceAmharicBtn, () => startVoice("am-ET", voiceAmharicBtn));
-  on(voiceEnglishBtn, () => startVoice("en-US", voiceEnglishBtn));
-
-  /* =========================================================
-     CLEAR — CLEARS QUESTION AND ANSWER
-     ========================================================= */
-
-  on(clearBtn, clearQuestionAndAnswer);
-
-  /* =========================================================
-     COPY QUESTION FOR TELEGRAM
-     ========================================================= */
-
-  on(copyBtn, async () => {
-    const question = questionInput?.value.trim() || "";
-
-    if (!question) {
-      status(
-        "እባክዎ መጀመሪያ ጥያቄ ይጻፉ።",
-        "Please type a question first.",
-        "warn"
-      );
-
-      return;
-    }
-
-    copiedQuestion = question;
-
-    try {
-      await navigator.clipboard.writeText(question);
-
-      status(
-        "✅ ጥያቄው ተቀድቷል። እርዳታ አስፈልገኛል ሲጫኑ Telegram ውስጥ ይታያል።",
-        "✅ Question copied. It will appear in Telegram when you press I Need Help.",
-        "ok"
-      );
-    } catch {
-      status(
-        "✅ ጥያቄው ለTelegram ተዘጋጅቷል።",
-        "✅ Question prepared for Telegram.",
-        "ok"
-      );
-    }
-  });
-
-  /* =========================================================
-     TELEGRAM HELP WITH QUESTION PREFILL
-     ========================================================= */
-
-  function openTelegramWithMessage(message) {
-    const telegramMessage = encodeURIComponent(message);
-
-    window.open(
-      `https://t.me/EbaMengistuBot?text=${telegramMessage}`,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  }
-
-  on(helpBtn, () => {
-    const question = questionInput?.value.trim() || copiedQuestion;
-
-    if (question) {
-      const message = language === "am"
-        ? `🙋 እርዳታ አስፈልገኛል።\n\nጥያቄ፦ ${question}`
-        : `🙋 I need help.\n\nQuestion: ${question}`;
-
-      openTelegramWithMessage(message);
-
-      status(
-        "Telegram ተከፍ቗ል። ጥያቄዎ በራሱ ተጽፏል። እባክዎ Send ይጫኑ።",
-        "Telegram opened. Your question is already typed. Please press Send.",
-        "ok"
-      );
-
-      return;
-    }
-
-    window.open(TELEGRAM_BOT_URL, "_blank", "noopener,noreferrer");
-
-    status(
-      "Telegram ተከፍ቗ል።",
-      "Telegram opened."
-    );
-  });
-
-  /* =========================================================
-     SCREEN SHARE REQUEST
-     ========================================================= */
-
-  on(screenShareBtn, async () => {
-    const value = window.prompt(
-      language === "am"
-        ? "የስብሰባ ሊንክዎን ያስገቡ። ይህ በራሱ ስክሪንዎን አያጋራም።"
-        : "Enter your meeting link. This does not automatically share your screen."
-    );
-
-    if (!value?.trim()) return;
-
-    let meetingLink;
-
-    try {
-      const url = new URL(value.trim());
-
-      if (url.protocol !== "https:") {
-        throw new Error("HTTPS required");
-      }
-
-      meetingLink = url.href;
-    } catch {
-      status(
-        "እባክዎ ትክክለኛ HTTPS ሊንክ ያስገቡ።",
-        "Please enter a valid HTTPS meeting link.",
-        "warn"
-      );
-
-      return;
-    }
-
-    const approved = window.confirm(
-      language === "am"
-        ? `ይህን ሊንክ ለድጋፍ ይላኩ?\n${meetingLink}`
-        : `Send this meeting link to support?\n${meetingLink}`
-    );
-
-    if (!approved) return;
-
-    if (screenShareBtn) screenShareBtn.disabled = true;
-
-    const requestData = {
-      chatId: getChatId(),
-      meetingLink,
-      source: "web"
-    };
-
-    const telegramMessage = language === "am"
-      ? `🖥️ የስክሪን ማጋራት ጥያቄ\n\nሊንክ፦ ${meetingLink}`
-      : `🖥️ Screen-sharing request\n\nMeeting link: ${meetingLink}`;
-
-    openTelegramWithMessage(telegramMessage);
-
-    try {
-      await apiRequest("/api/screen-share", requestData);
-
-      status(
-        "የስብሰባ ሊንኩ ተልኳል። እባክዎ Telegram ውስጥ Send ይጫኑ።",
-        "Your meeting-link request was submitted. Please press Send in Telegram.",
-        "ok"
-      );
-    } catch (error) {
-      console.warn("Screen-share request failed:", error);
-
-      status(
-        "ጥያቄው ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
-        "Telegram opened with your request. Please press Send.",
-        "warn"
-      );
-    } finally {
-      if (screenShareBtn) screenShareBtn.disabled = false;
-    }
-  });
-
-  /* =========================================================
-     DOWNLOAD
-     ========================================================= */
-
-  on(downloadBtn, () => {
-    const text = [
-      "Learning and Employment / ትምህርት እና ሥራ",
-      "Accessibility Hackathon 2026 Ethiopia",
-      "",
-      `Support: ${TELEGRAM_BOT_URL}`,
-      "",
-      questionInput?.value ? `Question:\n${questionInput.value}` : "",
-      answerBox?.value ? `Answer:\n${answerBox.value}` : ""
-    ].filter(Boolean).join("\n\n");
-
-    const blob = new Blob(["\uFEFF", text], {
-      type: "text/plain;charset=utf-8"
     });
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    /* ======================================================
+       TELEGRAM HANDOFF
+       Opens synchronously during the user's click.
+       Keeps a visible recovery message and copy button.
+       ====================================================== */
 
-    link.href = url;
-    link.download = "Learning-and-Employment.txt";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    function telegramHandoff(message, container) {
+      const url = new URL(TELEGRAM_URL);
+      url.searchParams.set("text", message);
 
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+      let popup = null;
 
-    status(
-      "የማውረድ ጥያቄው ተጀምሯል።",
-      "Download requested.",
-      "ok"
-    );
-  });
+      try {
+        popup = window.open("about:blank", "_blank");
 
-  /* =========================================================
-     JOB ALERTS
-     Telegram opens immediately, then form clears
-     ========================================================= */
+        if (popup) {
+          popup.opener = null;
+          popup.location.replace(url.href);
+        }
+      } catch {
+        try { popup?.close(); } catch {}
+        popup = null;
+      }
 
-  jobAlertForm?.addEventListener("submit", async event => {
-    event.preventDefault();
+      container?.querySelector(".telegram-handoff")?.remove();
 
-    const phone = $("jobPhone")?.value.trim() || "";
-    const telegram = $("jobTelegram")?.value.trim() || "";
-    const area = $("jobArea")?.value || "";
-    const button = $("jobAlertBtn");
+      const panel = document.createElement("div");
+      panel.className = "telegram-handoff privacy-note";
 
-    if (!phone && !telegram) {
-      status(
-        "እባክዎ ስልክ ቁጥር ወይም Telegram ስም ያስገቡ።",
-        "Please enter a phone number or Telegram username.",
-        "warn"
-      );
+      const note = document.createElement("p");
+      note.textContent = language === "am"
+        ? "Telegram ውስጥ ጽሑፉ ካልታየ፣ ከታች ቅዳ ይጫኑ፣ ከዚያ ለጥፈው ይላኩ።"
+        : "If Telegram does not show the draft, copy the message below, paste it into the bot, and press Send.";
 
-      return;
+      const draft = document.createElement("textarea");
+      draft.readOnly = true;
+      draft.value = message;
+      draft.rows = 4;
+      draft.setAttribute("aria-label", "Telegram request message");
+
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.textContent = language === "am"
+        ? "መልዕክቱን ቅዳ"
+        : "Copy message";
+
+      copy.addEventListener("click", async () => {
+        if (await copyText(message)) {
+          copy.textContent = language === "am" ? "ተቀድቷል" : "Copied";
+        } else {
+          draft.focus({ preventScroll: true });
+          draft.select();
+          copy.textContent = "Select and copy the message";
+        }
+      });
+
+      const link = document.createElement("a");
+      link.className = "course-link";
+      link.href = url.href;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = language === "am"
+        ? "Telegram ክፈት"
+        : "Open Telegram";
+
+      panel.append(note, draft, copy, document.createTextNode(" "), link);
+
+      container?.append(panel);
+
+      return Boolean(popup);
     }
 
-    if (!area) {
-      status(
-        "እባክዎ የሥራ መስክ ይምረጡ።",
-        "Please choose a job area.",
-        "warn"
-      );
+    on("helpBtn", () => {
+      stopReading();
+      stopRecognition();
 
-      return;
-    }
+      const question = el.question.value.trim() || copiedQuestion;
 
-    if (button) button.disabled = true;
+      const message = question
+        ? `Learning support request\n\nQuestion:\n${question}`
+        : "Hello, I need learning support.";
 
-    const requestData = {
-      chatId: getChatId(),
-      phone,
-      telegram,
-      area,
-      notify: true,
-      source: "web"
-    };
-
-    const telegramMessage = language === "am"
-      ? `🔔 የሥራ ማሳወቂያ ጥያቄ\n\nስልክ፦ ${phone || "—"}\nTelegram፦ ${telegram || "—"}\nየሥራ መስክ፦ ${area}`
-      : `🔔 Job alert request\n\nPhone: ${phone || "—"}\nTelegram: ${telegram || "—"}\nJob area: ${area}`;
-
-    openTelegramWithMessage(telegramMessage);
-    jobAlertForm.reset();
-
-    try {
-      await apiRequest("/api/job-alert", requestData);
+      telegramHandoff(message, el.helpBtn.closest(".answer-box"));
 
       status(
-        "✅ የሥራ ማሳወቂያ ተመዝግቧል። Telegram ተከፍ቗ል። እባክዎ Send ይጫኑ።",
-        "✅ Job alert registered. Telegram opened. Please press Send.",
-        "ok"
+        "የTelegram ጥያቄዎ ተዘጋጅቷል። ጽሑፉን ያረጋግጡና Send ይጫኑ።",
+        "Telegram handoff prepared. Check the draft and press Send."
       );
-    } catch (error) {
-      console.warn("Job alert failed:", error);
+    });
+
+    /* ======================================================
+       FORMS — EXPLICITLY CLEAR FIELDS
+       ====================================================== */
+
+    function clearForm(form) {
+      form.reset();
+
+      form.querySelectorAll("input, textarea, select").forEach(field => {
+        if (field instanceof HTMLSelectElement) {
+          field.selectedIndex = 0;
+        } else if (field.type === "checkbox" || field.type === "radio") {
+          field.checked = false;
+        } else if (!["submit", "button", "hidden"].includes(field.type)) {
+          field.value = "";
+        }
+      });
+    }
+
+    function value(id) {
+      return $(id)?.value.trim() || "";
+    }
+
+    function validPhone(phone) {
+      return !phone || /^[+\d\s()-]{7,25}$/.test(phone);
+    }
+
+    async function submitFormRequest({
+      form,
+      button,
+      endpoint,
+      payload,
+      message,
+      target
+    }) {
+      if (form.dataset.busy === "true") return;
+
+      form.dataset.busy = "true";
+      setBusy(button, true);
+
+      const opened = telegramHandoff(message, form.parentElement);
+
+      // Clear immediately only when the new window was opened.
+      // Otherwise keep the inputs until server success.
+      if (opened) clearForm(form);
 
       status(
-        "የሥራ ማሳወቂያ ጥያቄ ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
-        "Job alert request opened in Telegram. Please press Send.",
-        "warn"
-      );
-    } finally {
-      if (button) button.disabled = false;
-    }
-  });
-
-  /* =========================================================
-     INTERVIEW SUPPORT
-     Telegram opens immediately, then form clears
-     ========================================================= */
-
-  accommodationForm?.addEventListener("submit", async event => {
-    event.preventDefault();
-
-    const name = $("accommodationName")?.value.trim() || "";
-    const phone = $("accommodationPhone")?.value.trim() || "";
-    const type = $("accommodationType")?.value || "";
-    const details = $("accommodationDetails")?.value.trim() || "";
-    const button = $("accommodationBtn");
-
-    if (!name) {
-      status(
-        "እባክዎ ሙሉ ስምዎን ይጻፉ።",
-        "Please enter your full name.",
-        "warn"
+        "ጥያቄውን በአገልጋዩ ላይ እያስቀመጥን ነው...",
+        "Saving your request to the server...",
+        "info",
+        target
       );
 
-      return;
+      try {
+        await request(endpoint, {
+          method: "POST",
+          body: payload
+        });
+
+        clearForm(form);
+
+        status(
+          "ጥያቄዎ በአገልጋዩ ላይ ተቀምጧል። በTelegram ያለውን መልዕክት ከመላክዎ በፊት ያረጋግጡ።",
+          "The server accepted your request. Review the Telegram message before sending it.",
+          "ok",
+          target
+        );
+      } catch {
+        status(
+          "በአገልጋዩ ላይ መቀመጡ አልተረጋገጠም። ከታች ያለውን መልዕክት በTelegram ይላኩ።",
+          "Server submission was not confirmed. Use the message below to send the request in Telegram.",
+          "warn",
+          target
+        );
+      } finally {
+        delete form.dataset.busy;
+        setBusy(button, false);
+      }
     }
 
-    if (!phone) {
-      status(
-        "እባክዎ ስልክ ቁጥርዎን ያስገቡ።",
-        "Please enter your phone number.",
-        "warn"
+    el.jobAlertForm?.addEventListener("submit", event => {
+      event.preventDefault();
+
+      const phone = value("jobPhone");
+      const telegram = value("jobTelegram");
+      const area = value("jobArea");
+
+      if ((!phone && !telegram) || !area || !validPhone(phone)) {
+        status(
+          "የስልክ ቁጥር ወይም Telegram ስም ያስገቡ፣ የሥራ መስክም ይምረጡ።",
+          "Enter a valid phone number or Telegram username and select a job area.",
+          "warn",
+          jobStatus
+        );
+        return;
+      }
+
+      submitFormRequest({
+        form: el.jobAlertForm,
+        button: el.jobAlertBtn,
+        endpoint: "/api/job-alert",
+        target: jobStatus,
+        payload: {
+          chatId,
+          phone,
+          telegram,
+          area,
+          notify: true,
+          source: "web"
+        },
+        message: [
+          "Job alert request",
+          `Phone: ${phone || "Not provided"}`,
+          `Telegram: ${telegram || "Not provided"}`,
+          `Job area: ${area}`
+        ].join("\n")
+      });
+    });
+
+    el.accommodationForm?.addEventListener("submit", event => {
+      event.preventDefault();
+
+      const name = value("accommodationName");
+      const phone = value("accommodationPhone");
+      const type = value("accommodationType");
+      const details = value("accommodationDetails");
+
+      if (!name || !phone || !type || !validPhone(phone)) {
+        status(
+          "ስምዎን፣ ትክክለኛ ስልክ ቁጥርና የድጋፍ ዓይነት ያስገቡ።",
+          "Enter your name, a valid phone number, and support type.",
+          "warn",
+          accommodationStatus
+        );
+        return;
+      }
+
+      submitFormRequest({
+        form: el.accommodationForm,
+        button: el.accommodationBtn,
+        endpoint: "/api/accommodation",
+        target: accommodationStatus,
+        payload: {
+          chatId,
+          name,
+          phone,
+          type,
+          details,
+          status: "requested",
+          source: "web"
+        },
+        message: [
+          "Interview support request",
+          `Name: ${name}`,
+          `Phone: ${phone}`,
+          `Support: ${type}`,
+          `Details: ${details || "Not provided"}`
+        ].join("\n")
+      });
+    });
+
+    /* ======================================================
+       MEETING LINK / DOWNLOAD
+       ====================================================== */
+
+    on("screenShareBtn", () => {
+      const input = window.prompt(
+        "Enter an HTTPS meeting link. This does not share your screen automatically."
       );
 
-      return;
-    }
+      if (!input?.trim()) return;
 
-    if (!type) {
-      status(
-        "እባክዎ የሚፈልጉትን ድጋፍ ይምረጡ።",
-        "Please choose the support you need.",
-        "warn"
+      let meetingLink;
+
+      try {
+        const url = new URL(input.trim());
+        if (url.protocol !== "https:") throw new Error();
+        meetingLink = url.href;
+      } catch {
+        status(
+          "ትክክለኛ HTTPS ሊንክ ያስገቡ።",
+          "Please enter a valid HTTPS meeting link.",
+          "warn"
+        );
+        return;
+      }
+
+      if (!window.confirm(`Send this meeting link to support?\n${meetingLink}`)) {
+        return;
+      }
+
+      telegramHandoff(
+        `Meeting support request\n\n${meetingLink}`,
+        el.screenShareBtn.closest(".answer-box")
       );
 
-      return;
+      request("/api/screen-share", {
+        method: "POST",
+        body: { chatId, meetingLink, source: "web" }
+      }).then(() => {
+        status(
+          "የስብሰባ ሊንኩ በአገልጋዩ ላይ ተቀምጧል።",
+          "The server accepted your meeting-link request.",
+          "ok"
+        );
+      }).catch(() => {
+        status(
+          "በአገልጋዩ ላይ መቀመጡ አልተረጋገጠም። Telegram ይጠቀሙ።",
+          "Server submission was not confirmed. Use Telegram.",
+          "warn"
+        );
+      });
+    });
+
+    on("downloadBtn", () => {
+      const content = [
+        "Learning and Employment / ትምህርት እና ሥራ",
+        `Question:\n${el.question.value}`,
+        `Answer:\n${el.answer.value}`
+      ].join("\n\n");
+
+      const blob = new Blob(["\uFEFF", content], {
+        type: "text/plain;charset=utf-8"
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "learning-and-employment.txt";
+
+      document.body.append(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    });
+
+    /* ======================================================
+       TEACHER STATISTICS — SAFE TEXT RENDERING
+       ====================================================== */
+
+    async function loadTeacherStats() {
+      if (!el.teacherStats) return;
+
+      try {
+        const data = await request("/api/teacher-stats");
+        const questions = Array.isArray(data.questions)
+          ? data.questions.slice(0, 30)
+          : [];
+
+        el.teacherStats.replaceChildren();
+
+        if (!questions.length) {
+          el.teacherStats.textContent = "No questions available yet.";
+          return;
+        }
+
+        const list = document.createElement("ol");
+
+        questions.forEach(item => {
+          const row = document.createElement("li");
+          row.textContent =
+            `${String(item.question || "")} — ${Number(item.count) || 0}`;
+
+          list.append(row);
+        });
+
+        el.teacherStats.append(list);
+      } catch {
+        el.teacherStats.textContent =
+          "Teacher statistics are unavailable or require authorization.";
+      }
     }
 
-    if (button) button.disabled = true;
+    /* ======================================================
+       NON-DESTRUCTIVE DIAGNOSTICS
+       Does not claim SMS / Telegram delivery was tested.
+       ====================================================== */
 
-    const requestData = {
-      chatId: getChatId(),
-      name,
-      phone,
-      type,
-      details,
-      status: "requested",
-      source: "web"
-    };
+    async function testWebsite() {
+      const results = [];
 
-    const telegramMessage = language === "am"
-      ? `♿️ የቃለ መጠይቅ ድጋፍ ጥያቄ\n\nስም፦ ${name}\nስልክ፦ ${phone}\nየሚፈልጉት ድጋፍ፦ ${type}\nዝርዝር፦ ${details || "—"}`
-      : `♿️ Interview support request\n\nName: ${name}\nPhone: ${phone}\nSupport needed: ${type}\nDetails: ${details || "—"}`;
+      function add(test, passed, details = "") {
+        results.push({ test, passed, details });
+      }
 
-    openTelegramWithMessage(telegramMessage);
-    accommodationForm.reset();
+      ids.forEach(id => {
+        const count = document.querySelectorAll(`[id="${id}"]`).length;
+        add(`Unique #${id}`, count === 1, `Found ${count}`);
+      });
 
-    try {
-      await apiRequest("/api/accommodation", requestData);
-
-      status(
-        "✅ የቃለ መጠይቅ ድጋፍ ጥያቄዎ ተልኳል። Telegram ተከፍ቗ል። እባክዎ Send ይጫኑ።",
-        "✅ Your interview support request has been sent. Telegram opened. Please press Send.",
-        "ok"
-      );
-    } catch (error) {
-      console.warn("Interview support request failed:", error);
-
-      status(
-        "የቃለ መጠይቅ ድጋፍ ጥያቄ ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
-        "Interview support request opened in Telegram. Please press Send.",
-        "warn"
-      );
-    } finally {
-      if (button) button.disabled = false;
-    }
-  });
-
-  /* =========================================================
-     TEACHER ANALYTICS
-     ========================================================= */
-
-  async function loadTeacherStats() {
-    if (!teacherStats) return;
-
-    try {
-      const data = await apiGet("/api/teacher-stats");
-      const questions = data.questions || [];
-
-      teacherStats.innerHTML = questions.length
-        ? `<ol>${questions
-            .map(
-              item =>
-                `<li>${item.question} — ${item.count}</li>`
-            )
-            .join("")}</ol>`
-        : "<p>No questions yet.</p>";
-    } catch {
-      teacherStats.innerHTML =
-        "<p>Teacher statistics are not available yet.</p>";
-    }
-  }
-
-  /* =========================================================
-     FINAL WEBSITE TEST
-     ========================================================= */
-
-  async function testWebsite() {
-    const tests = [];
-
-    function add(name, passed, details = "") {
-      tests.push({ name, passed, details });
-    }
-
-    add(
-      "HTML elements",
-      Boolean(
-        questionInput &&
-        answerBox &&
-        getAnswerBtn &&
-        clearBtn &&
-        copyBtn &&
-        languageToggleBtn &&
-        speakAmharicBtn &&
-        speakEnglishBtn &&
-        voiceAmharicBtn &&
-        voiceEnglishBtn &&
-        contrastBtn &&
-        fontSmall &&
-        fontNormal &&
-        fontLarge &&
-        helpBtn &&
-        screenShareBtn &&
-        downloadBtn
-      )
-    );
-
-    add(
-      "Course material section",
-      Boolean(
-        document.querySelector(".course-section") &&
-        document.querySelectorAll(".course-link").length >= 3
-      )
-    );
-
-    add(
-      "Offline course FAQ",
-      Boolean(findCourseAnswer("What is downloading?"))
-    );
-
-    add(
-      "Math engine",
-      solveMath("25 * 4") === 100
-    );
-
-    add(
-      "Job alert form",
-      Boolean(
-        jobAlertForm &&
-        $("jobPhone") &&
-        $("jobTelegram") &&
-        $("jobArea") &&
-        $("jobAlertBtn")
-      )
-    );
-
-    add(
-      "Interview support form",
-      Boolean(
-        accommodationForm &&
-        $("accommodationName") &&
-        $("accommodationPhone") &&
-        $("accommodationType") &&
-        $("accommodationDetails") &&
-        $("accommodationBtn")
-      )
-    );
-
-    add(
-      "Privacy and SMS notes",
-      Boolean(
-        document.querySelector(".privacy-note") &&
-        document.querySelector(".sms-note")
-      )
-    );
-
-    add(
-      "Priority order section",
-      Boolean(
-        document.querySelector(".priority-section") &&
-        document.querySelector(".priority-list")
-      )
-    );
-
-    add(
-      "Teacher analytics section",
-      Boolean(teacherStats)
-    );
-
-    add(
-      "Railway API URL",
-      API_BASE_URL.startsWith("https://")
-    );
-
-    add(
-      "Telegram bot username",
-      TELEGRAM_BOT_URL === "https://t.me/EbaMengistuBot"
-    );
-
-    try {
-      await apiGet("/health", 8000);
-      add("Railway API connection", true);
-    } catch {
       add(
-        "Railway API connection",
-        false,
-        "Check that /health exists on your Railway server."
+        "English local FAQ",
+        Boolean(localAnswer("What is downloading?"))
       );
+
+      add(
+        "Amharic local FAQ",
+        Boolean(localAnswer("ማውረድ ምን ማለት ነው?"))
+      );
+
+      add("Arithmetic", solveMath("25 * 4") === 100);
+      add("Reading API", "speechSynthesis" in window);
+
+      if ("speechSynthesis" in window) {
+        const voices = window.speechSynthesis.getVoices();
+
+        add(
+          "English voice currently loaded",
+          Boolean(chooseVoice(voices, "en"))
+        );
+
+        add(
+          "Amharic voice currently loaded",
+          Boolean(chooseVoice(voices, "am"))
+        );
+      }
+
+      try {
+        await request("/health", { timeout: 8000 });
+        add("Server health", true);
+      } catch {
+        add("Server health", false, "Check network, CORS and /health.");
+      }
+
+      console.table(results);
+
+      status(
+        "የሙከራ ውጤቶች በConsole ውስጥ አሉ።",
+        "Diagnostic results are in the console. Delivery and accessibility still need manual testing."
+      );
+
+      return results;
     }
 
-    console.table(tests);
+    window.testWebsite = testWebsite;
 
-    const failed = tests.filter(test => !test.passed);
+    /* ======================================================
+       START / CLEANUP
+       ====================================================== */
 
-    showAnswer(
-      failed.length === 0
-        ? language === "am"
-          ? "✅ የመጨረሻ የድር ጣቢያ ሙከራ አልፏል። Railway API፣ Telegram @EbaMengistuBot፣ የትምህርት FAQ፣ የሥራ ማሳወቂያ፣ የቃለ መጠይቅ ድጋፍ፣ የመምህር ትንተና፣ የግላዊነት ማስታወሻ፣ SMS መንገድ እና ተደራሽነት መሣሪያዎች ዝግጁ ናቸው።"
-          : "✅ Final website test passed. Railway API, Telegram @EbaMengistuBot, course FAQ, job alerts, interview support, teacher analytics, privacy notes, SMS route, and accessibility tools are ready."
-        : language === "am"
-          ? `⚠️ ${failed.length} ሙከራ አልተሳካም። ለዝርዝር የአሳሽ Console ይክፈቱ።`
-          : `⚠️ ${failed.length} test(s) failed. Open browser console for details.`
+    document.body.classList.toggle(
+      "high-contrast",
+      settings.highContrast === true
     );
-  }
 
-  window.testWebsite = testWebsite;
+    el.contrastBtn?.setAttribute(
+      "aria-pressed",
+      String(settings.highContrast === true)
+    );
 
-  /* =========================================================
-     START
-     ========================================================= */
-
-  function start() {
-    const settings = readSettings();
-
-    language = settings.language === "en" ? "en" : "am";
-    fontSize = Number(settings.fontSize) || 1.05;
-
-    if (settings.highContrast === true) {
-      document.body.classList.add("high-contrast");
-    }
-
-    updateContrastButton();
-    applyLanguage();
-    changeFontSize();
+    applyFont();
+    updateLanguage();
     loadTeacherStats();
 
-    console.log(
-      "Learning and Employment is ready. Run testWebsite() for the final check."
+    window.addEventListener("pagehide", () => {
+      answerVersion++;
+      answerController?.abort();
+      stopReading();
+      stopRecognition();
+    });
+
+    console.info(
+      "Learning app initialized once. Run testWebsite() for diagnostics."
     );
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start, { once: true });
+    document.addEventListener("DOMContentLoaded", init, { once: true });
   } else {
-    start();
+    init();
   }
 })();
