@@ -1,5 +1,9 @@
 "use strict";
 
+const API_BASE = "https://learning-assistant-bot-production.up.railway.app";
+
+const questionInput = document.getElementById("question");
+
 (() => {
   const INSTANCE_KEY = "__learningEmploymentWebFinal";
   if (window[INSTANCE_KEY]) return;
@@ -636,7 +640,13 @@
       );
 
       try {
-        const data = await api("/api/lessons");
+        const response = await fetch(`${API_BASE}/api/lessons`);
+
+        if (!response.ok) {
+          throw new Error(`Lesson request failed: ${response.status}`);
+        }
+
+        const data = await response.json();
 
         if (!Array.isArray(data.lessons)) {
           throw new Error("Invalid lesson response.");
@@ -2459,3 +2469,178 @@
     init();
   }
 })();
+
+/* =========================
+   AMHARIC READ ALOUD
+   Works on Chrome, Edge, mobile and desktop
+   ========================= */
+
+let amharicReading = false;
+let amharicAudioPlayer = new Audio();
+
+function getAnswerTextArea() {
+  return (
+    document.getElementById("answer") ||
+    document.querySelector("textarea")
+  );
+}
+
+function getAmharicPart(text) {
+  const start = text.search(/[\u1200-\u137f]/);
+  return start === -1 ? "" : text.slice(start).trim();
+}
+
+function splitAmharicText(text) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  const parts = [];
+
+  for (let i = 0; i < clean.length; i += 170) {
+    parts.push(clean.slice(i, i + 170).trim());
+  }
+
+  return parts.filter(Boolean);
+}
+
+function stopAmharicReading() {
+  amharicReading = false;
+
+  try {
+    if (window.speechSynthesis) {
+      speechSynthesis.cancel();
+    }
+  } catch (error) {
+    console.warn("Speech cancel failed:", error);
+  }
+
+  try {
+    amharicAudioPlayer.pause();
+    amharicAudioPlayer.currentTime = 0;
+  } catch (error) {
+    console.warn("Audio stop failed:", error);
+  }
+}
+
+function speakWithDeviceVoice(text) {
+  return new Promise((resolve, reject) => {
+    if (!window.speechSynthesis) {
+      reject(new Error("Speech synthesis is not supported"));
+      return;
+    }
+
+    const voices = speechSynthesis.getVoices();
+    const amharicVoices = voices.filter(voice => {
+      const language = (voice.lang || "").toLowerCase().replace("_", "-");
+      return language.startsWith("am");
+    });
+
+    if (amharicVoices.length === 0) {
+      reject(new Error("No Amharic device voice found"));
+      return;
+    }
+
+    speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.voice = amharicVoices[0];
+    utterance.lang = amharicVoices[0].lang || "am-ET";
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+
+    let started = false;
+
+    utterance.onstart = () => {
+      started = true;
+    };
+
+    utterance.onend = resolve;
+
+    utterance.onerror = event => {
+      reject(new Error(event.error || "Device Amharic voice failed"));
+    };
+
+    speechSynthesis.speak(utterance);
+
+    setTimeout(() => {
+      if (!started && !amharicReading) {
+        speechSynthesis.cancel();
+        reject(new Error("Device Amharic voice did not start"));
+      }
+    }, 4000);
+  });
+}
+
+function speakWithGoogleVoice(text) {
+  return new Promise((resolve, reject) => {
+    const url =
+      "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=am&q=" +
+      encodeURIComponent(text);
+
+    amharicAudioPlayer.src = url;
+    amharicAudioPlayer.onended = resolve;
+    amharicAudioPlayer.onerror = () => {
+      reject(new Error("Google Amharic voice failed"));
+    };
+
+    amharicAudioPlayer.play().catch(() => {
+      reject(new Error("Browser blocked Google Amharic voice"));
+    });
+  });
+}
+
+async function readAmharicAloud() {
+  const answerArea = getAnswerTextArea();
+  const answerText = answerArea?.value?.trim() || "";
+
+  if (!answerText) {
+    alert("There is no answer to read.");
+    return;
+  }
+
+  const amharicText = getAmharicPart(answerText);
+
+  if (!amharicText) {
+    alert("No Amharic text was found in the answer.");
+    return;
+  }
+
+  if (amharicReading) {
+    stopAmharicReading();
+    return;
+  }
+
+  amharicReading = true;
+
+  const parts = splitAmharicText(amharicText);
+
+  try {
+    for (const part of parts) {
+      if (!amharicReading) return;
+
+      try {
+        await speakWithDeviceVoice(part);
+      } catch (deviceError) {
+        console.warn("Device Amharic voice failed:", deviceError);
+
+        if (!amharicReading) return;
+
+        await speakWithGoogleVoice(part);
+      }
+    }
+  } catch (error) {
+    console.warn("Amharic reading failed:", error);
+
+    alert(
+      "Amharic reading is not available on this browser or device. Please try Chrome, Edge, or Samsung Internet."
+    );
+  } finally {
+    amharicReading = false;
+  }
+}
+
+const amharicReadButton =
+  document.getElementById("speakAmharicBtn") ||
+  [...document.querySelectorAll("button")].find(button =>
+    /አማርኛ|amharic/i.test(button.textContent || "")
+  );
+
+amharicReadButton?.addEventListener("click", readAmharicAloud);
