@@ -2,13 +2,13 @@
 
 (() => {
   /* =========================================================
-     LEARNING AND EMPLOYMENT — TRACK 3 POWERFUL SCRIPT.JS
-     Railway bot + Telegram teacher/admin + course answers
+     LEARNING AND EMPLOYMENT — SUPER POWER FINAL SCRIPT.JS
+     Track 3: Course answers + Railway + Telegram support
      ========================================================= */
 
-  const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
+  const TELEGRAM_BOT_URL = "https://t.me/EbaMengistBot";
 
-  // Your existing Railway API
+  // Your Railway API
   const API_BASE_URL =
     "https://learning-assistant-bot-production.up.railway.app";
 
@@ -38,9 +38,9 @@
   const voiceStatus = $("voiceStatus");
 
   const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v7";
-  const SETTINGS_KEY = "learningSettings_v7";
-  const CHAT_ID_KEY = "learningChatId_v7";
+  const CACHE_KEY = "learningAnswers_v8";
+  const SETTINGS_KEY = "learningSettings_v8";
+  const CHAT_ID_KEY = "learningChatId_v8";
 
   let language = "am";
   let fontSize = 1.05;
@@ -56,7 +56,6 @@
 
   /* =========================================================
      OFFLINE COURSE FAQ
-     Add approved course answers here.
      ========================================================= */
 
   const courseFAQ = {
@@ -1184,7 +1183,7 @@
     const telegramMessage = encodeURIComponent(message);
 
     window.open(
-      `https://t.me/EbaMengistuBot?text=${telegramMessage}`,
+      `https://t.me/EbaMengistBot?text=${telegramMessage}`,
       "_blank",
       "noopener,noreferrer"
     );
@@ -1305,7 +1304,6 @@
 
   /* =========================================================
      JOB ALERTS
-     Sends to Railway. If Railway fails, opens Telegram.
      ========================================================= */
 
   jobAlertForm?.addEventListener("submit", async event => {
@@ -1388,7 +1386,6 @@
 
   /* =========================================================
      INTERVIEW SUPPORT
-     Sends to Railway. If Railway fails, opens Telegram.
      ========================================================= */
 
   accommodationForm?.addEventListener("submit", async event => {
@@ -1497,7 +1494,7 @@
   }
 
   /* =========================================================
-     FINAL WEBSITE TEST
+     FINAL WEBSITE CHECK
      ========================================================= */
 
   async function testWebsite() {
@@ -1538,7 +1535,26 @@
 
     add(
       "Telegram bot link",
-      TELEGRAM_BOT_URL === "https://t.me/EbaMengistuBot"
+      TELEGRAM_BOT_URL === "https://t.me/EbaMengistBot"
+    );
+
+    add(
+      "Interview support form",
+      Boolean(
+        $("accommodationName") &&
+        $("accommodationPhone") &&
+        $("accommodationType") &&
+        $("accommodationDetails")
+      )
+    );
+
+    add(
+      "Job alert form",
+      Boolean(
+        $("jobPhone") &&
+        $("jobTelegram") &&
+        $("jobArea")
+      )
     );
 
     try {
@@ -1559,12 +1575,12 @@
     showAnswer(
       failed.length === 0
         ? bilingual(
-            "✅ Website test passed. Railway API, Telegram link, course FAQ, and math are ready.",
-            "✅ የድር ጣቢያ ሙከራ አልፏል። Railway API፣ Telegram ሊንክ፣ የትምህርት FAQ እና ሂሳብ ዝግጁ ናቸው።"
+            "✅ Final website check passed. Railway API, Telegram support, course FAQ, job alerts, interview support, and accessibility tools are ready.",
+            "✅ የመጨረሻ የድር ጣቢያ ፍተሻ አልፏል። Railway API፣ Telegram ድጋፍ፣ የትምህርት FAQ፣ የሥራ ማሳወቂያ፣ የቃለ መጠይቅ ድጋፍ እና ተደራሽነት መሣሪያዎች ዝግጁ ናቸው።"
           )
         : bilingual(
-            `⚠️ ${failed.length} test(s) failed. Open browser console for details.`,
-            `⚠️ ${failed.length} ሙከራ አልተሳካም። ለዝርዝር የአሳሽ Console ይክፈቱ።`
+            `⚠️ ${failed.length} check(s) failed. Open browser console for details.`,
+            `⚠️ ${failed.length} ፍተሻ አልተሳካም። ለዝርዝር የአሳሽ Console ይክፈቱ።`
           )
     );
   }
@@ -1593,7 +1609,7 @@
     loadTeacherStats();
 
     console.log(
-      "Learning and Employment is ready. Run testWebsite() to test it."
+      "Learning and Employment is ready. Run testWebsite() for the final check."
     );
   }
 
