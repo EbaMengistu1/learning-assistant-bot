@@ -874,7 +874,7 @@ async function sendAccommodationMenu(chatId) {
    ========================================================= */
 
 async function sendStartMenu(chatId) {
-  const teacher = isAdmin(chatId) && teacherSession.get(chatId) === true;
+  const teacher = isAdmin(chatId);
 
   const studentWelcome = [
     "🇪🇹 እንኳን ደህና መጡ!",
