@@ -2177,3 +2177,16 @@ body.high-contrast .checkbox-label input {
     color: #000000;
   }
 }
+
+/* Center the Telegram text-support button */
+
+#lowBandwidthSection > p:has(> .course-link) {
+  display: flex;
+  justify-content: center;
+}
+
+#lowBandwidthSection > p > .course-link {
+  width: auto;
+  max-width: 100%;
+  text-align: center;
+}
