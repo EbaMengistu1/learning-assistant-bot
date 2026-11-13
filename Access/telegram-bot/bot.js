@@ -1562,7 +1562,6 @@ if (data === "toggle_simple_mode") {
   return send(chatId, `Simple mode is ${next ? "ON" : "OFF"}.`);
 }
 
-
   if (data === "sms_notification") {
     return send(chatId, "Choose a reminder:", {
       reply_markup: {
