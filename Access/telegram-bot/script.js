@@ -6,7 +6,7 @@
      Track 3: Course answers + Railway + Telegram support
      ========================================================= */
 
-  const TELEGRAM_BOT_URL = "https://t.me/EbaMengistBot";
+  const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
 
   // Your Railway API
   const API_BASE_URL =
@@ -1183,7 +1183,7 @@
     const telegramMessage = encodeURIComponent(message);
 
     window.open(
-      `https://t.me/EbaMengistBot?text=${telegramMessage}`,
+      `https://t.me/EbaMengistuBot?text=${telegramMessage}`,
       "_blank",
       "noopener,noreferrer"
     );
@@ -1535,7 +1535,7 @@
 
     add(
       "Telegram bot link",
-      TELEGRAM_BOT_URL === "https://t.me/EbaMengistBot"
+      TELEGRAM_BOT_URL === "https://t.me/EbaMengistuBot"
     );
 
     add(
