@@ -206,17 +206,6 @@ async function send(chatId, text, options = {}) {
 
   if (remaining) chunks.push(remaining);
 
-  const options = {
-  reply_markup: {
-    inline_keyboard: [
-      [
-        { text: "📚 How to use", callback_data: "how_to_use" },
-        { text: "📚 Download", callback_data: "download_lesson" }
-      ]
-    ]
-  }
-};
-
   for (let index = 0; index < chunks.length; index++) {
     await bot.sendMessage(
       chatId,
