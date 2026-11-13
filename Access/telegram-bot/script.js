@@ -2,10 +2,8 @@
 
 (() => {
   /* =========================================================
-     LEARNING AND EMPLOYMENT — FINAL SCRIPT.JS
+     LEARNING AND EMPLOYMENT — FINAL POWERFUL SCRIPT.JS
      Railway + Telegram @EbaMengistuBot + Track 3
-     Soft voice | Voice beep | Language-first answers
-     Telegram fallback + form clearing
      ========================================================= */
 
   const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
@@ -39,9 +37,9 @@
   const voiceStatus = $("voiceStatus");
 
   const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v12";
-  const SETTINGS_KEY = "learningSettings_v12";
-  const CHAT_ID_KEY = "learningChatId_v12";
+  const CACHE_KEY = "learningAnswers_v14";
+  const SETTINGS_KEY = "learningSettings_v14";
+  const CHAT_ID_KEY = "learningChatId_v14";
 
   let language = "am";
   let fontSize = 1.05;
@@ -51,6 +49,7 @@
   let speakingLanguage = null;
   let speechVersion = 0;
   let cancelAudio = null;
+  let copiedQuestion = "";
 
   const audio = new Audio();
   const flashTimers = new WeakMap();
@@ -195,13 +194,38 @@
   }
 
   function showAnswer(text) {
+    if (!answerBox) return;
+
     answerBox.value = String(text);
     resizeAnswer();
     announce(text);
   }
 
-  function on(button, handler) {
-    button?.addEventListener("click", handler);
+  function clearQuestionAndAnswer() {
+    if (questionInput) questionInput.value = "";
+
+    if (answerBox) {
+      answerBox.value = "";
+      answerBox.style.height = "";
+    }
+
+    copiedQuestion = "";
+    requestVersion++;
+
+    stopRecognition();
+    stopAllSpeech();
+
+    if (getAnswerBtn) {
+      getAnswerBtn.disabled = false;
+      getAnswerBtn.removeAttribute("aria-busy");
+    }
+
+    status("ጽሑፉ ተጽድቷል።", "Cleared.");
+    questionInput?.focus();
+  }
+
+  function on(element, handler) {
+    element?.addEventListener("click", handler);
   }
 
   function flashButton(button) {
@@ -224,19 +248,23 @@
       item.classList.remove("active-primary", "active");
     });
 
-    if (button !== getAnswerBtn) {
+    if (button && button !== getAnswerBtn) {
       button.classList.add("active-primary");
     }
   }
 
-  document.querySelectorAll("button").forEach(button => {
+  function bindButton(button) {
+    if (!button) return;
+
     button.classList.remove("active-primary", "active");
 
-    on(button, () => {
+    button.addEventListener("click", () => {
       selectButton(button);
       flashButton(button);
     });
-  });
+  }
+
+  document.querySelectorAll("button").forEach(bindButton);
 
   function setText(element, text) {
     if (element) element.textContent = text;
@@ -254,8 +282,13 @@
     setText(document.querySelector('label[for="question"]'), t.question);
     setText(document.querySelector('label[for="answer"]'), t.answer);
 
-    questionInput.placeholder = t.questionPlaceholder;
-    answerBox.placeholder = t.answerPlaceholder;
+    if (questionInput) {
+      questionInput.placeholder = t.questionPlaceholder;
+    }
+
+    if (answerBox) {
+      answerBox.placeholder = t.answerPlaceholder;
+    }
 
     setText(getAnswerBtn, t.getAnswer);
     setText(clearBtn, t.clear);
@@ -316,8 +349,13 @@
       ? 1.05
       : Math.max(0.9, Math.min(1.8, fontSize + change));
 
-    questionInput.style.fontSize = `${fontSize}rem`;
-    answerBox.style.fontSize = `${fontSize}rem`;
+    if (questionInput) {
+      questionInput.style.fontSize = `${fontSize}rem`;
+    }
+
+    if (answerBox) {
+      answerBox.style.fontSize = `${fontSize}rem`;
+    }
 
     saveSetting("fontSize", fontSize);
     resizeAnswer();
@@ -771,7 +809,7 @@
   }
 
   async function getAnswer() {
-    const question = questionInput.value.trim();
+    const question = questionInput?.value.trim() || "";
     const version = ++requestVersion;
 
     stopAllSpeech();
@@ -783,7 +821,7 @@
         : "Please type a course question.\n\nእባክዎ የትምህርት ጥያቄ ይጻፉ።"
       );
 
-      questionInput.focus();
+      questionInput?.focus();
       return;
     }
 
@@ -815,8 +853,10 @@
       : "🔎 Searching..."
     );
 
-    getAnswerBtn.disabled = true;
-    getAnswerBtn.setAttribute("aria-busy", "true");
+    if (getAnswerBtn) {
+      getAnswerBtn.disabled = true;
+      getAnswerBtn.setAttribute("aria-busy", "true");
+    }
 
     try {
       const railwayAnswer = await getRailwayAnswer(question);
@@ -848,7 +888,7 @@
         );
       }
     } finally {
-      if (version === requestVersion) {
+      if (version === requestVersion && getAnswerBtn) {
         getAnswerBtn.disabled = false;
         getAnswerBtn.removeAttribute("aria-busy");
       }
@@ -857,7 +897,7 @@
 
   on(getAnswerBtn, getAnswer);
 
-  questionInput.addEventListener("keydown", event => {
+  questionInput?.addEventListener("keydown", event => {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
       event.preventDefault();
       getAnswerBtn?.click();
@@ -1001,7 +1041,7 @@
     stopRecognition();
     stopAllSpeech();
 
-    const text = extractLanguage(answerBox.value, lang);
+    const text = extractLanguage(answerBox?.value || "", lang);
 
     if (!text) {
       status(
@@ -1144,9 +1184,12 @@
 
       const text = event.results[0][0].transcript.trim();
 
-      questionInput.value +=
-        (questionInput.value && !/\s$/.test(questionInput.value) ? " " : "") +
-        text;
+      if (questionInput) {
+        questionInput.value +=
+          (questionInput.value && !/\s$/.test(questionInput.value)
+            ? " "
+            : "") + text;
+      }
 
       playBeep("end");
 
@@ -1209,55 +1252,49 @@
   on(voiceEnglishBtn, () => startVoice("en-US", voiceEnglishBtn));
 
   /* =========================================================
-     CLEAR AND COPY
+     CLEAR — CLEARS QUESTION AND ANSWER
      ========================================================= */
 
-  on(clearBtn, () => {
-    requestVersion++;
-    stopRecognition();
-    stopAllSpeech();
+  on(clearBtn, clearQuestionAndAnswer);
 
-    questionInput.value = "";
-    answerBox.value = "";
-    answerBox.style.height = "";
-
-    if (getAnswerBtn) {
-      getAnswerBtn.disabled = false;
-      getAnswerBtn.removeAttribute("aria-busy");
-    }
-
-    status("ጽሑፉ ተጽድቷል።", "Cleared.");
-    questionInput.focus();
-  });
+  /* =========================================================
+     COPY QUESTION FOR TELEGRAM
+     ========================================================= */
 
   on(copyBtn, async () => {
-    if (!answerBox.value.trim()) return;
+    const question = questionInput?.value.trim() || "";
+
+    if (!question) {
+      status(
+        "እባክዎ መጀመሪያ ጥያቄ ይጻፉ።",
+        "Please type a question first.",
+        "warn"
+      );
+
+      return;
+    }
+
+    copiedQuestion = question;
 
     try {
-      await navigator.clipboard.writeText(answerBox.value);
-      status("መልሱ ተቀድቷል።", "Answer copied.", "ok");
-    } catch {
-      answerBox.focus();
-      answerBox.select();
+      await navigator.clipboard.writeText(question);
 
       status(
-        "ጽሑፉ ተመርጧል። እባክዎ በእጅ ይቅዱ።",
-        "Text selected. Please copy it manually.",
-        "warn"
+        "✅ ጥያቄው ተቀድቷል። እርዳታ አስፈልገኛል ሲጫኑ Telegram ውስጥ ይታያል።",
+        "✅ Question copied. It will appear in Telegram when you press I Need Help.",
+        "ok"
+      );
+    } catch {
+      status(
+        "✅ ጥያቄው ለTelegram ተዘጋጅቷል።",
+        "✅ Question prepared for Telegram.",
+        "ok"
       );
     }
   });
 
   /* =========================================================
-     TELEGRAM HELP
-     ========================================================= */
-
-  on(helpBtn, () => {
-    window.open(TELEGRAM_BOT_URL, "_blank", "noopener,noreferrer");
-  });
-
-  /* =========================================================
-     OPEN TELEGRAM WITH PRE-FILLED MESSAGE
+     TELEGRAM HELP WITH QUESTION PREFILL
      ========================================================= */
 
   function openTelegramWithMessage(message) {
@@ -1269,6 +1306,33 @@
       "noopener,noreferrer"
     );
   }
+
+  on(helpBtn, () => {
+    const question = questionInput?.value.trim() || copiedQuestion;
+
+    if (question) {
+      const message = language === "am"
+        ? `🙋 እርዳታ አስፈልገኛል።\n\nጥያቄ፦ ${question}`
+        : `🙋 I need help.\n\nQuestion: ${question}`;
+
+      openTelegramWithMessage(message);
+
+      status(
+        "Telegram ተከፍ቗ል። ጥያቄዎ በራሱ ተጽፏል። እባክዎ Send ይጫኑ።",
+        "Telegram opened. Your question is already typed. Please press Send.",
+        "ok"
+      );
+
+      return;
+    }
+
+    window.open(TELEGRAM_BOT_URL, "_blank", "noopener,noreferrer");
+
+    status(
+      "Telegram ተከፍ቗ል።",
+      "Telegram opened."
+    );
+  });
 
   /* =========================================================
      SCREEN SHARE REQUEST
@@ -1311,7 +1375,7 @@
 
     if (!approved) return;
 
-    screenShareBtn.disabled = true;
+    if (screenShareBtn) screenShareBtn.disabled = true;
 
     const requestData = {
       chatId: getChatId(),
@@ -1319,14 +1383,14 @@
       source: "web"
     };
 
+    const telegramMessage = language === "am"
+      ? `🖥️ የስክሪን ማጋራት ጥያቄ\n\nሊንክ፦ ${meetingLink}`
+      : `🖥️ Screen-sharing request\n\nMeeting link: ${meetingLink}`;
+
+    openTelegramWithMessage(telegramMessage);
+
     try {
       await apiRequest("/api/screen-share", requestData);
-
-      openTelegramWithMessage(
-        language === "am"
-          ? `🖥️ የስክሪን ማጋራት ጥያቄ\n\nሊንክ፦ ${meetingLink}`
-          : `🖥️ Screen-sharing request\n\nMeeting link: ${meetingLink}`
-      );
 
       status(
         "የስብሰባ ሊንኩ ተልኳል። እባክዎ Telegram ውስጥ Send ይጫኑ።",
@@ -1336,19 +1400,13 @@
     } catch (error) {
       console.warn("Screen-share request failed:", error);
 
-      openTelegramWithMessage(
-        language === "am"
-          ? `🖥️ የስክሪን ማጋራት ጥያቄ\n\nሊንክ፦ ${meetingLink}`
-          : `🖥️ Screen-sharing request\n\nMeeting link: ${meetingLink}`
-      );
-
       status(
         "ጥያቄው ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
         "Telegram opened with your request. Please press Send.",
         "warn"
       );
     } finally {
-      screenShareBtn.disabled = false;
+      if (screenShareBtn) screenShareBtn.disabled = false;
     }
   });
 
@@ -1363,8 +1421,8 @@
       "",
       `Support: ${TELEGRAM_BOT_URL}`,
       "",
-      questionInput.value ? `Question:\n${questionInput.value}` : "",
-      answerBox.value ? `Answer:\n${answerBox.value}` : ""
+      questionInput?.value ? `Question:\n${questionInput.value}` : "",
+      answerBox?.value ? `Answer:\n${answerBox.value}` : ""
     ].filter(Boolean).join("\n\n");
 
     const blob = new Blob(["\uFEFF", text], {
@@ -1391,8 +1449,7 @@
 
   /* =========================================================
      JOB ALERTS
-     Railway success -> Telegram -> clear form
-     Railway failure -> Telegram -> keep form
+     Telegram opens immediately, then form clears
      ========================================================= */
 
   jobAlertForm?.addEventListener("submit", async event => {
@@ -1423,7 +1480,7 @@
       return;
     }
 
-    button.disabled = true;
+    if (button) button.disabled = true;
 
     const requestData = {
       chatId: getChatId(),
@@ -1438,12 +1495,11 @@
       ? `🔔 የሥራ ማሳወቂያ ጥያቄ\n\nስልክ፦ ${phone || "—"}\nTelegram፦ ${telegram || "—"}\nየሥራ መስክ፦ ${area}`
       : `🔔 Job alert request\n\nPhone: ${phone || "—"}\nTelegram: ${telegram || "—"}\nJob area: ${area}`;
 
+    openTelegramWithMessage(telegramMessage);
+    jobAlertForm.reset();
+
     try {
       await apiRequest("/api/job-alert", requestData);
-
-      openTelegramWithMessage(telegramMessage);
-
-      jobAlertForm.reset();
 
       status(
         "✅ የሥራ ማሳወቂያ ተመዝግቧል። Telegram ተከፍ቗ል። እባክዎ Send ይጫኑ።",
@@ -1453,22 +1509,19 @@
     } catch (error) {
       console.warn("Job alert failed:", error);
 
-      openTelegramWithMessage(telegramMessage);
-
       status(
         "የሥራ ማሳወቂያ ጥያቄ ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
         "Job alert request opened in Telegram. Please press Send.",
         "warn"
       );
     } finally {
-      button.disabled = false;
+      if (button) button.disabled = false;
     }
   });
 
   /* =========================================================
      INTERVIEW SUPPORT
-     Railway success -> Telegram -> clear form
-     Railway failure -> Telegram -> keep form
+     Telegram opens immediately, then form clears
      ========================================================= */
 
   accommodationForm?.addEventListener("submit", async event => {
@@ -1510,7 +1563,7 @@
       return;
     }
 
-    button.disabled = true;
+    if (button) button.disabled = true;
 
     const requestData = {
       chatId: getChatId(),
@@ -1526,12 +1579,11 @@
       ? `♿️ የቃለ መጠይቅ ድጋፍ ጥያቄ\n\nስም፦ ${name}\nስልክ፦ ${phone}\nየሚፈልጉት ድጋፍ፦ ${type}\nዝርዝር፦ ${details || "—"}`
       : `♿️ Interview support request\n\nName: ${name}\nPhone: ${phone}\nSupport needed: ${type}\nDetails: ${details || "—"}`;
 
+    openTelegramWithMessage(telegramMessage);
+    accommodationForm.reset();
+
     try {
       await apiRequest("/api/accommodation", requestData);
-
-      openTelegramWithMessage(telegramMessage);
-
-      accommodationForm.reset();
 
       status(
         "✅ የቃለ መጠይቅ ድጋፍ ጥያቄዎ ተልኳል። Telegram ተከፍ቗ል። እባክዎ Send ይጫኑ።",
@@ -1541,15 +1593,13 @@
     } catch (error) {
       console.warn("Interview support request failed:", error);
 
-      openTelegramWithMessage(telegramMessage);
-
       status(
         "የቃለ መጠይቅ ድጋፍ ጥያቄ ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
         "Interview support request opened in Telegram. Please press Send.",
         "warn"
       );
     } finally {
-      button.disabled = false;
+      if (button) button.disabled = false;
     }
   });
 

@@ -1,12 +1,13 @@
 /* =========================================================
    LEARNING AND EMPLOYMENT — FINAL STYLE.CSS
    Desktop + Mobile | Clean language toggle | Accessible
+   Get Answer stays normal when clicked
    ========================================================= */
 
 :root {
   --blue: #1d4ed8;
   --blue-dark: #1e40af;
-  --active-blue: #3f62c3;
+  --active-blue: #1c4acb;
   --bg: #f3f6fb;
   --card: #ffffff;
   --soft: #f8fafc;
@@ -256,7 +257,10 @@ button:active {
   transform: scale(0.96);
 }
 
-/* Normal button color — same for all main buttons */
+/* =========================================================
+   NORMAL BUTTON COLOR
+   Get Answer and other main buttons use the same light style
+   ========================================================= */
 
 #getAnswerBtn,
 .secondary {
@@ -271,13 +275,13 @@ button:active {
 
 /* =========================================================
    CLICKED BUTTON EFFECT
-   All buttons become #3f62c3 — except Get Answer.
+   All buttons become #1c4acb — except Get Answer.
    ========================================================= */
 
 .active-primary:not(#getAnswerBtn) {
-  background: #3f62c3 !important;
+  background: #1c4acb !important;
   color: #ffffff !important;
-  box-shadow: 0 0 0 5px rgba(3, 18, 104, 0.25) !important;
+  box-shadow: 0 0 0 5px rgba(28, 74, 203, 0.28) !important;
   animation: pulse 0.7s ease;
 }
 
@@ -573,34 +577,34 @@ button:active {
 
 @keyframes buttonFlash {
   0% {
-    box-shadow: 0 0 0 0 rgba(63, 98, 195, 0.55);
+    box-shadow: 0 0 0 0 rgba(28, 74, 203, 0.55);
     transform: scale(1);
   }
 
   35% {
-    box-shadow: 0 0 0 10px rgba(63, 98, 195, 0.22);
+    box-shadow: 0 0 0 10px rgba(28, 74, 203, 0.22);
     transform: scale(1.05);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(63, 98, 195, 0);
+    box-shadow: 0 0 0 0 rgba(28, 74, 203, 0);
     transform: scale(1);
   }
 }
 
 @keyframes languageFlash {
   0% {
-    box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.55);
+    box-shadow: 0 0 0 0 rgba(28, 74, 203, 0.55);
     transform: scale(1);
   }
 
   25% {
-    box-shadow: 0 0 0 10px rgba(29, 78, 216, 0.22);
+    box-shadow: 0 0 0 10px rgba(28, 74, 203, 0.22);
     transform: scale(1.05);
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(29, 78, 216, 0);
+    box-shadow: 0 0 0 0 rgba(28, 74, 203, 0);
     transform: scale(1);
   }
 }
