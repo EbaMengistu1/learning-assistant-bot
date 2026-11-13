@@ -1,93 +1,60 @@
 "use strict";
 
 (() => {
-  /*
-   * Prevent this script from initializing twice.
-   * Remove older inline scripts and other reading handlers too.
-   */
-  const APP_KEY = "__learningEmploymentApp";
+  const APP_KEY = "__learningEmploymentFinal";
 
-  if (window[APP_KEY]) {
-    console.warn("Learning app is already initialized.");
-    return;
-  }
+  if (window[APP_KEY]) return;
+  window[APP_KEY] = true;
 
-  window[APP_KEY] = { initialized: false };
-
-  function init() {
-    if (window[APP_KEY].initialized) return;
-    window[APP_KEY].initialized = true;
-
-    /* ======================================================
+  function start() {
+    /* =====================================================
        CONFIGURATION
-       ====================================================== */
+       ===================================================== */
 
     const API_BASE =
       "https://learning-assistant-bot-production.up.railway.app";
 
     const TELEGRAM_URL = "https://t.me/EbaMengistuBot";
 
-    const SETTINGS_KEY = "learning_settings_final";
-    const CACHE_KEY = "learning_answers_final";
+    /*
+     * Set to "/api/tts" ONLY after your backend implements it.
+     *
+     * Request:
+     * POST JSON { text, language: "am-ET" | "en-US" }
+     *
+     * Response:
+     * Audio bytes with Content-Type: audio/mpeg, audio/wav, etc.
+     */
+    const TTS_PATH = "";
+
+    const SETTINGS_KEY = "learning_final_settings";
 
     const $ = id => document.getElementById(id);
 
-    const ids = [
-      "question",
-      "answer",
-      "getAnswerBtn",
-      "clearBtn",
-      "copyBtn",
-      "languageToggleBtn",
-      "speakAmharicBtn",
-      "speakEnglishBtn",
-      "voiceAmharicBtn",
-      "voiceEnglishBtn",
-      "contrastBtn",
-      "fontSmall",
-      "fontNormal",
-      "fontLarge",
-      "helpBtn",
-      "screenShareBtn",
-      "downloadBtn",
-      "jobAlertForm",
-      "jobAlertBtn",
-      "accommodationForm",
-      "accommodationBtn",
-      "teacherStats",
-      "liveRegion",
-      "voiceStatus"
-    ];
+    const question = $("question");
+    const answer = $("answer");
 
-    const el = Object.fromEntries(ids.map(id => [id, $(id)]));
-
-    if (!el.question || !el.answer) {
+    if (!question || !answer) {
       console.error("Missing #question or #answer.");
       return;
     }
 
-    const ETHIOPIC = /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/;
+    const ETHIOPIC =
+      /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/;
 
-    function readStorage(key, fallback) {
+    function readSettings() {
       try {
-        const value = JSON.parse(localStorage.getItem(key));
-        return value && typeof value === "object"
-          ? value
-          : fallback;
+        const value = JSON.parse(
+          localStorage.getItem(SETTINGS_KEY) || "{}"
+        );
+
+        return value && typeof value === "object" ? value : {};
       } catch {
-        return fallback;
+        return {};
       }
     }
 
-    function writeStorage(key, value) {
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-      } catch {
-        // Storage is optional.
-      }
-    }
-
-    const settings = readStorage(SETTINGS_KEY, {});
+    const settings = readSettings();
 
     let language = settings.language === "en" ? "en" : "am";
 
@@ -100,30 +67,41 @@
       settings.chatId ||
       `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-    settings.chatId = chatId;
-    writeStorage(SETTINGS_KEY, settings);
-
+    let answerRecord = null;
     let copiedQuestion = "";
-    let currentAnswer = null;
     let answerVersion = 0;
-    let answerController = null;
+    let answerRequest = null;
 
-    /* ======================================================
-       HELPERS
-       ====================================================== */
+    let readingLanguage = null;
+    let readingVersion = 0;
+    let readingCancel = null;
+    let readingFetch = null;
+    let activeUtterance = null;
+    let activeAudio = null;
+
+    let microphone = null;
+    let audioContext = null;
+
+    const on = (id, callback) => {
+      $(id)?.addEventListener("click", callback);
+    };
 
     function saveSetting(key, value) {
       settings[key] = value;
-      writeStorage(SETTINGS_KEY, settings);
-    }
 
-    function announce(text) {
-      if (el.liveRegion) {
-        el.liveRegion.textContent = text;
+      try {
+        localStorage.setItem(
+          SETTINGS_KEY,
+          JSON.stringify(settings)
+        );
+      } catch {
+        // Storage is optional.
       }
     }
 
-    function status(am, en, type = "info", target = el.voiceStatus) {
+    saveSetting("chatId", chatId);
+
+    function status(am, en, type = "info", target = $("voiceStatus")) {
       const text = language === "am" ? am : en;
 
       if (target) {
@@ -131,11 +109,8 @@
         target.className = `voice-status ${type}`;
       }
 
-      announce(text);
-    }
-
-    function on(id, handler) {
-      el[id]?.addEventListener("click", handler);
+      const live = $("liveRegion");
+      if (live) live.textContent = text;
     }
 
     function detectLanguage(text) {
@@ -144,47 +119,33 @@
       return language;
     }
 
-    function setBusy(button, busy) {
+    function busy(button, enabled) {
       if (!button) return;
 
-      button.disabled = busy;
+      button.disabled = enabled;
 
-      if (busy) button.setAttribute("aria-busy", "true");
+      if (enabled) button.setAttribute("aria-busy", "true");
       else button.removeAttribute("aria-busy");
     }
 
-    function makeFormStatus(form) {
-      if (!form) return null;
-
-      const node = document.createElement("p");
-      node.className = "voice-status";
-      node.setAttribute("role", "status");
-      node.setAttribute("aria-live", "polite");
-
-      form.insertAdjacentElement("afterend", node);
-      return node;
-    }
-
-    const jobStatus = makeFormStatus(el.jobAlertForm);
-    const accommodationStatus = makeFormStatus(el.accommodationForm);
-
-    /* ======================================================
+    /* =====================================================
        BUTTON EFFECTS
-       ====================================================== */
+       ===================================================== */
 
     document.querySelectorAll("button").forEach(button => {
       button.classList.remove("active-primary", "button-flash");
 
       button.addEventListener("click", () => {
-        document.querySelectorAll("button.active-primary").forEach(
-          item => item.classList.remove("active-primary")
-        );
+        document.querySelectorAll("button.active-primary")
+          .forEach(item => item.classList.remove("active-primary"));
 
         if (button.id === "getAnswerBtn") return;
 
         button.classList.add("active-primary");
         button.classList.remove("button-flash");
+
         void button.offsetWidth;
+
         button.classList.add("button-flash");
 
         setTimeout(
@@ -194,26 +155,25 @@
       });
     });
 
-    /* ======================================================
-       LANGUAGE / ACCESSIBILITY
-       ====================================================== */
+    /* =====================================================
+       LANGUAGE / DISPLAY
+       ===================================================== */
 
     const labels = {
       am: {
         question: "ጥያቄዎን ይጻፉ",
         answer: "መልስ",
-        questionPlaceholder: "ለምሳሌ፦ ማውረድ ምን ማለት ነው?",
-        answerPlaceholder: "መልሱ እዚህ ይታያል...",
+        placeholder: "ስለ ትምህርቱ ጥያቄ ይጻፉ...",
         getAnswerBtn: "መልስ አግኝ",
         clearBtn: "አጽዳ",
         copyBtn: "ጥያቄውን ቅዳ",
         helpBtn: "እርዳታ አስፈልገኛል",
-        screenShareBtn: "የስብሰባ ሊንክ ላክ",
         downloadBtn: "አውርድ",
-        micAm: "በአማርኛ ተናገር",
-        micEn: "በእንግሊዝኛ ተናገር",
+        screenShareBtn: "የስብሰባ ሊንክ ላክ",
         readAm: "አማርኛ አንብብ",
         readEn: "English አንብብ",
+        micAm: "በአማርኛ ተናገር",
+        micEn: "በእንግሊዝኛ ተናገር",
         stop: "አቁም",
         listening: "እያዳመጥኩ ነው..."
       },
@@ -221,106 +181,52 @@
       en: {
         question: "Ask your question",
         answer: "Answer",
-        questionPlaceholder: "Example: What is downloading?",
-        answerPlaceholder: "Your answer will appear here...",
+        placeholder: "Ask a question about your lesson...",
         getAnswerBtn: "Get Answer",
         clearBtn: "Clear",
         copyBtn: "Copy Question",
         helpBtn: "I Need Help",
-        screenShareBtn: "Send Meeting Link",
         downloadBtn: "Download",
-        micAm: "Speak Amharic",
-        micEn: "Speak English",
+        screenShareBtn: "Send Meeting Link",
         readAm: "Read Amharic",
         readEn: "Read English",
+        micAm: "Speak Amharic",
+        micEn: "Speak English",
         stop: "Stop",
         listening: "Listening..."
       }
     };
 
-    function updateLanguage() {
-      const t = labels[language];
-      document.documentElement.lang = language;
-
-      const qLabel = document.querySelector('label[for="question"]');
-      const aLabel = document.querySelector('label[for="answer"]');
-
-      if (qLabel) qLabel.textContent = t.question;
-      if (aLabel) aLabel.textContent = t.answer;
-
-      el.question.placeholder = t.questionPlaceholder;
-      el.answer.placeholder = t.answerPlaceholder;
-
-      [
-        "getAnswerBtn",
-        "clearBtn",
-        "copyBtn",
-        "helpBtn",
-        "screenShareBtn",
-        "downloadBtn"
-      ].forEach(id => {
-        if (el[id]) el[id].textContent = t[id];
-      });
-
-      updateMediaButtons();
-      updateConnectionBadge();
-    }
-
     function updateMediaButtons() {
       const t = labels[language];
 
-      if (el.speakAmharicBtn) {
-        el.speakAmharicBtn.textContent =
-          readingLanguage === "am" ? t.stop : t.readAm;
+      [
+        ["speakAmharicBtn", readingLanguage === "am", t.readAm],
+        ["speakEnglishBtn", readingLanguage === "en", t.readEn],
+        ["voiceAmharicBtn", microphone?.lang === "am", t.micAm],
+        ["voiceEnglishBtn", microphone?.lang === "en", t.micEn]
+      ].forEach(([id, enabled, normal]) => {
+        const button = $(id);
+        if (!button) return;
 
-        el.speakAmharicBtn.setAttribute(
-          "aria-pressed",
-          String(readingLanguage === "am")
-        );
-      }
+        const isMicrophone = id.startsWith("voice");
 
-      if (el.speakEnglishBtn) {
-        el.speakEnglishBtn.textContent =
-          readingLanguage === "en" ? t.stop : t.readEn;
+        button.textContent = enabled
+          ? isMicrophone ? t.listening : t.stop
+          : normal;
 
-        el.speakEnglishBtn.setAttribute(
-          "aria-pressed",
-          String(readingLanguage === "en")
-        );
-      }
-
-      if (el.voiceAmharicBtn) {
-        el.voiceAmharicBtn.textContent =
-          recognitionSession?.lang === "am"
-            ? t.listening
-            : t.micAm;
-
-        el.voiceAmharicBtn.setAttribute(
-          "aria-pressed",
-          String(recognitionSession?.lang === "am")
-        );
-      }
-
-      if (el.voiceEnglishBtn) {
-        el.voiceEnglishBtn.textContent =
-          recognitionSession?.lang === "en"
-            ? t.listening
-            : t.micEn;
-
-        el.voiceEnglishBtn.setAttribute(
-          "aria-pressed",
-          String(recognitionSession?.lang === "en")
-        );
-      }
+        button.setAttribute("aria-pressed", String(enabled));
+      });
     }
 
-    function updateConnectionBadge() {
+    function updateConnection() {
       let badge = $("netBadge");
 
       if (!badge) {
         badge = document.createElement("p");
         badge.id = "netBadge";
         badge.setAttribute("role", "status");
+
         $("main")?.prepend(badge);
       }
 
@@ -336,11 +242,52 @@
           : online ? "#176139" : "#a32222";
     }
 
+    function updateLanguage() {
+      const t = labels[language];
+
+      document.documentElement.lang = language;
+
+      const questionLabel =
+        document.querySelector('label[for="question"]');
+
+      const answerLabel =
+        document.querySelector('label[for="answer"]');
+
+      if (questionLabel) questionLabel.textContent = t.question;
+      if (answerLabel) answerLabel.textContent = t.answer;
+
+      question.placeholder = t.placeholder;
+
+      answer.placeholder = language === "am"
+        ? "መልሱ እዚህ ይታያል..."
+        : "Your answer will appear here...";
+
+      [
+        "getAnswerBtn",
+        "clearBtn",
+        "copyBtn",
+        "helpBtn",
+        "downloadBtn",
+        "screenShareBtn"
+      ].forEach(id => {
+        if ($(id)) $(id).textContent = t[id];
+      });
+
+      updateMediaButtons();
+      updateConnection();
+    }
+
     function applyFont() {
-      el.question.style.fontSize = `${fontSize}rem`;
-      el.answer.style.fontSize = `${fontSize}rem`;
+      question.style.fontSize = `${fontSize}rem`;
+      answer.style.fontSize = `${fontSize}rem`;
       saveSetting("fontSize", fontSize);
     }
+
+    on("languageToggleBtn", () => {
+      language = language === "am" ? "en" : "am";
+      saveSetting("language", language);
+      updateLanguage();
+    });
 
     on("fontSmall", () => {
       fontSize = Math.max(0.9, fontSize - 0.08);
@@ -358,35 +305,31 @@
     });
 
     on("contrastBtn", () => {
-      const enabled = document.body.classList.toggle("high-contrast");
+      const enabled =
+        document.body.classList.toggle("high-contrast");
 
       saveSetting("highContrast", enabled);
-      el.contrastBtn.setAttribute("aria-pressed", String(enabled));
-      updateConnectionBadge();
+
+      $("contrastBtn")?.setAttribute(
+        "aria-pressed",
+        String(enabled)
+      );
+
+      updateConnection();
     });
 
-    on("languageToggleBtn", () => {
-      language = language === "am" ? "en" : "am";
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
 
-      saveSetting("language", language);
-      updateLanguage();
+    /* =====================================================
+       BACKEND REQUESTS
+       ===================================================== */
 
-      status("አማርኛ ተመርጧል።", "English selected.");
-    });
-
-    window.addEventListener("online", updateConnectionBadge);
-    window.addEventListener("offline", updateConnectionBadge);
-
-    /* ======================================================
-       NETWORK
-       ====================================================== */
-
-    async function request(
+    async function api(
       path,
-      { method = "GET", body, signal, timeout = 20000 } = {}
+      { method = "GET", body, signal, timeout = 30000 } = {}
     ) {
       const controller = new AbortController();
-
       const abort = () => controller.abort();
 
       if (signal?.aborted) controller.abort();
@@ -401,27 +344,19 @@
             ? { "Content-Type": "application/json" }
             : undefined,
           body: body ? JSON.stringify(body) : undefined,
-          signal: controller.signal
+          signal: controller.signal,
+          cache: "no-store"
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          throw new Error(`Server HTTP ${response.status}`);
         }
 
         const raw = await response.text();
+        const data = raw.trim() ? JSON.parse(raw) : {};
 
-        if (!raw.trim()) return {};
-
-        let data;
-
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          throw new Error("Server response was not JSON.");
-        }
-
-        if (data?.success === false || data?.ok === false) {
-          throw new Error("The server rejected this request.");
+        if (data.ok === false || data.success === false) {
+          throw new Error("Server rejected the request.");
         }
 
         return data;
@@ -431,198 +366,22 @@
       }
     }
 
-    /* ======================================================
-       ANSWER DISPLAY — NO AUTOMATIC EXPANSION
-       ====================================================== */
+    /* =====================================================
+       ANSWERS — YOUR API ONLY
+       No FAQ substitution, Wikipedia, or stale answer cache.
+       ===================================================== */
 
-    function renderAnswer(record, firstLanguage) {
-      currentAnswer = record;
-
-      const first = firstLanguage === "am"
-        ? record.am
-        : record.en;
-
-      const second = firstLanguage === "am"
-        ? record.en
-        : record.am;
-
-      const parts = [first, second].filter(Boolean);
-
-      if (record.source) {
-        parts.push(`Source / ምንጭ: ${record.source}`);
-      }
-
-      const questionScroll = el.question.scrollTop;
-
-      el.answer.value = parts.join("\n\n");
-      el.answer.style.removeProperty("height");
-      el.answer.scrollTop = 0;
-      el.answer.scrollLeft = 0;
-
-      el.question.scrollTop = questionScroll;
-
-      announce(
-        firstLanguage === "am"
-          ? "መልሱ ዝግጁ ነው።"
-          : "Your answer is ready."
-      );
-    }
-
-    function displayMessage(am, en, firstLanguage = language) {
-      renderAnswer({ am, en, source: "" }, firstLanguage);
-    }
-
-    /* ======================================================
-       LOCAL BILINGUAL ANSWERS
-       Sources are honestly labelled as built-in content.
-       ====================================================== */
-
-    const FAQ = [
-      {
-        match: q => /download|ማውረድ/.test(q),
-        en: "Downloading means saving a file from the internet to your device.",
-        am: "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ማለት ነው።"
-      },
-      {
-        match: q => /what is (?:an? )?e-?mail|ኢሜይል ምን/.test(q),
-        en: "Email lets you send and receive electronic messages over the internet.",
-        am: "ኢሜይል በኢንተርኔት የኤሌክትሮኒክስ መልዕክቶችን ለመላክና ለመቀበል ያገለግላል።"
-      },
-      {
-        match: q => /what is a job interview|ቃለ መጠይቅ ምን/.test(q),
-        en: "A job interview is a conversation in which an employer asks about your skills, experience, and suitability for a job.",
-        am: "የሥራ ቃለ መጠይቅ አሠሪው ስለ ክህሎትዎ፣ ልምድዎና ለሥራው ብቁ ስለመሆንዎ የሚጠይቅበት ውይይት ነው።"
-      },
-      {
-        match: q => /how (?:do|can) i apply for a job|ለሥራ እንዴት/.test(q),
-        en: "Read the job advertisement, prepare your CV, include a cover letter if requested, and apply before the deadline.",
-        am: "የሥራ ማስታወቂያውን ያንብቡ፣ CVዎን ያዘጋጁ፣ ከተጠየቀ የማመልከቻ ደብዳቤ ያክሉ፣ ከመጨረሻው ቀን በፊትም ያመልክቱ።"
-      }
-    ];
-
-    function solveMath(question) {
-      const text = question
-        .toLowerCase()
-        .replace(/^(what is|calculate|solve)\s+/, "")
-        .replace(/[?፧]$/, "")
-        .replace(/\bplus\b/g, "+")
-        .replace(/\bminus\b/g, "-")
-        .replace(/\btimes\b|×/g, "*")
-        .replace(/\bdivided by\b|÷/g, "/")
-        .replace(/\s+/g, "");
-
-      if (
-        text.length > 200 ||
-        !/^[\d.+*/()-]+$/.test(text) ||
-        !/[+*/-]/.test(text)
-      ) return null;
-
-      const tokens = text.match(/\d+(?:\.\d*)?|\.\d+|[()+*/-]/g);
-
-      if (!tokens || tokens.join("") !== text) return null;
-
-      let index = 0;
-
-      function factor() {
-        const token = tokens[index++];
-
-        if (token === "+") return factor();
-        if (token === "-") return -factor();
-
-        if (token === "(") {
-          const result = sum();
-          if (tokens[index++] !== ")") throw new Error("Bracket");
-          return result;
-        }
-
-        if (!token || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token)) {
-          throw new Error("Number");
-        }
-
-        return Number(token);
-      }
-
-      function product() {
-        let value = factor();
-
-        while (tokens[index] === "*" || tokens[index] === "/") {
-          const op = tokens[index++];
-          const right = factor();
-          value = op === "*" ? value * right : value / right;
-        }
-
-        return value;
-      }
-
-      function sum() {
-        let value = product();
-
-        while (tokens[index] === "+" || tokens[index] === "-") {
-          const op = tokens[index++];
-          const right = product();
-          value = op === "+" ? value + right : value - right;
-        }
-
-        return value;
-      }
-
-      try {
-        const result = sum();
-
-        return index === tokens.length && Number.isFinite(result)
-          ? Number(result.toPrecision(12))
-          : null;
-      } catch {
-        return null;
-      }
-    }
-
-    function localAnswer(question) {
-      const math = solveMath(question);
-
-      if (math !== null) {
-        return {
-          am: `መልሱ ${math} ነው።`,
-          en: `The answer is ${math}.`,
-          source: "Built-in arithmetic calculator"
-        };
-      }
-
-      const item = FAQ.find(
-        entry => entry.match(question.toLowerCase())
-      );
-
-      return item
-        ? {
-            am: item.am,
-            en: item.en,
-            source: "Built-in learning FAQ"
-          }
-        : null;
-    }
-
-    /*
-     * Preferred /api/ask response:
-     * {
-     *   answerAm: "...",
-     *   answerEn: "...",
-     *   source: "..."
-     * }
-     *
-     * Plain answer strings are also displayed, but the frontend
-     * cannot invent a missing translation.
-     */
     function normalizeAnswer(data) {
       const structured =
         data.answer && typeof data.answer === "object"
           ? data.answer
           : data;
 
-      let am = String(
+      const am = String(
         structured.answerAm || structured.am || ""
       ).trim();
 
-      let en = String(
+      const en = String(
         structured.answerEn || structured.en || ""
       ).trim();
 
@@ -635,173 +394,203 @@
               ? data.text
               : "";
 
-      if (!am && !en && raw) {
-        const blocks = raw.split(/\n\s*\n/);
-
-        am = blocks.filter(block => ETHIOPIC.test(block)).join("\n\n");
-        en = blocks.filter(
-          block => /[A-Za-z]/.test(block) && !ETHIOPIC.test(block)
-        ).join("\n\n");
-
-        if (!am && !en) en = raw;
+      if (!am && !en && !raw.trim()) {
+        throw new Error("The API returned no answer text.");
       }
 
-      if (!am && !en) throw new Error("No answer text.");
-
-      const sourceValue = data.source || data.citation || "";
+      const source = data.source || data.citation || "";
 
       return {
         am,
         en,
-        source: typeof sourceValue === "string" ? sourceValue : ""
+        raw: raw.trim(),
+        source: typeof source === "string" ? source : ""
       };
+    }
+
+    function extractLanguage(text, lang) {
+      const body = String(text)
+        .split(/\n\s*(?:Source\s*:|Source\s*\/|ምንጭ\s*:|📚)/i)[0];
+
+      return body
+        .split(/\n+/)
+        .filter(line => lang === "am"
+          ? ETHIOPIC.test(line)
+          : /[A-Za-z]/.test(line) && !ETHIOPIC.test(line))
+        .join("\n")
+        .trim();
+    }
+
+    function showRecord(record, firstLanguage) {
+      answerRecord = record;
+
+      let am = record.am;
+      let en = record.en;
+
+      if (!am && !en && record.raw) {
+        am = extractLanguage(record.raw, "am");
+        en = extractLanguage(record.raw, "en");
+      }
+
+      const parts = firstLanguage === "am"
+        ? [am, en]
+        : [en, am];
+
+      let text = parts.filter(Boolean).join("\n\n");
+
+      if (!text) text = record.raw;
+
+      if (record.source) {
+        text += `\n\nSource / ምንጭ: ${record.source}`;
+      }
+
+      const previousQuestionScroll = question.scrollTop;
+
+      answer.value = text;
+      answer.style.removeProperty("height");
+      answer.scrollTop = 0;
+      answer.scrollLeft = 0;
+
+      question.scrollTop = previousQuestionScroll;
+
+      status("መልሱ ዝግጁ ነው።", "Your answer is ready.", "ok");
     }
 
     async function getAnswer() {
       stopReading();
-      stopRecognition();
+      stopMicrophone();
 
-      const question = el.question.value.trim();
-      const firstLanguage = detectLanguage(question);
+      const text = question.value.trim();
+      const firstLanguage = detectLanguage(text);
       const version = ++answerVersion;
 
-      answerController?.abort();
-      answerController = null;
-      setBusy(el.getAnswerBtn, false);
+      answerRequest?.abort();
+      answerRequest = null;
+      busy($("getAnswerBtn"), false);
 
-      if (!question) {
-        displayMessage(
-          "እባክዎ ጥያቄ ይጻፉ።",
-          "Please type a question."
+      if (!text) {
+        status(
+          "እባክዎ መጀመሪያ ጥያቄ ይጻፉ።",
+          "Please type a question first.",
+          "warn"
         );
 
-        el.question.focus({ preventScroll: true });
+        question.focus({ preventScroll: true });
         return;
       }
 
-      const local = localAnswer(question);
-
-      if (local) {
-        renderAnswer(local, firstLanguage);
-        return;
-      }
-
-      const cacheKey = `${firstLanguage}:${question.toLowerCase()}`;
-      const cache = readStorage(CACHE_KEY, {});
-
-      if (cache[cacheKey]?.answer) {
-        renderAnswer(cache[cacheKey].answer, firstLanguage);
-        return;
-      }
-
-      if (navigator.onLine === false) {
-        displayMessage(
-          "ይህ ጥያቄ ኢንተርኔት ያስፈልገዋል።",
-          "This question needs an internet connection.",
-          firstLanguage
+      if (text.length > 6000) {
+        status(
+          "ጥያቄዎን እባክዎ ያሳጥሩ።",
+          "Please shorten your question to 6,000 characters or fewer.",
+          "warn"
         );
-
         return;
       }
 
-      currentAnswer = null;
-      el.answer.value = firstLanguage === "am"
-        ? "እየፈለግሁ ነው..."
-        : "Getting your answer...";
+      answerRecord = null;
 
-      el.answer.scrollTop = 0;
-      setBusy(el.getAnswerBtn, true);
+      answer.value = firstLanguage === "am"
+        ? "ከትምህርት መረጃው መልስ እየተፈለገ ነው..."
+        : "Requesting an answer from your lesson API...";
+
+      answer.scrollTop = 0;
+      busy($("getAnswerBtn"), true);
 
       const controller = new AbortController();
-      answerController = controller;
+      answerRequest = controller;
+
+      /*
+       * Optional lesson selector support.
+       * Existing HTML has no #lessonSelect; in that case lessonId
+       * is omitted and the backend must choose the lesson corpus.
+       */
+      const lessonId = $("lessonSelect")?.value || "";
+
+      const payload = {
+        chatId,
+        question: text,
+        language: firstLanguage,
+        responseLanguages: [
+          firstLanguage,
+          firstLanguage === "am" ? "en" : "am"
+        ]
+      };
+
+      if (lessonId) payload.lessonId = lessonId;
 
       try {
-        const data = await request("/api/ask", {
+        const data = await api("/api/ask", {
           method: "POST",
-          signal: controller.signal,
-          body: {
-            chatId,
-            question,
-            language: firstLanguage,
-            responseLanguages: [firstLanguage, firstLanguage === "am" ? "en" : "am"]
-          }
+          body: payload,
+          signal: controller.signal
         });
 
         if (version !== answerVersion) return;
 
         const record = normalizeAnswer(data);
-        renderAnswer(record, firstLanguage);
-
-        cache[cacheKey] = {
-          answer: record,
-          savedAt: Date.now()
-        };
-
-        const entries = Object.entries(cache)
-          .sort((a, b) => b[1].savedAt - a[1].savedAt)
-          .slice(0, 60);
-
-        writeStorage(CACHE_KEY, Object.fromEntries(entries));
+        showRecord(record, firstLanguage);
 
         if (!record.am || !record.en) {
           status(
-            "አገልጋዩ በአንድ ቋንቋ ብቻ መልሷል።",
-            "The server returned only one language.",
+            "አገልጋዩ በሁለቱም ቋንቋዎች የተለየ መልስ አልሰጠም።",
+            "The API did not return separate Amharic and English answer fields.",
             "warn"
           );
         }
       } catch (error) {
         if (version !== answerVersion) return;
 
-        displayMessage(
-          "መልስ ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም እርዳታ ይጠይቁ።",
-          "The answer service is unavailable. Try again or use I Need Help.",
-          firstLanguage
+        answer.value = firstLanguage === "am"
+          ? "ከአገልጋዩ መልስ ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም እርዳታ ይጠይቁ።"
+          : "Your answer API did not respond successfully. Try again or use I Need Help.";
+
+        status(
+          "የመልስ አገልጋዩን ያረጋግጡ።",
+          "Check the Railway answer route and server logs.",
+          "warn"
         );
 
-        console.warn("Answer request failed:", error.message);
+        console.warn("Answer API:", error.message);
       } finally {
         if (version === answerVersion) {
-          answerController = null;
-          setBusy(el.getAnswerBtn, false);
+          answerRequest = null;
+          busy($("getAnswerBtn"), false);
         }
       }
     }
 
     on("getAnswerBtn", getAnswer);
 
-    el.question.addEventListener("keydown", event => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    question.addEventListener("keydown", event => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "Enter" &&
+        !$("getAnswerBtn")?.disabled
+      ) {
         event.preventDefault();
-        if (!el.getAnswerBtn?.disabled) getAnswer();
+        getAnswer();
       }
     });
 
-    /* ======================================================
-       ONE SPEECH CONTROLLER — NO COMPETING AUDIO FALLBACK
-       ====================================================== */
+    /* =====================================================
+       SINGLE READING CONTROLLER
+       ===================================================== */
 
-    let speechRun = 0;
-    let readingLanguage = null;
-    let activeUtterance = null;
-    let cancelSpeechWait = null;
-
-    const speechSettings = {
-      en: { locale: "en-US", rate: 0.88, pitch: 0.94, volume: 0.8 },
-      am: { locale: "am-ET", rate: 0.85, pitch: 0.94, volume: 0.8 }
-    };
-
-    const preferredNames = {
-      en: ["David", "Mark", "Guy", "Ryan", "George", "Daniel"],
-      am: ["Ameha"]
+    const voicePreferences = {
+      am: ["Ameha"],
+      en: ["David", "Mark", "Guy", "Ryan", "George", "Daniel"]
     };
 
     function stopReading() {
-      speechRun++;
+      readingVersion++;
       readingLanguage = null;
 
-      const cancel = cancelSpeechWait;
-      cancelSpeechWait = null;
+      readingFetch?.abort();
+      readingFetch = null;
+
+      const cancel = readingCancel;
+      readingCancel = null;
       cancel?.();
 
       if (activeUtterance) {
@@ -812,30 +601,38 @@
 
       try {
         window.speechSynthesis?.cancel();
-      } catch {
-        // Speech is unavailable.
+      } catch {}
+
+      if (activeAudio) {
+        activeAudio.pause();
+        activeAudio.removeAttribute("src");
+        activeAudio.load();
+        activeAudio = null;
       }
 
       updateMediaButtons();
     }
 
-    function loadVoices(run) {
+    function waitForVoices(run) {
       return new Promise(resolve => {
         const synth = window.speechSynthesis;
-        let finished = false;
+
+        if (!synth) {
+          resolve([]);
+          return;
+        }
+
+        let done = false;
         let timer;
 
         function finish(voices) {
-          if (finished) return;
-          finished = true;
+          if (done) return;
+          done = true;
 
           clearTimeout(timer);
           synth.removeEventListener("voiceschanged", check);
 
-          if (cancelSpeechWait === cancel) {
-            cancelSpeechWait = null;
-          }
-
+          if (readingCancel === cancel) readingCancel = null;
           resolve(voices);
         }
 
@@ -844,21 +641,27 @@
         }
 
         function check() {
-          if (run !== speechRun) {
+          if (run !== readingVersion) {
             finish([]);
             return;
           }
 
           const voices = synth.getVoices();
-          if (voices.length) finish(voices);
+
+          if (
+            voices.some(v => /^am(?:-|_|$)/i.test(v.lang)) &&
+            voices.some(v => /^en(?:-|_|$)/i.test(v.lang))
+          ) finish(voices);
         }
 
-        cancelSpeechWait = cancel;
+        readingCancel = cancel;
         synth.addEventListener("voiceschanged", check);
 
         timer = setTimeout(
-          () => finish(run === speechRun ? synth.getVoices() : []),
-          1500
+          () => finish(
+            run === readingVersion ? synth.getVoices() : []
+          ),
+          1200
         );
 
         check();
@@ -866,23 +669,17 @@
     }
 
     function chooseVoice(voices, lang) {
-      function score(voice) {
-        let value = voice.localService ? 3 : 0;
-        const name = voice.name.toLowerCase();
+      const score = voice => {
+        let value = voice.localService ? 2 : 0;
 
-        preferredNames[lang].forEach((preferred, index) => {
-          if (name.includes(preferred.toLowerCase())) {
+        voicePreferences[lang].forEach((name, index) => {
+          if (voice.name.toLowerCase().includes(name.toLowerCase())) {
             value += 100 - index;
           }
         });
 
-        if (
-          voice.lang.toLowerCase().replace(/_/g, "-") ===
-          speechSettings[lang].locale.toLowerCase()
-        ) value += 10;
-
         return value;
-      }
+      };
 
       return voices
         .filter(voice => {
@@ -892,25 +689,25 @@
         .sort((a, b) => score(b) - score(a))[0] || null;
     }
 
-    function readingText(lang) {
-      if (currentAnswer) return currentAnswer[lang] || "";
+    function textForReading(lang) {
+      /*
+       * Buttons select the reading language.
+       * The interface toggle does not affect this choice.
+       */
+      if (answerRecord?.[lang]?.trim()) {
+        return answerRecord[lang].trim();
+      }
 
-      return el.answer.value
-        .split(/\n\s*(?:Source|ምንጭ|📚)/i)[0]
-        .split(/\n+/)
-        .filter(line => lang === "am"
-          ? ETHIOPIC.test(line)
-          : /[A-Za-z]/.test(line) && !ETHIOPIC.test(line))
-        .join("\n");
+      return extractLanguage(answer.value, lang);
     }
 
-    function speechChunks(text) {
-      const sentences = text
-        .replace(/https?:\/\/\S+/g, "")
-        .replace(/[*#`]/g, "")
-        .match(/[^.!?።፧\n]+[.!?።፧]?/g) || [];
-
+    function chunks(text) {
       const output = [];
+      const sentences =
+        text
+          .replace(/https?:\/\/\S+/g, "")
+          .replace(/[*#`]/g, "")
+          .match(/[^.!?።፧\n]+[.!?።፧]?/g) || [];
 
       for (const sentence of sentences) {
         let chunk = "";
@@ -932,34 +729,36 @@
 
     function speakChunk(text, voice, lang, run) {
       return new Promise((resolve, reject) => {
-        if (run !== speechRun) {
+        if (run !== readingVersion) {
           resolve(false);
           return;
         }
 
         const utterance = new SpeechSynthesisUtterance(text);
-        const config = speechSettings[lang];
-        let settled = false;
 
         utterance.voice = voice;
-        utterance.lang = voice.lang || config.locale;
-        utterance.rate = config.rate;
-        utterance.pitch = config.pitch;
-        utterance.volume = config.volume;
+        utterance.lang = lang === "am" ? "am-ET" : "en-US";
+        utterance.rate = lang === "am" ? 0.85 : 0.88;
+        utterance.pitch = 0.94;
+        utterance.volume = 0.8;
+
+        let finished = false;
 
         function finish(error, completed = true) {
-          if (settled) return;
-          settled = true;
+          if (finished) return;
+          finished = true;
 
           clearTimeout(timer);
           utterance.onend = null;
           utterance.onerror = null;
 
-          if (activeUtterance === utterance) activeUtterance = null;
-          if (cancelSpeechWait === cancel) cancelSpeechWait = null;
+          if (activeUtterance === utterance) {
+            activeUtterance = null;
+          }
 
-          if (error) reject(error);
-          else resolve(completed);
+          if (readingCancel === cancel) readingCancel = null;
+
+          error ? reject(error) : resolve(completed);
         }
 
         function cancel() {
@@ -967,12 +766,7 @@
         }
 
         const timer = setTimeout(() => {
-          if (run !== speechRun) {
-            finish(null, false);
-            return;
-          }
-
-          finish(new Error("Speech timed out."));
+          finish(new Error("Reading timed out."));
           window.speechSynthesis.cancel();
         }, 60000);
 
@@ -980,18 +774,14 @@
 
         utterance.onerror = event => {
           if (
-            run !== speechRun ||
-            event.error === "canceled" ||
-            event.error === "interrupted"
-          ) {
-            finish(null, false);
-          } else {
-            finish(new Error(event.error || "Speech failed."));
-          }
+            run !== readingVersion ||
+            ["canceled", "interrupted"].includes(event.error)
+          ) finish(null, false);
+          else finish(new Error(event.error || "Reading failed."));
         };
 
         activeUtterance = utterance;
-        cancelSpeechWait = cancel;
+        readingCancel = cancel;
 
         try {
           window.speechSynthesis.speak(utterance);
@@ -1001,75 +791,142 @@
       });
     }
 
+    async function serverReading(text, lang, run) {
+      const controller = new AbortController();
+      readingFetch = controller;
+
+      let objectUrl;
+      const timer = setTimeout(() => controller.abort(), 30000);
+
+      try {
+        const response = await fetch(`${API_BASE}${TTS_PATH}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text,
+            language: lang === "am" ? "am-ET" : "en-US"
+          }),
+          signal: controller.signal
+        });
+
+        if (
+          !response.ok ||
+          !response.headers.get("Content-Type")
+            ?.toLowerCase().startsWith("audio/")
+        ) {
+          throw new Error("The speech endpoint did not return audio.");
+        }
+
+        const blob = await response.blob();
+
+        if (run !== readingVersion) return;
+
+        objectUrl = URL.createObjectURL(blob);
+
+        const player = new Audio(objectUrl);
+        player.volume = 0.8;
+        activeAudio = player;
+
+        await new Promise((resolve, reject) => {
+          let done = false;
+
+          function finish(error) {
+            if (done) return;
+            done = true;
+
+            clearTimeout(playTimer);
+            player.onended = null;
+            player.onerror = null;
+
+            if (readingCancel === cancel) readingCancel = null;
+
+            error ? reject(error) : resolve();
+          }
+
+          function cancel() {
+            player.pause();
+            finish();
+          }
+
+          const playTimer = setTimeout(() => {
+            player.pause();
+            finish(new Error("Audio timed out."));
+          }, 300000);
+
+          readingCancel = cancel;
+          player.onended = () => finish();
+          player.onerror = () => finish(new Error("Audio failed."));
+
+          player.play().catch(finish);
+        });
+      } finally {
+        clearTimeout(timer);
+
+        if (readingFetch === controller) readingFetch = null;
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        if (run === readingVersion) activeAudio = null;
+      }
+    }
+
     async function readAloud(lang) {
-      const sameLanguage = readingLanguage === lang;
+      const same = readingLanguage === lang;
 
       stopReading();
-      if (sameLanguage) return;
+      if (same) return;
 
-      stopRecognition();
+      stopMicrophone();
 
-      if (
-        !("speechSynthesis" in window) ||
-        !("SpeechSynthesisUtterance" in window)
-      ) {
-        status(
-          "ይህ አሳሽ የድምፅ ንባብን አይደግፍም።",
-          "Reading aloud is unavailable in this browser.",
-          "warn"
-        );
-        return;
-      }
-
-      const text = readingText(lang).trim();
+      const text = textForReading(lang);
 
       if (!text) {
         status(
           "በተመረጠው ቋንቋ የመልስ ጽሑፍ የለም።",
-          "There is no answer text in that language.",
+          `There is no ${lang === "am" ? "Amharic" : "English"} answer text.`,
           "warn"
         );
         return;
       }
 
-      const run = speechRun;
+      const run = readingVersion;
       readingLanguage = lang;
       updateMediaButtons();
 
       try {
-        const voices = await loadVoices(run);
-        if (run !== speechRun) return;
+        const voices = await waitForVoices(run);
+        if (run !== readingVersion) return;
 
         const voice = chooseVoice(voices, lang);
 
-        if (!voice) {
+        if (voice) {
+          for (const chunk of chunks(text)) {
+            if (run !== readingVersion) return;
+
+            const completed =
+              await speakChunk(chunk, voice, lang, run);
+
+            if (!completed || run !== readingVersion) return;
+          }
+        } else if (TTS_PATH) {
+          await serverReading(text, lang, run);
+        } else {
           status(
-            "በዚህ መሣሪያ ለተመረጠው ቋንቋ የንባብ ድምፅ አልተገኘም።",
-            `No ${lang === "am" ? "Amharic" : "English"} reading voice is available on this device.`,
+            "በዚህ መሣሪያ ለተመረጠው ቋንቋ ድምፅ አልተገኘም። የአገልጋይ ንባብ አገልግሎት ያስፈልጋል።",
+            `No ${lang === "am" ? "Amharic" : "English"} voice is available. Configure a server speech endpoint for this device.`,
             "warn"
           );
-          return;
-        }
-
-        for (const chunk of speechChunks(text)) {
-          if (run !== speechRun) return;
-
-          const completed = await speakChunk(chunk, voice, lang, run);
-
-          if (!completed || run !== speechRun) return;
         }
       } catch (error) {
-        if (run === speechRun) {
+        if (run === readingVersion) {
           status(
             "የድምፅ ንባቡ አልተሳካም።",
-            "Reading could not finish. Please try again.",
+            "Reading failed. Check the device voice or speech server.",
             "warn"
           );
 
-          console.warn("Speech failed:", error.message);
+          console.warn("Reading:", error.message);
         }
       } finally {
-        if (run === speechRun) {
+        if (run === readingVersion) {
           readingLanguage = null;
           updateMediaButtons();
         }
@@ -1079,95 +936,88 @@
     on("speakAmharicBtn", () => readAloud("am"));
     on("speakEnglishBtn", () => readAloud("en"));
 
-    /* ======================================================
-       MICROPHONE — SOFT START / END TONES
-       ====================================================== */
-
-    let audioContext = null;
-    let recognitionSession = null;
+    /* =====================================================
+       MICROPHONE + START / END BEEPS
+       ===================================================== */
 
     function unlockAudio() {
-      const AudioContextClass =
+      const Context =
         window.AudioContext || window.webkitAudioContext;
 
-      if (!AudioContextClass) return;
+      if (!Context) return;
 
       try {
-        audioContext ||= new AudioContextClass();
+        audioContext ||= new Context();
         audioContext.resume().catch(() => {});
-      } catch {
-        // Beeps are optional.
-      }
+      } catch {}
     }
 
-    function beep(start) {
-      if (!audioContext || audioContext.state !== "running") return;
+    function beep(startTone) {
+      if (audioContext?.state !== "running") return;
 
       try {
-        const osc = audioContext.createOscillator();
+        const oscillator = audioContext.createOscillator();
         const gain = audioContext.createGain();
-        const time = audioContext.currentTime;
+        const now = audioContext.currentTime;
 
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(start ? 620 : 820, time);
-        osc.frequency.exponentialRampToValueAtTime(
-          start ? 820 : 580,
-          time + 0.16
+        oscillator.type = "sine";
+
+        oscillator.frequency.setValueAtTime(
+          startTone ? 620 : 820,
+          now
         );
 
-        gain.gain.setValueAtTime(0.0001, time);
-        gain.gain.exponentialRampToValueAtTime(0.045, time + 0.025);
-        gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.18);
+        oscillator.frequency.exponentialRampToValueAtTime(
+          startTone ? 820 : 580,
+          now + 0.16
+        );
 
-        osc.connect(gain);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.045, now + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+        oscillator.connect(gain);
         gain.connect(audioContext.destination);
 
-        osc.onended = () => {
-          osc.disconnect();
+        oscillator.onended = () => {
+          oscillator.disconnect();
           gain.disconnect();
         };
 
-        osc.start(time);
-        osc.stop(time + 0.2);
-      } catch {
-        // Do not interrupt recording when audio is unavailable.
-      }
+        oscillator.start(now);
+        oscillator.stop(now + 0.2);
+      } catch {}
     }
 
-    function finishRecognition(session) {
-      if (!session || session.finished) return;
+    function finishMicrophone(session) {
+      if (session.finished) return;
       session.finished = true;
 
       if (session.started) beep(false);
-
-      if (recognitionSession === session) {
-        recognitionSession = null;
-      }
+      if (microphone === session) microphone = null;
 
       updateMediaButtons();
     }
 
-    function stopRecognition() {
-      const session = recognitionSession;
+    function stopMicrophone() {
+      const session = microphone;
       if (!session) return;
 
-      recognitionSession = null;
+      microphone = null;
       session.recognizer.onresult = null;
 
       try {
         session.recognizer.abort();
-      } catch {
-        // Already stopped.
-      }
+      } catch {}
 
-      finishRecognition(session);
+      finishMicrophone(session);
     }
 
-    function startRecognition(lang) {
-      const previousLang = recognitionSession?.lang;
+    function startMicrophone(lang) {
+      const previous = microphone?.lang;
+      stopMicrophone();
 
-      stopRecognition();
-      if (previousLang === lang) return;
+      if (previous === lang) return;
 
       stopReading();
       unlockAudio();
@@ -1177,7 +1027,7 @@
 
       if (!Recognizer) {
         status(
-          "የድምፅ ግብዓት አይገኝም። እባክዎ ጥያቄዎን ይጻፉ።",
+          "የድምፅ ግብዓት አይገኝም። ጥያቄዎን ይጻፉ።",
           "Voice input is unavailable. Please type your question.",
           "warn"
         );
@@ -1190,19 +1040,17 @@
         recognizer,
         lang,
         started: false,
-        finished: false,
-        received: false,
-        failed: false
+        finished: false
       };
 
-      recognitionSession = session;
+      microphone = session;
 
       recognizer.lang = lang === "am" ? "am-ET" : "en-US";
       recognizer.continuous = false;
       recognizer.interimResults = false;
 
       recognizer.onstart = () => {
-        if (recognitionSession !== session) {
+        if (microphone !== session) {
           try { recognizer.abort(); } catch {}
           return;
         }
@@ -1215,19 +1063,15 @@
       };
 
       recognizer.onresult = event => {
-        if (recognitionSession !== session) return;
+        if (microphone !== session) return;
 
         const transcript = Array.from(event.results)
           .map(result => result[0].transcript)
           .join(" ")
           .trim();
 
-        if (!transcript) return;
-
-        session.received = true;
-
-        el.question.value = [
-          el.question.value.trim(),
+        question.value = [
+          question.value.trim(),
           transcript
         ].filter(Boolean).join(" ");
 
@@ -1239,37 +1083,26 @@
       };
 
       recognizer.onerror = event => {
-        if (recognitionSession !== session) return;
-        session.failed = true;
-
-        if (event.error !== "aborted") {
+        if (
+          microphone === session &&
+          event.error !== "aborted"
+        ) {
           status(
-            "የድምፅ ግብዓት አልተሳካም። ፈቃድና ግንኙነትዎን ያረጋግጡ።",
-            `Voice input failed: ${event.error}. Check microphone permission and connection.`,
+            "የድምፅ ግብዓት አልተሳካም።",
+            `Microphone error: ${event.error}.`,
             "warn"
           );
         }
       };
 
-      recognizer.onend = () => {
-        const wasCurrent = recognitionSession === session;
-        finishRecognition(session);
-
-        if (wasCurrent && !session.received && !session.failed) {
-          status(
-            "ንግግር አልተገኘም። እንደገና ይሞክሩ።",
-            "No speech was captured. Please try again.",
-            "warn"
-          );
-        }
-      };
+      recognizer.onend = () => finishMicrophone(session);
 
       updateMediaButtons();
 
       try {
         recognizer.start();
       } catch {
-        finishRecognition(session);
+        finishMicrophone(session);
 
         status(
           "ማይክሮፎኑን መጀመር አልተቻለም።",
@@ -1279,38 +1112,35 @@
       }
     }
 
-    on("voiceAmharicBtn", () => startRecognition("am"));
-    on("voiceEnglishBtn", () => startRecognition("en"));
+    on("voiceAmharicBtn", () => startMicrophone("am"));
+    on("voiceEnglishBtn", () => startMicrophone("en"));
 
-    /* ======================================================
+    /* =====================================================
        CLEAR / COPY
-       ====================================================== */
+       ===================================================== */
 
-    function clearAll() {
+    on("clearBtn", () => {
       answerVersion++;
-      answerController?.abort();
-      answerController = null;
+      answerRequest?.abort();
+      answerRequest = null;
 
-      // Clear first, independently of speech support.
-      el.question.value = "";
-      el.answer.value = "";
+      question.value = "";
+      answer.value = "";
 
-      el.question.scrollTop = 0;
-      el.answer.scrollTop = 0;
-      el.answer.style.removeProperty("height");
+      question.scrollTop = 0;
+      answer.scrollTop = 0;
+      answer.style.removeProperty("height");
 
-      currentAnswer = null;
+      answerRecord = null;
       copiedQuestion = "";
 
       stopReading();
-      stopRecognition();
-      setBusy(el.getAnswerBtn, false);
+      stopMicrophone();
+      busy($("getAnswerBtn"), false);
 
       status("ጽሑፉ ተጽድቷል።", "Question and answer cleared.");
-      el.question.focus({ preventScroll: true });
-    }
-
-    on("clearBtn", clearAll);
+      question.focus({ preventScroll: true });
+    });
 
     async function copyText(text) {
       try {
@@ -1322,24 +1152,24 @@
     }
 
     on("copyBtn", async () => {
-      const question = el.question.value.trim();
+      const text = question.value.trim();
 
-      if (!question) {
+      if (!text) {
         status(
-          "እባክዎ መጀመሪያ ጥያቄ ይጻፉ።",
+          "መጀመሪያ ጥያቄ ይጻፉ።",
           "Please type a question first.",
           "warn"
         );
         return;
       }
 
-      copiedQuestion = question;
-      const copied = await copyText(question);
+      copiedQuestion = text;
+      const copied = await copyText(text);
 
       status(
         copied
           ? "ጥያቄው ተቀድቷል።"
-          : "ጥያቄው ለእርዳታ ተዘጋጅቷል፤ ወደ ቅንጭብ ሰሌዳ ግን አልተቀዳም።",
+          : "ጥያቄው ለእርዳታ ተዘጋጅቷል፣ ግን ወደ ቅንጭብ ሰሌዳ አልተቀዳም።",
         copied
           ? "Question copied."
           : "Question saved for Help, but clipboard access was unavailable.",
@@ -1347,29 +1177,25 @@
       );
     });
 
-    /* ======================================================
-       TELEGRAM HANDOFF
-       Opens synchronously during the user's click.
-       Keeps a visible recovery message and copy button.
-       ====================================================== */
+    /* =====================================================
+       TELEGRAM HANDOFF + VISIBLE MESSAGE FALLBACK
+       ===================================================== */
 
-    function telegramHandoff(message, container) {
+    function telegramHandoff(text, container) {
       const url = new URL(TELEGRAM_URL);
-      url.searchParams.set("text", message);
+      url.searchParams.set("text", text);
 
-      let popup = null;
+      let opened = false;
 
       try {
-        popup = window.open("about:blank", "_blank");
+        const popup = window.open("about:blank", "_blank");
 
         if (popup) {
           popup.opener = null;
           popup.location.replace(url.href);
+          opened = true;
         }
-      } catch {
-        try { popup?.close(); } catch {}
-        popup = null;
-      }
+      } catch {}
 
       container?.querySelector(".telegram-handoff")?.remove();
 
@@ -1377,96 +1203,112 @@
       panel.className = "telegram-handoff privacy-note";
 
       const note = document.createElement("p");
-      note.textContent = language === "am"
-        ? "Telegram ውስጥ ጽሑፉ ካልታየ፣ ከታች ቅዳ ይጫኑ፣ ከዚያ ለጥፈው ይላኩ።"
-        : "If Telegram does not show the draft, copy the message below, paste it into the bot, and press Send.";
+      note.textContent =
+        "If Telegram does not show the draft, copy this message, paste it into the bot, and press Send.";
 
       const draft = document.createElement("textarea");
+      draft.value = text;
       draft.readOnly = true;
-      draft.value = message;
       draft.rows = 4;
-      draft.setAttribute("aria-label", "Telegram request message");
+      draft.setAttribute("aria-label", "Telegram message");
 
       const copy = document.createElement("button");
       copy.type = "button";
-      copy.textContent = language === "am"
-        ? "መልዕክቱን ቅዳ"
-        : "Copy message";
+      copy.textContent = "Copy message";
 
       copy.addEventListener("click", async () => {
-        if (await copyText(message)) {
-          copy.textContent = language === "am" ? "ተቀድቷል" : "Copied";
+        if (await copyText(text)) {
+          copy.textContent = "Copied";
         } else {
           draft.focus({ preventScroll: true });
           draft.select();
-          copy.textContent = "Select and copy the message";
+          copy.textContent = "Select and copy";
         }
       });
 
       const link = document.createElement("a");
-      link.className = "course-link";
       link.href = url.href;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.textContent = language === "am"
-        ? "Telegram ክፈት"
-        : "Open Telegram";
+      link.className = "course-link";
+      link.textContent = "Open Telegram";
 
-      panel.append(note, draft, copy, document.createTextNode(" "), link);
+      panel.append(
+        note,
+        draft,
+        copy,
+        document.createTextNode(" "),
+        link
+      );
 
       container?.append(panel);
 
-      return Boolean(popup);
+      return opened;
     }
 
     on("helpBtn", () => {
       stopReading();
-      stopRecognition();
+      stopMicrophone();
 
-      const question = el.question.value.trim() || copiedQuestion;
+      const text = question.value.trim() || copiedQuestion;
 
-      const message = question
-        ? `Learning support request\n\nQuestion:\n${question}`
-        : "Hello, I need learning support.";
-
-      telegramHandoff(message, el.helpBtn.closest(".answer-box"));
+      telegramHandoff(
+        text
+          ? `Learning support request\n\nQuestion:\n${text}`
+          : "Hello, I need learning support.",
+        $("helpBtn").closest(".answer-box")
+      );
 
       status(
-        "የTelegram ጥያቄዎ ተዘጋጅቷል። ጽሑፉን ያረጋግጡና Send ይጫኑ።",
-        "Telegram handoff prepared. Check the draft and press Send."
+        "የTelegram መልዕክቱን ያረጋግጡና Send ይጫኑ።",
+        "Review the Telegram draft and press Send."
       );
     });
 
-    /* ======================================================
-       FORMS — EXPLICITLY CLEAR FIELDS
-       ====================================================== */
+    /* =====================================================
+       JOB ALERT / INTERVIEW FORMS
+       ===================================================== */
+
+    function formStatus(form) {
+      if (!form) return null;
+
+      const node = document.createElement("p");
+      node.className = "voice-status";
+      node.setAttribute("role", "status");
+      form.insertAdjacentElement("afterend", node);
+
+      return node;
+    }
 
     function clearForm(form) {
       form.reset();
 
-      form.querySelectorAll("input, textarea, select").forEach(field => {
-        if (field instanceof HTMLSelectElement) {
-          field.selectedIndex = 0;
-        } else if (field.type === "checkbox" || field.type === "radio") {
-          field.checked = false;
-        } else if (!["submit", "button", "hidden"].includes(field.type)) {
-          field.value = "";
-        }
-      });
+      form.querySelectorAll("input, textarea, select")
+        .forEach(field => {
+          if (field instanceof HTMLSelectElement) {
+            field.selectedIndex = 0;
+          } else if (
+            field.type === "checkbox" ||
+            field.type === "radio"
+          ) {
+            field.checked = false;
+          } else if (
+            !["hidden", "submit", "button"].includes(field.type)
+          ) {
+            field.value = "";
+          }
+        });
     }
 
-    function value(id) {
-      return $(id)?.value.trim() || "";
-    }
+    const value = id => $(id)?.value.trim() || "";
 
-    function validPhone(phone) {
-      return !phone || /^[+\d\s()-]{7,25}$/.test(phone);
-    }
+    const validPhone = phone =>
+      !phone || /^[+\d\s()-]{7,25}$/.test(phone);
 
-    async function submitFormRequest({
+    async function submitSupport({
       form,
       button,
-      endpoint,
+      path,
       payload,
       message,
       target
@@ -1474,49 +1316,50 @@
       if (form.dataset.busy === "true") return;
 
       form.dataset.busy = "true";
-      setBusy(button, true);
+      busy(button, true);
 
       const opened = telegramHandoff(message, form.parentElement);
 
-      // Clear immediately only when the new window was opened.
-      // Otherwise keep the inputs until server success.
       if (opened) clearForm(form);
 
       status(
-        "ጥያቄውን በአገልጋዩ ላይ እያስቀመጥን ነው...",
-        "Saving your request to the server...",
+        "ጥያቄዎ እየተላከ ነው...",
+        "Submitting your request...",
         "info",
         target
       );
 
       try {
-        await request(endpoint, {
+        await api(path, {
           method: "POST",
-          body: payload
+          body: { chatId, ...payload, source: "web" }
         });
 
         clearForm(form);
 
         status(
-          "ጥያቄዎ በአገልጋዩ ላይ ተቀምጧል። በTelegram ያለውን መልዕክት ከመላክዎ በፊት ያረጋግጡ።",
-          "The server accepted your request. Review the Telegram message before sending it.",
+          "አገልጋዩ ጥያቄዎን ተቀብሏል።",
+          "The server accepted your request. Review the Telegram draft before sending.",
           "ok",
           target
         );
       } catch {
         status(
-          "በአገልጋዩ ላይ መቀመጡ አልተረጋገጠም። ከታች ያለውን መልዕክት በTelegram ይላኩ።",
-          "Server submission was not confirmed. Use the message below to send the request in Telegram.",
+          "በአገልጋዩ ላይ መቀመጡ አልተረጋገጠም። Telegram ይጠቀሙ።",
+          "Server submission was not confirmed. Use the Telegram message below.",
           "warn",
           target
         );
       } finally {
         delete form.dataset.busy;
-        setBusy(button, false);
+        busy(button, false);
       }
     }
 
-    el.jobAlertForm?.addEventListener("submit", event => {
+    const jobForm = $("jobAlertForm");
+    const jobNotice = formStatus(jobForm);
+
+    jobForm?.addEventListener("submit", event => {
       event.preventDefault();
 
       const phone = value("jobPhone");
@@ -1525,27 +1368,20 @@
 
       if ((!phone && !telegram) || !area || !validPhone(phone)) {
         status(
-          "የስልክ ቁጥር ወይም Telegram ስም ያስገቡ፣ የሥራ መስክም ይምረጡ።",
-          "Enter a valid phone number or Telegram username and select a job area.",
+          "ስልክ ወይም Telegram ስም ያስገቡ፣ የሥራ መስክም ይምረጡ።",
+          "Enter a valid contact and select a job area.",
           "warn",
-          jobStatus
+          jobNotice
         );
         return;
       }
 
-      submitFormRequest({
-        form: el.jobAlertForm,
-        button: el.jobAlertBtn,
-        endpoint: "/api/job-alert",
-        target: jobStatus,
-        payload: {
-          chatId,
-          phone,
-          telegram,
-          area,
-          notify: true,
-          source: "web"
-        },
+      submitSupport({
+        form: jobForm,
+        button: $("jobAlertBtn"),
+        path: "/api/job-alert",
+        target: jobNotice,
+        payload: { phone, telegram, area, notify: true },
         message: [
           "Job alert request",
           `Phone: ${phone || "Not provided"}`,
@@ -1555,7 +1391,10 @@
       });
     });
 
-    el.accommodationForm?.addEventListener("submit", event => {
+    const interviewForm = $("accommodationForm");
+    const interviewNotice = formStatus(interviewForm);
+
+    interviewForm?.addEventListener("submit", event => {
       event.preventDefault();
 
       const name = value("accommodationName");
@@ -1565,27 +1404,25 @@
 
       if (!name || !phone || !type || !validPhone(phone)) {
         status(
-          "ስምዎን፣ ትክክለኛ ስልክ ቁጥርና የድጋፍ ዓይነት ያስገቡ።",
-          "Enter your name, a valid phone number, and support type.",
+          "ስም፣ ትክክለኛ ስልክና የድጋፍ ዓይነት ያስገቡ።",
+          "Enter your name, valid phone number, and support type.",
           "warn",
-          accommodationStatus
+          interviewNotice
         );
         return;
       }
 
-      submitFormRequest({
-        form: el.accommodationForm,
-        button: el.accommodationBtn,
-        endpoint: "/api/accommodation",
-        target: accommodationStatus,
+      submitSupport({
+        form: interviewForm,
+        button: $("accommodationBtn"),
+        path: "/api/accommodation",
+        target: interviewNotice,
         payload: {
-          chatId,
           name,
           phone,
           type,
           details,
-          status: "requested",
-          source: "web"
+          status: "requested"
         },
         message: [
           "Interview support request",
@@ -1597,13 +1434,13 @@
       });
     });
 
-    /* ======================================================
+    /* =====================================================
        MEETING LINK / DOWNLOAD
-       ====================================================== */
+       ===================================================== */
 
     on("screenShareBtn", () => {
       const input = window.prompt(
-        "Enter an HTTPS meeting link. This does not share your screen automatically."
+        "Enter an HTTPS meeting link. This does not automatically share your screen."
       );
 
       if (!input?.trim()) return;
@@ -1617,33 +1454,33 @@
       } catch {
         status(
           "ትክክለኛ HTTPS ሊንክ ያስገቡ።",
-          "Please enter a valid HTTPS meeting link.",
+          "Enter a valid HTTPS meeting link.",
           "warn"
         );
         return;
       }
 
-      if (!window.confirm(`Send this meeting link to support?\n${meetingLink}`)) {
+      if (!window.confirm(`Send this link to support?\n${meetingLink}`)) {
         return;
       }
 
       telegramHandoff(
         `Meeting support request\n\n${meetingLink}`,
-        el.screenShareBtn.closest(".answer-box")
+        $("screenShareBtn").closest(".answer-box")
       );
 
-      request("/api/screen-share", {
+      api("/api/screen-share", {
         method: "POST",
         body: { chatId, meetingLink, source: "web" }
       }).then(() => {
         status(
-          "የስብሰባ ሊንኩ በአገልጋዩ ላይ ተቀምጧል።",
-          "The server accepted your meeting-link request.",
+          "አገልጋዩ ሊንኩን ተቀብሏል።",
+          "The server accepted your meeting link.",
           "ok"
         );
       }).catch(() => {
         status(
-          "በአገልጋዩ ላይ መቀመጡ አልተረጋገጠም። Telegram ይጠቀሙ።",
+          "በአገልጋዩ ላይ መቀመጡ አልተረጋገጠም።",
           "Server submission was not confirmed. Use Telegram.",
           "warn"
         );
@@ -1651,19 +1488,19 @@
     });
 
     on("downloadBtn", () => {
-      const content = [
+      const text = [
         "Learning and Employment / ትምህርት እና ሥራ",
-        `Question:\n${el.question.value}`,
-        `Answer:\n${el.answer.value}`
+        `Question:\n${question.value}`,
+        `Answer:\n${answer.value}`
       ].join("\n\n");
 
-      const blob = new Blob(["\uFEFF", content], {
-        type: "text/plain;charset=utf-8"
-      });
+      const url = URL.createObjectURL(
+        new Blob(["\uFEFF", text], {
+          type: "text/plain;charset=utf-8"
+        })
+      );
 
-      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-
       link.href = url;
       link.download = "learning-and-employment.txt";
 
@@ -1674,23 +1511,25 @@
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     });
 
-    /* ======================================================
-       TEACHER STATISTICS — SAFE TEXT RENDERING
-       ====================================================== */
+    /* =====================================================
+       TEACHER VIEW
+       ===================================================== */
 
     async function loadTeacherStats() {
-      if (!el.teacherStats) return;
+      const container = $("teacherStats");
+      if (!container) return;
 
       try {
-        const data = await request("/api/teacher-stats");
+        const data = await api("/api/teacher-stats");
+
         const questions = Array.isArray(data.questions)
           ? data.questions.slice(0, 30)
           : [];
 
-        el.teacherStats.replaceChildren();
+        container.replaceChildren();
 
         if (!questions.length) {
-          el.teacherStats.textContent = "No questions available yet.";
+          container.textContent = "No questions available yet.";
           return;
         }
 
@@ -1698,92 +1537,101 @@
 
         questions.forEach(item => {
           const row = document.createElement("li");
+
           row.textContent =
             `${String(item.question || "")} — ${Number(item.count) || 0}`;
 
           list.append(row);
         });
 
-        el.teacherStats.append(list);
+        container.append(list);
       } catch {
-        el.teacherStats.textContent =
+        container.textContent =
           "Teacher statistics are unavailable or require authorization.";
       }
     }
 
-    /* ======================================================
-       NON-DESTRUCTIVE DIAGNOSTICS
-       Does not claim SMS / Telegram delivery was tested.
-       ====================================================== */
+    /* =====================================================
+       DIAGNOSTICS — NO QUESTIONS OR FORMS SENT
+       ===================================================== */
 
-    async function testWebsite() {
+    window.testWebsite = async () => {
       const results = [];
 
-      function add(test, passed, details = "") {
-        results.push({ test, passed, details });
-      }
+      [
+        "question",
+        "answer",
+        "getAnswerBtn",
+        "clearBtn",
+        "copyBtn",
+        "languageToggleBtn",
+        "speakAmharicBtn",
+        "speakEnglishBtn",
+        "voiceAmharicBtn",
+        "voiceEnglishBtn",
+        "jobAlertForm",
+        "accommodationForm"
+      ].forEach(id => {
+        const count =
+          document.querySelectorAll(`[id="${id}"]`).length;
 
-      ids.forEach(id => {
-        const count = document.querySelectorAll(`[id="${id}"]`).length;
-        add(`Unique #${id}`, count === 1, `Found ${count}`);
+        results.push({
+          test: `Unique #${id}`,
+          passed: count === 1,
+          details: `Found ${count}`
+        });
       });
 
-      add(
-        "English local FAQ",
-        Boolean(localAnswer("What is downloading?"))
-      );
+      const voices = window.speechSynthesis?.getVoices() || [];
 
-      add(
-        "Amharic local FAQ",
-        Boolean(localAnswer("ማውረድ ምን ማለት ነው?"))
-      );
+      results.push({
+        test: "Amharic device voice",
+        passed: Boolean(chooseVoice(voices, "am")),
+        details: "If false, server TTS may be required."
+      });
 
-      add("Arithmetic", solveMath("25 * 4") === 100);
-      add("Reading API", "speechSynthesis" in window);
+      results.push({
+        test: "English device voice",
+        passed: Boolean(chooseVoice(voices, "en")),
+        details: ""
+      });
 
-      if ("speechSynthesis" in window) {
-        const voices = window.speechSynthesis.getVoices();
-
-        add(
-          "English voice currently loaded",
-          Boolean(chooseVoice(voices, "en"))
-        );
-
-        add(
-          "Amharic voice currently loaded",
-          Boolean(chooseVoice(voices, "am"))
-        );
-      }
+      results.push({
+        test: "Server TTS configured in frontend",
+        passed: Boolean(TTS_PATH),
+        details: "Configuration does not prove the endpoint works."
+      });
 
       try {
-        await request("/health", { timeout: 8000 });
-        add("Server health", true);
+        await api("/health", { timeout: 8000 });
+
+        results.push({
+          test: "Server health",
+          passed: true,
+          details: "Does not verify Groq or lesson grounding."
+        });
       } catch {
-        add("Server health", false, "Check network, CORS and /health.");
+        results.push({
+          test: "Server health",
+          passed: false,
+          details: "Check network, CORS, and backend logs."
+        });
       }
 
       console.table(results);
-
-      status(
-        "የሙከራ ውጤቶች በConsole ውስጥ አሉ።",
-        "Diagnostic results are in the console. Delivery and accessibility still need manual testing."
-      );
-
       return results;
-    }
+    };
 
-    window.testWebsite = testWebsite;
-
-    /* ======================================================
+    /* =====================================================
        START / CLEANUP
-       ====================================================== */
+       ===================================================== */
 
     document.body.classList.toggle(
       "high-contrast",
       settings.highContrast === true
     );
 
-    el.contrastBtn?.setAttribute(
+    $("contrastBtn")?.setAttribute(
       "aria-pressed",
       String(settings.highContrast === true)
     );
@@ -1794,19 +1642,19 @@
 
     window.addEventListener("pagehide", () => {
       answerVersion++;
-      answerController?.abort();
+      answerRequest?.abort();
       stopReading();
-      stopRecognition();
+      stopMicrophone();
     });
 
     console.info(
-      "Learning app initialized once. Run testWebsite() for diagnostics."
+      "Learning app initialized. Answers use /api/ask only."
     );
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
+    document.addEventListener("DOMContentLoaded", start, { once: true });
   } else {
-    init();
+    start();
   }
 })();
