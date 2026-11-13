@@ -1,12 +1,12 @@
 "use strict";
 
 (() => {
-  const APP_KEY = "__learningEmploymentFinal";
+  const INSTANCE_KEY = "__learningEmploymentAppFinal";
 
-  if (window[APP_KEY]) return;
-  window[APP_KEY] = true;
+  if (window[INSTANCE_KEY]) return;
+  window[INSTANCE_KEY] = true;
 
-  function start() {
+  function init() {
     /* =====================================================
        CONFIGURATION
        ===================================================== */
@@ -17,17 +17,17 @@
     const TELEGRAM_URL = "https://t.me/EbaMengistuBot";
 
     /*
-     * Set to "/api/tts" ONLY after your backend implements it.
+     * Optional speech backend.
      *
-     * Request:
-     * POST JSON { text, language: "am-ET" | "en-US" }
+     * Leave empty unless this route actually exists.
      *
-     * Response:
-     * Audio bytes with Content-Type: audio/mpeg, audio/wav, etc.
+     * Expected:
+     * POST { text, language: "am-ET" | "en-US" }
+     * Response: audio bytes with an audio/* Content-Type.
      */
     const TTS_PATH = "";
 
-    const SETTINGS_KEY = "learning_final_settings";
+    const STORAGE_KEY = "learning_employment_settings";
 
     const $ = id => document.getElementById(id);
 
@@ -35,7 +35,7 @@
     const answer = $("answer");
 
     if (!question || !answer) {
-      console.error("Missing #question or #answer.");
+      console.error("Required #question or #answer is missing.");
       return;
     }
 
@@ -45,7 +45,7 @@
     function readSettings() {
       try {
         const value = JSON.parse(
-          localStorage.getItem(SETTINGS_KEY) || "{}"
+          localStorage.getItem(STORAGE_KEY) || "{}"
         );
 
         return value && typeof value === "object" ? value : {};
@@ -67,39 +67,36 @@
       settings.chatId ||
       `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-    let answerRecord = null;
+    let currentAnswer = null;
     let copiedQuestion = "";
     let answerVersion = 0;
-    let answerRequest = null;
+    let answerController = null;
 
     let readingLanguage = null;
-    let readingVersion = 0;
-    let readingCancel = null;
-    let readingFetch = null;
+    let speechVersion = 0;
+    let speechCancel = null;
+    let speechFetch = null;
     let activeUtterance = null;
     let activeAudio = null;
 
-    let microphone = null;
+    let microphoneSession = null;
     let audioContext = null;
-
-    const on = (id, callback) => {
-      $(id)?.addEventListener("click", callback);
-    };
 
     function saveSetting(key, value) {
       settings[key] = value;
 
       try {
-        localStorage.setItem(
-          SETTINGS_KEY,
-          JSON.stringify(settings)
-        );
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
       } catch {
         // Storage is optional.
       }
     }
 
     saveSetting("chatId", chatId);
+
+    function on(id, handler) {
+      $(id)?.addEventListener("click", handler);
+    }
 
     function status(am, en, type = "info", target = $("voiceStatus")) {
       const text = language === "am" ? am : en;
@@ -109,8 +106,9 @@
         target.className = `voice-status ${type}`;
       }
 
-      const live = $("liveRegion");
-      if (live) live.textContent = text;
+      if ($("liveRegion")) {
+        $("liveRegion").textContent = text;
+      }
     }
 
     function detectLanguage(text) {
@@ -119,7 +117,7 @@
       return language;
     }
 
-    function busy(button, enabled) {
+    function setBusy(button, enabled) {
       if (!button) return;
 
       button.disabled = enabled;
@@ -129,7 +127,7 @@
     }
 
     /* =====================================================
-       BUTTON EFFECTS
+       BUTTON APPEARANCE
        ===================================================== */
 
     document.querySelectorAll("button").forEach(button => {
@@ -156,14 +154,14 @@
     });
 
     /* =====================================================
-       LANGUAGE / DISPLAY
+       LANGUAGE / ACCESSIBILITY
        ===================================================== */
 
     const labels = {
       am: {
         question: "ጥያቄዎን ይጻፉ",
         answer: "መልስ",
-        placeholder: "ስለ ትምህርቱ ጥያቄ ይጻፉ...",
+        placeholder: "ለምሳሌ፦ ማውረድ ምን ማለት ነው?",
         getAnswerBtn: "መልስ አግኝ",
         clearBtn: "አጽዳ",
         copyBtn: "ጥያቄውን ቅዳ",
@@ -181,7 +179,7 @@
       en: {
         question: "Ask your question",
         answer: "Answer",
-        placeholder: "Ask a question about your lesson...",
+        placeholder: "Example: What is downloading?",
         getAnswerBtn: "Get Answer",
         clearBtn: "Clear",
         copyBtn: "Copy Question",
@@ -201,15 +199,13 @@
       const t = labels[language];
 
       [
-        ["speakAmharicBtn", readingLanguage === "am", t.readAm],
-        ["speakEnglishBtn", readingLanguage === "en", t.readEn],
-        ["voiceAmharicBtn", microphone?.lang === "am", t.micAm],
-        ["voiceEnglishBtn", microphone?.lang === "en", t.micEn]
-      ].forEach(([id, enabled, normal]) => {
+        ["speakAmharicBtn", readingLanguage === "am", t.readAm, false],
+        ["speakEnglishBtn", readingLanguage === "en", t.readEn, false],
+        ["voiceAmharicBtn", microphoneSession?.lang === "am", t.micAm, true],
+        ["voiceEnglishBtn", microphoneSession?.lang === "en", t.micEn, true]
+      ].forEach(([id, enabled, normal, isMicrophone]) => {
         const button = $(id);
         if (!button) return;
-
-        const isMicrophone = id.startsWith("voice");
 
         button.textContent = enabled
           ? isMicrophone ? t.listening : t.stop
@@ -322,7 +318,7 @@
     window.addEventListener("offline", updateConnection);
 
     /* =====================================================
-       BACKEND REQUESTS
+       API REQUESTS — PRESERVE REAL ERROR DETAILS
        ===================================================== */
 
     async function api(
@@ -348,15 +344,29 @@
           cache: "no-store"
         });
 
+        const raw = await response.text();
+
         if (!response.ok) {
-          throw new Error(`Server HTTP ${response.status}`);
+          console.error(
+            `API ${method} ${path}:`,
+            response.status,
+            raw.slice(0, 1500)
+          );
+
+          throw new Error(`Server returned HTTP ${response.status}.`);
         }
 
-        const raw = await response.text();
-        const data = raw.trim() ? JSON.parse(raw) : {};
+        let data;
+
+        try {
+          data = raw.trim() ? JSON.parse(raw) : {};
+        } catch {
+          console.error("Non-JSON API response:", raw.slice(0, 1500));
+          throw new Error("The server returned a non-JSON response.");
+        }
 
         if (data.ok === false || data.success === false) {
-          throw new Error("Server rejected the request.");
+          throw new Error("The server rejected the request.");
         }
 
         return data;
@@ -367,9 +377,71 @@
     }
 
     /* =====================================================
-       ANSWERS — YOUR API ONLY
-       No FAQ substitution, Wikipedia, or stale answer cache.
+       BUILT-IN SAMPLE LESSON FAQ
+       Replace or extend with your approved lesson material.
        ===================================================== */
+
+    const lessonFAQ = [
+      {
+        questions: [
+          "what is downloading",
+          "ማውረድ ምን ማለት ነው",
+          "ማውረድ ምንድን ነው"
+        ],
+        am: "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ማለት ነው።",
+        en: "Downloading means saving a file from the internet to your device.",
+        source: "Built-in sample lesson: Computer Basics"
+      },
+      {
+        questions: [
+          "what is email",
+          "what is an email",
+          "ኢሜይል ምንድን ነው",
+          "ኢሜይል ምን ማለት ነው"
+        ],
+        am: "ኢሜይል በኢንተርኔት መልዕክት ለመላክና ለመቀበል የሚያገለግል መንገድ ነው።",
+        en: "Email is a way to send and receive messages over the internet.",
+        source: "Built-in sample lesson: Internet and Email"
+      },
+      {
+        questions: [
+          "what is a job interview",
+          "የሥራ ቃለ መጠይቅ ምንድን ነው"
+        ],
+        am: "የሥራ ቃለ መጠይቅ አሠሪው ስለ ክህሎትዎና ልምድዎ የሚጠይቅበት ውይይት ነው።",
+        en: "A job interview is a conversation in which an employer asks about your skills and experience.",
+        source: "Built-in sample lesson: Jobs and Interviews"
+      }
+    ];
+
+    function normalizeQuestion(text) {
+      return String(text)
+        .toLowerCase()
+        .replace(/[?፧።.!]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function findLessonAnswer(text) {
+      const normalized = normalizeQuestion(text);
+
+      return lessonFAQ.find(item =>
+        item.questions.some(
+          sample => normalizeQuestion(sample) === normalized
+        )
+      ) || null;
+    }
+
+    function extractLanguage(text, lang) {
+      return String(text)
+        .split(/\n\s*(?:Source\s*:|Source\s*\/|ምንጭ\s*:|📚)/i)[0]
+        .split(/\n+/)
+        .filter(line => lang === "am"
+          ? ETHIOPIC.test(line)
+          : /[A-Za-z]/.test(line) && !ETHIOPIC.test(line))
+        .join("\n")
+        .trim();
+    }
 
     function normalizeAnswer(data) {
       const structured =
@@ -395,7 +467,7 @@
               : "";
 
       if (!am && !en && !raw.trim()) {
-        throw new Error("The API returned no answer text.");
+        throw new Error("The API returned no answer.");
       }
 
       const source = data.source || data.citation || "";
@@ -408,50 +480,30 @@
       };
     }
 
-    function extractLanguage(text, lang) {
-      const body = String(text)
-        .split(/\n\s*(?:Source\s*:|Source\s*\/|ምንጭ\s*:|📚)/i)[0];
+    function showAnswer(record, firstLanguage) {
+      currentAnswer = record;
 
-      return body
-        .split(/\n+/)
-        .filter(line => lang === "am"
-          ? ETHIOPIC.test(line)
-          : /[A-Za-z]/.test(line) && !ETHIOPIC.test(line))
-        .join("\n")
-        .trim();
-    }
+      const am = record.am || extractLanguage(record.raw || "", "am");
+      const en = record.en || extractLanguage(record.raw || "", "en");
 
-    function showRecord(record, firstLanguage) {
-      answerRecord = record;
+      const ordered = firstLanguage === "am" ? [am, en] : [en, am];
 
-      let am = record.am;
-      let en = record.en;
+      let text = ordered.filter(Boolean).join("\n\n");
 
-      if (!am && !en && record.raw) {
-        am = extractLanguage(record.raw, "am");
-        en = extractLanguage(record.raw, "en");
-      }
-
-      const parts = firstLanguage === "am"
-        ? [am, en]
-        : [en, am];
-
-      let text = parts.filter(Boolean).join("\n\n");
-
-      if (!text) text = record.raw;
+      if (!text) text = record.raw || "";
 
       if (record.source) {
         text += `\n\nSource / ምንጭ: ${record.source}`;
       }
 
-      const previousQuestionScroll = question.scrollTop;
+      const questionScroll = question.scrollTop;
 
       answer.value = text;
       answer.style.removeProperty("height");
       answer.scrollTop = 0;
       answer.scrollLeft = 0;
 
-      question.scrollTop = previousQuestionScroll;
+      question.scrollTop = questionScroll;
 
       status("መልሱ ዝግጁ ነው።", "Your answer is ready.", "ok");
     }
@@ -464,13 +516,13 @@
       const firstLanguage = detectLanguage(text);
       const version = ++answerVersion;
 
-      answerRequest?.abort();
-      answerRequest = null;
-      busy($("getAnswerBtn"), false);
+      answerController?.abort();
+      answerController = null;
+      setBusy($("getAnswerBtn"), false);
 
       if (!text) {
         status(
-          "እባክዎ መጀመሪያ ጥያቄ ይጻፉ።",
+          "እባክዎ ጥያቄ ይጻፉ።",
           "Please type a question first.",
           "warn"
         );
@@ -488,24 +540,24 @@
         return;
       }
 
-      answerRecord = null;
+      const local = findLessonAnswer(text);
+
+      if (local) {
+        showAnswer(local, firstLanguage);
+        return;
+      }
+
+      currentAnswer = null;
 
       answer.value = firstLanguage === "am"
-        ? "ከትምህርት መረጃው መልስ እየተፈለገ ነው..."
-        : "Requesting an answer from your lesson API...";
+        ? "ከአገልጋዩ መልስ እየተፈለገ ነው..."
+        : "Requesting an answer from your API...";
 
       answer.scrollTop = 0;
-      busy($("getAnswerBtn"), true);
+      setBusy($("getAnswerBtn"), true);
 
       const controller = new AbortController();
-      answerRequest = controller;
-
-      /*
-       * Optional lesson selector support.
-       * Existing HTML has no #lessonSelect; in that case lessonId
-       * is omitted and the backend must choose the lesson corpus.
-       */
-      const lessonId = $("lessonSelect")?.value || "";
+      answerController = controller;
 
       const payload = {
         chatId,
@@ -517,6 +569,7 @@
         ]
       };
 
+      const lessonId = $("lessonSelect")?.value;
       if (lessonId) payload.lessonId = lessonId;
 
       try {
@@ -528,34 +581,34 @@
 
         if (version !== answerVersion) return;
 
-        const record = normalizeAnswer(data);
-        showRecord(record, firstLanguage);
-
-        if (!record.am || !record.en) {
-          status(
-            "አገልጋዩ በሁለቱም ቋንቋዎች የተለየ መልስ አልሰጠም።",
-            "The API did not return separate Amharic and English answer fields.",
-            "warn"
-          );
-        }
+        showAnswer(normalizeAnswer(data), firstLanguage);
       } catch (error) {
         if (version !== answerVersion) return;
 
+        const detail =
+          error.name === "AbortError"
+            ? "The request timed out."
+            : error instanceof TypeError
+              ? "The API could not be reached. Check network and CORS."
+              : error.message;
+
         answer.value = firstLanguage === "am"
-          ? "ከአገልጋዩ መልስ ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም እርዳታ ይጠይቁ።"
-          : "Your answer API did not respond successfully. Try again or use I Need Help.";
+          ? `መልስ ማግኘት አልተቻለም።\n\n${detail}`
+          : `Could not retrieve your answer.\n\n${detail}`;
+
+        answer.scrollTop = 0;
 
         status(
-          "የመልስ አገልጋዩን ያረጋግጡ።",
-          "Check the Railway answer route and server logs.",
+          "የአገልጋዩን ዝርዝር በConsole ይመልከቱ።",
+          "Check the console and Railway logs for the actual error.",
           "warn"
         );
 
-        console.warn("Answer API:", error.message);
+        console.error("Answer request:", error);
       } finally {
         if (version === answerVersion) {
-          answerRequest = null;
-          busy($("getAnswerBtn"), false);
+          answerController = null;
+          setBusy($("getAnswerBtn"), false);
         }
       }
     }
@@ -574,23 +627,24 @@
     });
 
     /* =====================================================
-       SINGLE READING CONTROLLER
+       SINGLE VOICE CONTROLLER
+       No simultaneous browser + remote audio playback.
        ===================================================== */
 
-    const voicePreferences = {
+    const voiceNames = {
       am: ["Ameha"],
       en: ["David", "Mark", "Guy", "Ryan", "George", "Daniel"]
     };
 
     function stopReading() {
-      readingVersion++;
+      speechVersion++;
       readingLanguage = null;
 
-      readingFetch?.abort();
-      readingFetch = null;
+      speechFetch?.abort();
+      speechFetch = null;
 
-      const cancel = readingCancel;
-      readingCancel = null;
+      const cancel = speechCancel;
+      speechCancel = null;
       cancel?.();
 
       if (activeUtterance) {
@@ -613,7 +667,7 @@
       updateMediaButtons();
     }
 
-    function waitForVoices(run) {
+    function waitForVoices(run, lang) {
       return new Promise(resolve => {
         const synth = window.speechSynthesis;
 
@@ -632,7 +686,8 @@
           clearTimeout(timer);
           synth.removeEventListener("voiceschanged", check);
 
-          if (readingCancel === cancel) readingCancel = null;
+          if (speechCancel === cancel) speechCancel = null;
+
           resolve(voices);
         }
 
@@ -641,45 +696,39 @@
         }
 
         function check() {
-          if (run !== readingVersion) {
+          if (run !== speechVersion) {
             finish([]);
             return;
           }
 
           const voices = synth.getVoices();
 
-          if (
-            voices.some(v => /^am(?:-|_|$)/i.test(v.lang)) &&
-            voices.some(v => /^en(?:-|_|$)/i.test(v.lang))
-          ) finish(voices);
+          if (chooseVoice(voices, lang)) finish(voices);
         }
 
-        readingCancel = cancel;
+        speechCancel = cancel;
         synth.addEventListener("voiceschanged", check);
 
-        timer = setTimeout(
-          () => finish(
-            run === readingVersion ? synth.getVoices() : []
-          ),
-          1200
-        );
+        timer = setTimeout(() => {
+          finish(run === speechVersion ? synth.getVoices() : []);
+        }, 1500);
 
         check();
       });
     }
 
     function chooseVoice(voices, lang) {
-      const score = voice => {
-        let value = voice.localService ? 2 : 0;
+      function score(voice) {
+        let result = voice.localService ? 2 : 0;
 
-        voicePreferences[lang].forEach((name, index) => {
+        voiceNames[lang].forEach((name, index) => {
           if (voice.name.toLowerCase().includes(name.toLowerCase())) {
-            value += 100 - index;
+            result += 100 - index;
           }
         });
 
-        return value;
-      };
+        return result;
+      }
 
       return voices
         .filter(voice => {
@@ -689,47 +738,45 @@
         .sort((a, b) => score(b) - score(a))[0] || null;
     }
 
-    function textForReading(lang) {
-      /*
-       * Buttons select the reading language.
-       * The interface toggle does not affect this choice.
-       */
-      if (answerRecord?.[lang]?.trim()) {
-        return answerRecord[lang].trim();
+    function readingText(lang) {
+      const structured = currentAnswer?.[lang];
+
+      if (typeof structured === "string" && structured.trim()) {
+        return structured.trim();
       }
 
       return extractLanguage(answer.value, lang);
     }
 
-    function chunks(text) {
-      const output = [];
-      const sentences =
-        text
-          .replace(/https?:\/\/\S+/g, "")
-          .replace(/[*#`]/g, "")
-          .match(/[^.!?።፧\n]+[.!?።፧]?/g) || [];
+    function readingChunks(text) {
+      const sentences = text
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[*#`]/g, "")
+        .match(/[^.!?።፧\n]+[.!?።፧]?/g) || [];
+
+      const chunks = [];
 
       for (const sentence of sentences) {
         let chunk = "";
 
         for (const word of sentence.trim().split(/\s+/)) {
           if (chunk && `${chunk} ${word}`.length > 180) {
-            output.push(chunk);
+            chunks.push(chunk);
             chunk = "";
           }
 
           chunk = chunk ? `${chunk} ${word}` : word;
         }
 
-        if (chunk) output.push(chunk);
+        if (chunk) chunks.push(chunk);
       }
 
-      return output;
+      return chunks;
     }
 
     function speakChunk(text, voice, lang, run) {
       return new Promise((resolve, reject) => {
-        if (run !== readingVersion) {
+        if (run !== speechVersion) {
           resolve(false);
           return;
         }
@@ -742,21 +789,18 @@
         utterance.pitch = 0.94;
         utterance.volume = 0.8;
 
-        let finished = false;
+        let done = false;
 
         function finish(error, completed = true) {
-          if (finished) return;
-          finished = true;
+          if (done) return;
+          done = true;
 
           clearTimeout(timer);
           utterance.onend = null;
           utterance.onerror = null;
 
-          if (activeUtterance === utterance) {
-            activeUtterance = null;
-          }
-
-          if (readingCancel === cancel) readingCancel = null;
+          if (activeUtterance === utterance) activeUtterance = null;
+          if (speechCancel === cancel) speechCancel = null;
 
           error ? reject(error) : resolve(completed);
         }
@@ -767,21 +811,27 @@
 
         const timer = setTimeout(() => {
           finish(new Error("Reading timed out."));
-          window.speechSynthesis.cancel();
+
+          try {
+            window.speechSynthesis.cancel();
+          } catch {}
         }, 60000);
 
         utterance.onend = () => finish(null, true);
 
         utterance.onerror = event => {
           if (
-            run !== readingVersion ||
+            run !== speechVersion ||
             ["canceled", "interrupted"].includes(event.error)
-          ) finish(null, false);
-          else finish(new Error(event.error || "Reading failed."));
+          ) {
+            finish(null, false);
+          } else {
+            finish(new Error(event.error || "Speech failed."));
+          }
         };
 
         activeUtterance = utterance;
-        readingCancel = cancel;
+        speechCancel = cancel;
 
         try {
           window.speechSynthesis.speak(utterance);
@@ -791,12 +841,12 @@
       });
     }
 
-    async function serverReading(text, lang, run) {
+    async function serverSpeech(text, lang, run) {
       const controller = new AbortController();
-      readingFetch = controller;
+      speechFetch = controller;
 
-      let objectUrl;
-      const timer = setTimeout(() => controller.abort(), 30000);
+      let objectURL;
+      const fetchTimer = setTimeout(() => controller.abort(), 30000);
 
       try {
         const response = await fetch(`${API_BASE}${TTS_PATH}`, {
@@ -814,16 +864,16 @@
           !response.headers.get("Content-Type")
             ?.toLowerCase().startsWith("audio/")
         ) {
-          throw new Error("The speech endpoint did not return audio.");
+          throw new Error("Speech endpoint did not return audio.");
         }
 
         const blob = await response.blob();
 
-        if (run !== readingVersion) return;
+        if (run !== speechVersion) return;
 
-        objectUrl = URL.createObjectURL(blob);
+        objectURL = URL.createObjectURL(blob);
 
-        const player = new Audio(objectUrl);
+        const player = new Audio(objectURL);
         player.volume = 0.8;
         activeAudio = player;
 
@@ -838,7 +888,7 @@
             player.onended = null;
             player.onerror = null;
 
-            if (readingCancel === cancel) readingCancel = null;
+            if (speechCancel === cancel) speechCancel = null;
 
             error ? reject(error) : resolve();
           }
@@ -853,30 +903,31 @@
             finish(new Error("Audio timed out."));
           }, 300000);
 
-          readingCancel = cancel;
+          speechCancel = cancel;
           player.onended = () => finish();
           player.onerror = () => finish(new Error("Audio failed."));
 
           player.play().catch(finish);
         });
       } finally {
-        clearTimeout(timer);
+        clearTimeout(fetchTimer);
 
-        if (readingFetch === controller) readingFetch = null;
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-        if (run === readingVersion) activeAudio = null;
+        if (speechFetch === controller) speechFetch = null;
+        if (objectURL) URL.revokeObjectURL(objectURL);
+        if (run === speechVersion) activeAudio = null;
       }
     }
 
     async function readAloud(lang) {
-      const same = readingLanguage === lang;
+      const sameLanguage = readingLanguage === lang;
 
       stopReading();
-      if (same) return;
+
+      if (sameLanguage) return;
 
       stopMicrophone();
 
-      const text = textForReading(lang);
+      const text = readingText(lang);
 
       if (!text) {
         status(
@@ -887,46 +938,47 @@
         return;
       }
 
-      const run = readingVersion;
+      const run = speechVersion;
       readingLanguage = lang;
       updateMediaButtons();
 
       try {
-        const voices = await waitForVoices(run);
-        if (run !== readingVersion) return;
+        const voices = await waitForVoices(run, lang);
+
+        if (run !== speechVersion) return;
 
         const voice = chooseVoice(voices, lang);
 
         if (voice) {
-          for (const chunk of chunks(text)) {
-            if (run !== readingVersion) return;
+          for (const chunk of readingChunks(text)) {
+            if (run !== speechVersion) return;
 
             const completed =
               await speakChunk(chunk, voice, lang, run);
 
-            if (!completed || run !== readingVersion) return;
+            if (!completed || run !== speechVersion) return;
           }
         } else if (TTS_PATH) {
-          await serverReading(text, lang, run);
+          await serverSpeech(text, lang, run);
         } else {
           status(
-            "በዚህ መሣሪያ ለተመረጠው ቋንቋ ድምፅ አልተገኘም። የአገልጋይ ንባብ አገልግሎት ያስፈልጋል።",
-            `No ${lang === "am" ? "Amharic" : "English"} voice is available. Configure a server speech endpoint for this device.`,
+            "ጽሑፉ አለ፣ ግን በዚህ መሣሪያ ለተመረጠው ቋንቋ የንባብ ድምፅ የለም።",
+            `The text is present, but no ${lang === "am" ? "Amharic" : "English"} voice is available. A server speech service is needed for this device.`,
             "warn"
           );
         }
       } catch (error) {
-        if (run === readingVersion) {
+        if (run === speechVersion) {
           status(
             "የድምፅ ንባቡ አልተሳካም።",
-            "Reading failed. Check the device voice or speech server.",
+            "Reading failed. Check the device voice or speech service.",
             "warn"
           );
 
           console.warn("Reading:", error.message);
         }
       } finally {
-        if (run === readingVersion) {
+        if (run === speechVersion) {
           readingLanguage = null;
           updateMediaButtons();
         }
@@ -937,7 +989,7 @@
     on("speakEnglishBtn", () => readAloud("en"));
 
     /* =====================================================
-       MICROPHONE + START / END BEEPS
+       MICROPHONE + SOFT START / END BEEPS
        ===================================================== */
 
     function unlockAudio() {
@@ -994,16 +1046,19 @@
       session.finished = true;
 
       if (session.started) beep(false);
-      if (microphone === session) microphone = null;
+
+      if (microphoneSession === session) {
+        microphoneSession = null;
+      }
 
       updateMediaButtons();
     }
 
     function stopMicrophone() {
-      const session = microphone;
+      const session = microphoneSession;
       if (!session) return;
 
-      microphone = null;
+      microphoneSession = null;
       session.recognizer.onresult = null;
 
       try {
@@ -1014,10 +1069,11 @@
     }
 
     function startMicrophone(lang) {
-      const previous = microphone?.lang;
+      const previousLanguage = microphoneSession?.lang;
+
       stopMicrophone();
 
-      if (previous === lang) return;
+      if (previousLanguage === lang) return;
 
       stopReading();
       unlockAudio();
@@ -1027,7 +1083,7 @@
 
       if (!Recognizer) {
         status(
-          "የድምፅ ግብዓት አይገኝም። ጥያቄዎን ይጻፉ።",
+          "የድምፅ ግብዓት አይገኝም። እባክዎ ጥያቄዎን ይጻፉ።",
           "Voice input is unavailable. Please type your question.",
           "warn"
         );
@@ -1043,14 +1099,14 @@
         finished: false
       };
 
-      microphone = session;
+      microphoneSession = session;
 
       recognizer.lang = lang === "am" ? "am-ET" : "en-US";
       recognizer.continuous = false;
       recognizer.interimResults = false;
 
       recognizer.onstart = () => {
-        if (microphone !== session) {
+        if (microphoneSession !== session) {
           try { recognizer.abort(); } catch {}
           return;
         }
@@ -1063,7 +1119,7 @@
       };
 
       recognizer.onresult = event => {
-        if (microphone !== session) return;
+        if (microphoneSession !== session) return;
 
         const transcript = Array.from(event.results)
           .map(result => result[0].transcript)
@@ -1084,7 +1140,7 @@
 
       recognizer.onerror = event => {
         if (
-          microphone === session &&
+          microphoneSession === session &&
           event.error !== "aborted"
         ) {
           status(
@@ -1121,8 +1177,8 @@
 
     on("clearBtn", () => {
       answerVersion++;
-      answerRequest?.abort();
-      answerRequest = null;
+      answerController?.abort();
+      answerController = null;
 
       question.value = "";
       answer.value = "";
@@ -1131,12 +1187,12 @@
       answer.scrollTop = 0;
       answer.style.removeProperty("height");
 
-      answerRecord = null;
+      currentAnswer = null;
       copiedQuestion = "";
 
       stopReading();
       stopMicrophone();
-      busy($("getAnswerBtn"), false);
+      setBusy($("getAnswerBtn"), false);
 
       status("ጽሑፉ ተጽድቷል።", "Question and answer cleared.");
       question.focus({ preventScroll: true });
@@ -1178,7 +1234,7 @@
     });
 
     /* =====================================================
-       TELEGRAM HANDOFF + VISIBLE MESSAGE FALLBACK
+       TELEGRAM + VISIBLE MESSAGE FALLBACK
        ===================================================== */
 
     function telegramHandoff(text, container) {
@@ -1266,15 +1322,16 @@
     });
 
     /* =====================================================
-       JOB ALERT / INTERVIEW FORMS
+       FORMS
        ===================================================== */
 
-    function formStatus(form) {
+    function createFormStatus(form) {
       if (!form) return null;
 
       const node = document.createElement("p");
       node.className = "voice-status";
       node.setAttribute("role", "status");
+
       form.insertAdjacentElement("afterend", node);
 
       return node;
@@ -1316,7 +1373,7 @@
       if (form.dataset.busy === "true") return;
 
       form.dataset.busy = "true";
-      busy(button, true);
+      setBusy(button, true);
 
       const opened = telegramHandoff(message, form.parentElement);
 
@@ -1352,12 +1409,12 @@
         );
       } finally {
         delete form.dataset.busy;
-        busy(button, false);
+        setBusy(button, false);
       }
     }
 
     const jobForm = $("jobAlertForm");
-    const jobNotice = formStatus(jobForm);
+    const jobStatus = createFormStatus(jobForm);
 
     jobForm?.addEventListener("submit", event => {
       event.preventDefault();
@@ -1371,7 +1428,7 @@
           "ስልክ ወይም Telegram ስም ያስገቡ፣ የሥራ መስክም ይምረጡ።",
           "Enter a valid contact and select a job area.",
           "warn",
-          jobNotice
+          jobStatus
         );
         return;
       }
@@ -1380,7 +1437,7 @@
         form: jobForm,
         button: $("jobAlertBtn"),
         path: "/api/job-alert",
-        target: jobNotice,
+        target: jobStatus,
         payload: { phone, telegram, area, notify: true },
         message: [
           "Job alert request",
@@ -1392,7 +1449,7 @@
     });
 
     const interviewForm = $("accommodationForm");
-    const interviewNotice = formStatus(interviewForm);
+    const interviewStatus = createFormStatus(interviewForm);
 
     interviewForm?.addEventListener("submit", event => {
       event.preventDefault();
@@ -1407,7 +1464,7 @@
           "ስም፣ ትክክለኛ ስልክና የድጋፍ ዓይነት ያስገቡ።",
           "Enter your name, valid phone number, and support type.",
           "warn",
-          interviewNotice
+          interviewStatus
         );
         return;
       }
@@ -1416,7 +1473,7 @@
         form: interviewForm,
         button: $("accommodationBtn"),
         path: "/api/accommodation",
-        target: interviewNotice,
+        target: interviewStatus,
         payload: {
           name,
           phone,
@@ -1450,6 +1507,7 @@
       try {
         const url = new URL(input.trim());
         if (url.protocol !== "https:") throw new Error();
+
         meetingLink = url.href;
       } catch {
         status(
@@ -1501,6 +1559,7 @@
       );
 
       const link = document.createElement("a");
+
       link.href = url;
       link.download = "learning-and-employment.txt";
 
@@ -1552,7 +1611,8 @@
     }
 
     /* =====================================================
-       DIAGNOSTICS — NO QUESTIONS OR FORMS SENT
+       DIAGNOSTICS
+       Does not submit questions or forms.
        ===================================================== */
 
     window.testWebsite = async () => {
@@ -1585,9 +1645,15 @@
       const voices = window.speechSynthesis?.getVoices() || [];
 
       results.push({
+        test: "Built-in sample lesson",
+        passed: Boolean(findLessonAnswer("What is downloading?")),
+        details: "Not the complete lesson library."
+      });
+
+      results.push({
         test: "Amharic device voice",
         passed: Boolean(chooseVoice(voices, "am")),
-        details: "If false, server TTS may be required."
+        details: "If false, server TTS is needed for Amharic."
       });
 
       results.push({
@@ -1596,25 +1662,19 @@
         details: ""
       });
 
-      results.push({
-        test: "Server TTS configured in frontend",
-        passed: Boolean(TTS_PATH),
-        details: "Configuration does not prove the endpoint works."
-      });
-
       try {
         await api("/health", { timeout: 8000 });
 
         results.push({
           test: "Server health",
           passed: true,
-          details: "Does not verify Groq or lesson grounding."
+          details: "Does not verify /api/ask or Groq."
         });
-      } catch {
+      } catch (error) {
         results.push({
           test: "Server health",
           passed: false,
-          details: "Check network, CORS, and backend logs."
+          details: error.message
         });
       }
 
@@ -1642,19 +1702,19 @@
 
     window.addEventListener("pagehide", () => {
       answerVersion++;
-      answerRequest?.abort();
+      answerController?.abort();
       stopReading();
       stopMicrophone();
     });
 
     console.info(
-      "Learning app initialized. Answers use /api/ask only."
+      "Learning app initialized once. Run testWebsite() for diagnostics."
     );
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start, { once: true });
+    document.addEventListener("DOMContentLoaded", init, { once: true });
   } else {
-    start();
+    init();
   }
 })();
