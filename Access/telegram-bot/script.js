@@ -2,11 +2,11 @@
 
 (() => {
   /* =========================================================
-     LEARNING AND EMPLOYMENT — TRACK 3 FINAL SCRIPT.JS
-     Course answers + Railway API + Telegram teacher/admin
+     LEARNING AND EMPLOYMENT — TRACK 3 POWERFUL SCRIPT.JS
+     Railway bot + Telegram teacher/admin + course answers
      ========================================================= */
 
-  const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
+  const TELEGRAM_BOT_URL = "https://t.me/EbaMengistBot";
 
   // Your existing Railway API
   const API_BASE_URL =
@@ -38,9 +38,9 @@
   const voiceStatus = $("voiceStatus");
 
   const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v6";
-  const SETTINGS_KEY = "learningSettings_v6";
-  const CHAT_ID_KEY = "learningChatId_v6";
+  const CACHE_KEY = "learningAnswers_v7";
+  const SETTINGS_KEY = "learningSettings_v7";
+  const CHAT_ID_KEY = "learningChatId_v7";
 
   let language = "am";
   let fontSize = 1.05;
@@ -1184,7 +1184,7 @@
     const telegramMessage = encodeURIComponent(message);
 
     window.open(
-      `https://t.me/EbaMengistuBot?text=${telegramMessage}`,
+      `https://t.me/EbaMengistBot?text=${telegramMessage}`,
       "_blank",
       "noopener,noreferrer"
     );
@@ -1304,7 +1304,8 @@
   });
 
   /* =========================================================
-     JOB ALERTS — CONNECT TO TELEGRAM TEACHER/ADMIN
+     JOB ALERTS
+     Sends to Railway. If Railway fails, opens Telegram.
      ========================================================= */
 
   jobAlertForm?.addEventListener("submit", async event => {
@@ -1386,7 +1387,8 @@
   });
 
   /* =========================================================
-     INTERVIEW SUPPORT — SEND TO TELEGRAM TEACHER/ADMIN
+     INTERVIEW SUPPORT
+     Sends to Railway. If Railway fails, opens Telegram.
      ========================================================= */
 
   accommodationForm?.addEventListener("submit", async event => {
@@ -1454,8 +1456,8 @@
       console.warn("Interview support request failed:", error);
 
       const message = language === "am"
-        ? `♿ የቃለ መጠይቅ ድጋፍ ጥያቄ\n\nስም፦ ${name}\nስልክ፦ ${phone}\nየሚፈልጉት ድጋፍ፦ ${type}\nዝርዝር፦ ${details || "—"}`
-        : `♿ Interview support request\n\nName: ${name}\nPhone: ${phone}\nSupport needed: ${type}\nDetails: ${details || "—"}`;
+        ? `♿️ የቃለ መጠይቅ ድጋፍ ጥያቄ\n\nስም፦ ${name}\nስልክ፦ ${phone}\nየሚፈልጉት ድጋፍ፦ ${type}\nዝርዝር፦ ${details || "—"}`
+        : `♿️ Interview support request\n\nName: ${name}\nPhone: ${phone}\nSupport needed: ${type}\nDetails: ${details || "—"}`;
 
       openTelegramWithMessage(message);
 
@@ -1536,7 +1538,7 @@
 
     add(
       "Telegram bot link",
-      TELEGRAM_BOT_URL === "https://t.me/EbaMengistuBot"
+      TELEGRAM_BOT_URL === "https://t.me/EbaMengistBot"
     );
 
     try {
