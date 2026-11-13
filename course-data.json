@@ -1,0 +1,512 @@
+{
+  "lessons": [
+    {
+      "title": "How to Use This Bot",
+      "keywords": [
+        "how to use bot",
+        "how to use this bot",
+        "help",
+        "start",
+        "እንዴት እጠቀማለሁ",
+        "እንዴት እጠቀማለሁ ቦት",
+        "እርዳታ",
+        "መጀመሪያ"
+      ],
+      "simple": {
+        "en": "Send /start to see the main menu. You can ask questions in Amharic or English.",
+        "am": "ዋናውን ምናሌ ለማየት /start ይላኩ። በአማርኛ ወይም በእንግሊዝኛ ጥያቄ መጠየቅ ይችላሉ።"
+      },
+      "answer": {
+        "en": "Send /start to open the main menu. You can ask questions in Amharic or English. Use /lessons to choose a lesson, /jobs to see job alerts, /quiz to practice, and /help if you need a teacher.",
+        "am": "ዋናውን ምናሌ ለመክፈት /start ይላኩ። በአማርኛ ወይም በእንግሊዝኛ ጥያቄ መጠየቅ ይችላሉ። ትምህርት ለመምረጥ /lessons፣ የሥራ ማስታወቂያ ለማየት /jobs፣ ለልምምድ /quiz እና መምህር ከፈለጉ /help ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "How to Use This Bot",
+        "section": "Getting Started",
+        "url": "https://example.com/how-to-use"
+      }
+    },
+    {
+      "title": "Downloading",
+      "keywords": [
+        "download",
+        "downloading",
+        "downloaded",
+        "ማውረድ",
+        "ማውረድ ምን",
+        "ማውረድ ምን ማለት ነው"
+      ],
+      "simple": {
+        "en": "Downloading means saving a file from the internet to your device.",
+        "am": "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ነው።"
+      },
+      "answer": {
+        "en": "Downloading means saving a file from the internet to your phone, computer, or tablet. You can download documents, photos, videos, music, and apps. After downloading, you can often open the file without an internet connection. Always download files only from trusted websites.",
+        "am": "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ ስልክዎ፣ ኮምፒውተርዎ ወይም ታብሌትዎ ማስቀመጥ ነው። ሰነዶችን፣ ፎቶዎችን፣ ቪዲዮዎችን፣ ሙዚቃ እና መተግበሪያዎችን ማውረድ ይችላሉ። ከወረደ በኋላ ፋይሉን ያለ ኢንተርኔት መክፈት ይችላሉ። ፋይሎችን ከታመመ ድረ-ገጾች ብቻ ያውረዱ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Downloading",
+        "url": "https://example.com/internet-basics/downloading"
+      }
+    },
+    {
+      "title": "Internet",
+      "keywords": [
+        "internet",
+        "internet connection",
+        "online",
+        "ኢንተርኔት",
+        "ኢንተርኔት ምን",
+        "ኢንተርኔት ምን ማለት ነው"
+      ],
+      "simple": {
+        "en": "The internet is a global network that connects computers and phones.",
+        "am": "ኢንተርኔት ማለት ኮምፒውተሮችን እና ስልኮችን የሚያገናኝ ዓለም አቀፍ ኔትወርክ ነው።"
+      },
+      "answer": {
+        "en": "The internet is a global network that connects computers, phones, and other devices. You can use it to search for information, send messages, learn, watch videos, and apply for jobs. To use the internet, you need an internet connection and a device such as a phone or computer.",
+        "am": "ኢንተርኔት ማለት ኮምፒውተሮችን፣ ስልኮችን እና ሌሎች መሣሪያዎችን የሚያገናኝ ዓለም አቀፍ ኔትወርክ ነው። መረጃ ለመፈለግ፣ መልእክት ለመላክ፣ ለመማረን፣ ቪዲዮ ለመመልከት እና ለሥራ ለመመልከት ማስታወቂያዎችን ማግኘት ይችላሉ። ኢንተርኔት ለመጠቀም የኢንተርኔት ግንኙነት እና ስልክ ወይም ኮምፒውተር ያስፈልግዎታል።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Introduction",
+        "url": "https://example.com/internet-basics"
+      }
+    },
+    {
+      "title": "Web Browser",
+      "keywords": [
+        "browser",
+        "web browser",
+        "google chrome",
+        "chrome",
+        "firefox",
+        "safari",
+        "ብራውዘር",
+        "ዌብ ብራውዘር"
+      ],
+      "simple": {
+        "en": "A web browser is an app used to open websites.",
+        "am": "ዌብ ብራውዘር ማለት ድረ-ገጾችን ለመክፈት የሚያገለግል መተግበሪያ ነው።"
+      },
+      "answer": {
+        "en": "A web browser is an application used to open websites. Examples include Google Chrome, Firefox, Safari, and Microsoft Edge. You can use a browser to search for information, read lessons, watch videos, and apply for jobs.",
+        "am": "ዌብ ብራውዘር ማለት ድረ-ገጾችን ለመክፈት የሚያገለግል መተግበሪያ ነው። ምሳሌ፦ Google Chrome፣ Firefox፣ Safari እና Microsoft Edge። በብራውዘር መረጃ መፈለግ፣ ትምህርት ማንበብ፣ ቪዲዮ መመልከት እና ለሥራ መመልከት ይችላሉ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Web Browsers",
+        "url": "https://example.com/internet-basics/browsers"
+      }
+    },
+    {
+      "title": "Website",
+      "keywords": [
+        "website",
+        "web page",
+        "site",
+        "ድረ-ገጽ",
+        "ዌብሳይት"
+      ],
+      "simple": {
+        "en": "A website is a place on the internet where you can find information.",
+        "am": "ድረ-ገጽ ማለት በኢንተርኔት ላይ መረጃ የሚያገኙበት ቦታ ነው።"
+      },
+      "answer": {
+        "en": "A website is a collection of pages on the internet. Websites can provide information, learning materials, news, videos, services, and job opportunities. You open a website using a web browser.",
+        "am": "ድረ-ገጽ ማለት በኢንተርኔት ላይ የሚገኙ ገጾች ስብስብ ነው። ድረ-ገጾች መረጃ፣ የትምህርት ቁሳቁሶች፣ ዜና፣ ቪዲዮ፣ አገልግሎት እና የሥራ ዕድሎችን ሊሰጡ ይችላሉ። ድረ-ገጽ ለመክፈት ዌብ ብራውዘር ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Websites",
+        "url": "https://example.com/internet-basics/websites"
+      }
+    },
+    {
+      "title": "Hyperlink",
+      "keywords": [
+        "hyperlink",
+        "link",
+        "links",
+        "ሊንክ",
+        "ሃይፐርሊንክ"
+      ],
+      "simple": {
+        "en": "A hyperlink is a link that takes you to another page or website.",
+        "am": "ሃይፐርሊንክ ማለት ወደ ሌላ ገጽ ወይም ድረ-ገጽ የሚወስድ ሊንክ ነው።"
+      },
+      "answer": {
+        "en": "A hyperlink, or link, is text or an image that takes you to another page or website. Links can help you find more information, open a lesson, or apply for a job. Before clicking a link, make sure it is from a trusted source.",
+        "am": "ሃይፐርሊንክ ወይም ሊንክ ማለት ወደ ሌላ ገጽ ወይም ድረ-ገጽ የሚወስድ ጽሑፍ ወይም ምስል ነው። ሊንኮች ተጨማሪ መረጃ ለማግኘት፣ ትምህርት ለመክፈት ወይም ለሥራ ለመመልከት ይረዳሉ። ሊንክ ከመንኳት በፊት ከታመመ ምንጭ መሆኑን ያረጋግጡ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Hyperlinks",
+        "url": "https://example.com/internet-basics/hyperlinks"
+      }
+    },
+    {
+      "title": "Search Engine",
+      "keywords": [
+        "search engine",
+        "google",
+        "search",
+        "ፍለጋ",
+        "የፍለጋ ሞተር"
+      ],
+      "simple": {
+        "en": "A search engine helps you find information on the internet.",
+        "am": "የፍለጋ ሞተር በኢንተርኔት ላይ መረጃ ለማግኘት ይረዳል።"
+      },
+      "answer": {
+        "en": "A search engine is a website or tool that helps you find information on the internet. Google is a common example. Type words related to what you want to know, then choose results from trusted websites.",
+        "am": "የፍለጋ ሞተር ማለት በኢንተርኔት ላይ መረጃ ለማግኘት የሚረዳ ድረ-ገጽ ወይም መሣሪያ ነው። Google የተለመደ ምሳሌ ነው። ማወቅ የሚፈልጉትን ቃላት ይጻፉ፣ ከዚያ ከታመሙ ድረ-ገጾች ውጤቶችን ይምረጡ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Search Engines",
+        "url": "https://example.com/internet-basics/search-engines"
+      }
+    },
+    {
+      "title": "Email",
+      "keywords": [
+        "email",
+        "email address",
+        "gmail",
+        "ኢሜይል",
+        "ኢሜይል አድራሻ"
+      ],
+      "simple": {
+        "en": "An email address is a place to send and receive messages online.",
+        "am": "ኢሜይል አድራሻ ማለት መልእክቶችን በመስመር ላይ ለመላክ እና ለመቀበል የሚያገለግል አድራሻ ነው።"
+      },
+      "answer": {
+        "en": "An email address is a digital address used to send and receive messages online. It usually looks like name@example.com. You can use email to contact teachers, apply for jobs, receive updates, and share documents. Before opening a link in an email, check whether the sender and link are safe.",
+        "am": "ኢሜይል አድራሻ ማለት መልእክቶችን በመስመር ላይ ለመላክ እና ለመቀበል የሚያገለግል ዲጂታል አድራሻ ነው። በተለምዶ ልዩ ስም@example.com የሚል ይመስላል። ኢሜይልን ለመላክ፣ ለመላክ እና ሰነዶችን ለመላክ ለመጠቀም ይችላሉ። በኢሜይል ውስጥ ሊንክ ከመንኳት በፊት የላከው ሰው እና ሊንኩ ደህና መሆናቸውን ያረጋግጡ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Email",
+        "url": "https://example.com/internet-basics/email"
+      }
+    },
+    {
+      "title": "Online Safety",
+      "keywords": [
+        "online safety",
+        "safe online",
+        "password",
+        "suspicious",
+        "scam",
+        "የመስመር ላይ ደህንነት",
+        "የይለፍ ቃል",
+        "ጥርጣሬ"
+      ],
+      "simple": {
+        "en": "Never share your password. Do not click suspicious links.",
+        "am": "የይለፍ ቃልዎን በጭራሽ አይጋሩ። ጥርጣሬ የሚኖረውን ሊንክ አይንኩ።"
+      },
+      "answer": {
+        "en": "Keep your password private and use a strong password with letters, numbers, and symbols. Do not click suspicious links or send money, bank details, or personal information to unknown people. If a message looks suspicious, do not click it and report it to a trusted person.",
+        "am": "የይለፍ ቃልዎን ይጠብቁ እና ፊደል፣ ቁጥር እና ምልክት የሚያካትት ጠንካራ የይለፍ ቃል ይጠቀሙ። ጥርጣሬ የሚኖረውን ሊንክ አይንኩ ወይም ለማይታወቁ ሰዎች ገንዘብ፣ የባንክ መረጃ ወይም የግል መረጃ አይላኩ። መልእክቱ ጥርጣሬ ካለው አይንኩት እና ለታመመ ሰው ይንገሩት።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Safety",
+        "url": "https://example.com/internet-basics/safety"
+      }
+    },
+    {
+      "title": "Strong Password",
+      "keywords": [
+        "strong password",
+        "password",
+        "ጠንካራ የይለፍ ቃል",
+        "የይለፍ ቃል"
+      ],
+      "simple": {
+        "en": "A strong password uses letters, numbers, and symbols. Do not share it with anyone.",
+        "am": "ጠንካራ የይለፍ ቃል ፊደል፣ ቁጥር እና ምልክት ይጠቀማል። ለማንም አይጋሩ።"
+      },
+      "answer": {
+        "en": "A strong password should be long and include uppercase letters, lowercase letters, numbers, and symbols. For example, MyName2026! is stronger than 123456. Do not use your name, phone number, or birthday as a password. Do not share your password with anyone.",
+        "am": "ጠንካራ የይለፍ ቃል ረዘም ያለ እና አቢይ ፊደል፣ ትንንሽ ፊደል፣ ቁጥር እና ምልክቶችን ይዟል። ምሳሌ፦ MyName2026! ከ123456 ይበልጥ ጠንካራ ነው። ስምዎን፣ ስልክ ቁጥርዎን ወይም የትውልድ ቀንዎን እንደ የይለፍ ቃል አይጠቀሙ። የይለፍ ቃልዎን ለማንም አይጋሩ።"
+      },
+      "source": {
+        "lesson": "Internet Basics",
+        "section": "Online Safety",
+        "url": "https://example.com/internet-basics/passwords"
+      }
+    },
+    {
+      "title": "How to Apply for a Job",
+      "keywords": [
+        "apply",
+        "apply for job",
+        "job application",
+        "application",
+        "ሥራ",
+        "ሥራ ለመመልከት",
+        "ማመልከት"
+      ],
+      "simple": {
+        "en": "Read the job details, prepare your CV, and follow the application link.",
+        "am": "የሥራ ዝርዝሩን ያንብቡ፣ CV ያዘጋጁ እና የማመልከቻ ሊንኩን ይከተሉ።"
+      },
+      "answer": {
+        "en": "To apply for a job, read the job title, location, deadline, and requirements. Prepare a simple CV with your education, skills, experience, and contact information. Then follow the application link before the deadline. If you need interview support, use /accommodation.",
+        "am": "ለሥራ ለመመልከት፣ የሥራ ርዕሱን፣ ቦታውን፣ የማብቂያ ቀኑን እና የሚፈለጉ ችሎታዎችን ያንብቡ። ትምህርትዎን፣ ክህሎትዎን፣ ሥራ ልምድዎን እና የመገናኛ መረጃዎን የሚያሳይ ቀላል CV ያዘጋጁ። ከዚያ ከጊዜ ማብቂያው በፊት የማመልከቻ ሊንኩን ይከተሉ። የቃለ መጠይቅ ድጋፍ ከፈለጉ /accommodation ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "Career Gateway",
+        "section": "Job Applications",
+        "url": "https://example.com/career/apply"
+      }
+    },
+    {
+      "title": "What is a CV?",
+      "keywords": [
+        "cv",
+        "resume",
+        "curriculum vitae",
+        "ሲቪ",
+        "ሪዝዩም",
+        "cv ምን"
+      ],
+      "simple": {
+        "en": "A CV is a short document that shows your education, skills, experience, and contact information.",
+        "am": "CV ማለት ትምህርትዎን፣ ክህሎትዎን፣ ሥራ ልምድዎን እና የመገናኛ መረጃዎን የሚያሳይ አጭር ሰነድ ነው።"
+      },
+      "answer": {
+        "en": "A CV, or resume, is a short document that shows your education, skills, work experience, languages, and contact information. Include your name, phone number, email, education, skills, and experience. Keep it clear, honest, and easy to read.",
+        "am": "CV ወይም ሪዝዩም ማለት ትምህርትዎን፣ ክህሎትዎን፣ የሥራ ልምድዎን፣ ቋንቋዎችዎን እና የመገናኛ መረጃዎን የሚያሳይ አጭር ሰነድ ነው። ስምዎን፣ ስልክ ቁጥርዎን፣ ኢሜይልዎን፣ ትምህርትዎን፣ ክህሎትዎን እና ልምድዎን ያካትቱ። ግልጽ፣ እውነተኛ እና ለማንበብ ቀላል ይሁን።"
+      },
+      "source": {
+        "lesson": "Career Gateway",
+        "section": "CV",
+        "url": "https://example.com/career/cv"
+      }
+    },
+    {
+      "title": "Interview Preparation",
+      "keywords": [
+        "interview",
+        "prepare for interview",
+        "interview preparation",
+        "ቃለ መጠይቅ",
+        "ቃለ መጠይቅ ማዘጋጀት"
+      ],
+      "simple": {
+        "en": "Arrive early, dress cleanly, answer clearly, and ask for support if you need it.",
+        "am": "ቀድመው ይውጡ፣ በንጹህ ልብስ ይቆሙ፣ በግልጽ ይመልሱ፣ እና እርዳታ ከፈለጉ ይጠይቁ።"
+      },
+      "answer": {
+        "en": "Before an interview, learn about the organization, prepare answers about your skills and experience, and arrive early. Dress cleanly and answer clearly. If you need an accommodation, such as extra time, a sign language interpreter, or written questions, use /accommodation to request support.",
+        "am": "ከቃለ መጠይቁ በፊት ስለ ድርጅቱ ይማሩ፣ ስለ ክህሎትዎ እና ልምድዎ መልሶች ያዘጋጁ እና ቀድመው ይውጡ። በንጹህ ልብስ ይቆሙ እና በግልጽ ይመልሱ። ተጨማሪ ጊዜ፣ የምልክት ቋንቋ ተርጓሚ ወይም የተጻፉ ጥያቄዎች ካስፈለጉ ድጋፍ ለመጠየቅ /accommodation ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "Career Gateway",
+        "section": "Interview Preparation",
+        "url": "https://example.com/career/interview"
+      }
+    },
+    {
+      "title": "Interview Accommodation",
+      "keywords": [
+        "accommodation",
+        "interview accommodation",
+        "support",
+        "accessibility",
+        "ድጋፍ",
+        "ተደራሽነት",
+        "የቃለ መጠይቅ ድጋፍ"
+      ],
+      "simple": {
+        "en": "You can request support such as extra time, a sign language interpreter, or written questions.",
+        "am": "ተጨማሪ ጊዜ፣ የምልክት ቋንቋ ተርጓሚ ወይም የተጻፉ ጥያቄዎች ማግኘት ይችላሉ።"
+      },
+      "answer": {
+        "en": "Interview accommodations are support options that help you participate fairly. Examples include extra time, screen reader support, a sign language interpreter, a quiet interview space, or written questions. Use /accommodation to request the support you need.",
+        "am": "የቃለ መጠይቅ ድጋፎች በአግባብ ለመሳተፍ የሚረዱ አማራጮች ናቸው። ምሳሌ፦ ተጨማሪ ጊዜ፣ የስክሪን ሪደር ድጋፍ፣ የምልክት ቋንቋ ተርጓሚ፣ ጸጥ ያለ ቦታ ወይም የተጻፉ ጥያቄዎች። የሚፈልጉትን ድጋፍ ለመጠየቅ /accommodation ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "Career Gateway",
+        "section": "Interview Accommodations",
+        "url": "https://example.com/career/accommodations"
+      }
+    },
+    {
+      "title": "Accessibility Support",
+      "keywords": [
+        "accessibility",
+        "disability",
+        "visual",
+        "hearing",
+        "mobility",
+        "ተደራሽነት",
+        "እንቅስቃሴ",
+        "ማዳመጥ"
+      ],
+      "simple": {
+        "en": "Accessibility support helps people with different needs use learning and work tools.",
+        "am": "ተደራሽነት ድጋፍ የተለያዩ ፍላጎት ያሏቸው ሰዎች የትምህርት እና የሥራ መሣሪያዎችን እንዲጠቀሙ ይረዳል።"
+      },
+      "answer": {
+        "en": "Accessibility support helps people with different needs use technology. Examples include screen readers for blind users, captions for Deaf users, large buttons for people with mobility needs, and clear written information for everyone.",
+        "am": "ተደራሽነት ድጋፍ የተለያዩ ፍላጎት ያሏቸው ሰዎች ቴክኖሎጂ እንዲጠቀሙ ይረዳል። ምሳሌ፦ ለዓይነት ችግር ያሏቸው የስክሪን ሪደር፣ ለመስማት ችግር ያሏቸው ካፕሽን፣ ለእንቅስቃሴ ችግር ያሏቸው ትልልቅ አዝራሮች እና ለሁሉም ግልጽ የተጻፉ መረጃዎች።"
+      },
+      "source": {
+        "lesson": "Accessibility",
+        "section": "Support",
+        "url": "https://example.com/accessibility"
+      }
+    },
+    {
+      "title": "Digital Skills",
+      "keywords": [
+        "digital skills",
+        "computer skills",
+        "technology",
+        "ዲጂታል ክህሎት",
+        "ኮምፒውተር ክህሎት",
+        "ቴክኖሎጂ"
+      ],
+      "simple": {
+        "en": "Digital skills help you use phones, computers, the internet, and online tools safely.",
+        "am": "ዲጂታል ክህሎት ስልክ፣ ኮምፒውተር፣ ኢንተርኔት እና የመስመር ላይ መሣሪያዎችን በደህና ሁኔታ ለመጠቀም ይረዳሉ።"
+      },
+      "answer": {
+        "en": "Digital skills help you use phones, computers, the internet, and online tools safely. Important skills include searching for information, using email, creating documents, staying safe online, and applying for jobs.",
+        "am": "ዲጂታል ክህሎት ስልክ፣ ኮምፒውተር፣ ኢንተርኔት እና የመስመር ላይ መሣሪያዎችን በደህና ሁኔታ ለመጠቀም ይረዳሉ። ጠቃሚ ክህሎቶች መረጃ መፈለግ፣ ኢሜይል መጠቀም፣ ሰነድ መፍጠር፣ በመስመር ላይ ደህንነትን መጠበቅ እና ለሥራ መመልከት ይገኙበታል።"
+      },
+      "source": {
+        "lesson": "Digital Skills",
+        "section": "Introduction",
+        "url": "https://example.com/digital-skills"
+      }
+    },
+    {
+      "title": "Learning Online",
+      "keywords": [
+        "learning online",
+        "online learning",
+        "study online",
+        "በመስመር ላይ መማር",
+        "የመስመር ላይ ትምህርት"
+      ],
+      "simple": {
+        "en": "Online learning means using the internet to study and practice new skills.",
+        "am": "በመስመር ላይ መማር ማለት ኢንተርኔትን ተጠቅመው ትምህርት ለመማር እና አዳዲስ ክህሎቶችን ለልምምድ ማለት ነው።"
+      },
+      "answer": {
+        "en": "Online learning means using the internet to study and practice new skills. You can watch lessons, read articles, take quizzes, join online classes, and ask questions. Choose trusted websites and take notes to remember important information.",
+        "am": "በመስመር ላይ መማር ማለት ኢንተርኔትን ተጠቅመው ትምህርት ለመማር እና አዳዲስ ክህሎቶችን ለልምምድ ማለት ነው። ትምህርት መመልከት፣ ጽሑፍ ማንበብ፣ ፈተና መውሰድ፣ የመስመር ላይ ክፍል መቀላቀል እና ጥያቄ መጠየቅ ይችላሉ። ታመሙ ድረ-ገጾችን ይምረጡ እና ጠቃሚ መረጃን ለማስታወስ ማስታወሻ ይውሰዱ።"
+      },
+      "source": {
+        "lesson": "Digital Skills",
+        "section": "Learning Online",
+        "url": "https://example.com/digital-skills/learning-online"
+      }
+    },
+    {
+      "title": "Using a Phone",
+      "keywords": [
+        "phone",
+        "mobile phone",
+        "smartphone",
+        "ስልክ",
+        "ሞባይል",
+        "ስማርትፎን"
+      ],
+      "simple": {
+        "en": "A phone can help you call, send messages, learn, search, and apply for jobs.",
+        "am": "ስልክ ለመደወል፣ መልእክት ለመላክ፣ ለመማረን፣ ለመፈለግ እና ለሥራ ለመመልከት ይረዳል።"
+      },
+      "answer": {
+        "en": "A phone can help you call people, send messages, use the internet, learn, take photos, and apply for jobs. Keep your phone updated and use a screen lock to protect your information.",
+        "am": "ስልክ ሰዎችን ለመደወል፣ መልእክት ለመላክ፣ ኢንተርኔት ለመጠቀም፣ ለመማረን፣ ፎቶ ለመነሳት እና ለሥራ ለመመልከት ይረዳል። ስልክዎን ያዘምኑ እና መረጃዎን ለመጠበቅ የስክሪን ቁልፍ ይጠቀሙ።"
+      },
+      "source": {
+        "lesson": "Digital Skills",
+        "section": "Using a Phone",
+        "url": "https://example.com/digital-skills/phone"
+      }
+    },
+    {
+      "title": "Using WhatsApp",
+      "keywords": [
+        "whatsapp",
+        "message",
+        "chat",
+        "ዋትስአፕ",
+        "መልእክት"
+      ],
+      "simple": {
+        "en": "WhatsApp is an app used to send messages, photos, and voice notes.",
+        "am": "WhatsApp መልእክት፣ ፎቶ እና የድምጽ መልእክት ለመላክ የሚያገለግል መተግበሪያ ነው።"
+      },
+      "answer": {
+        "en": "WhatsApp is an app used to send messages, photos, videos, and voice notes. You can use it to communicate with teachers, friends, and family. Do not share personal information, passwords, or bank details with unknown people.",
+        "am": "WhatsApp መልእክት፣ ፎቶ፣ ቪዲዮ እና የድምጽ መልእክት ለመላክ የሚያገለግል መተግበሪያ ነው። ከመምህራን፣ ከጓደኞች እና ከቤተሰብ ጋር ለመገናኘት ይጠቀሙ። የግል መረጃ፣ የይለፍ ቃል ወይም የባንክ መረጃ ለማይታወቁ ሰዎች አይላኩ።"
+      },
+      "source": {
+        "lesson": "Digital Skills",
+        "section": "Using WhatsApp",
+        "url": "https://example.com/digital-skills/whatsapp"
+      }
+    },
+    {
+      "title": "Job Alerts",
+      "keywords": [
+        "job alerts",
+        "jobs",
+        "job opportunities",
+        "vacancy",
+        "የሥራ ማስታወቂያ",
+        "ሥራ",
+        "ቅጥር"
+      ],
+      "simple": {
+        "en": "Send /jobs to see current job alerts.",
+        "am": "የአሁኑን የሥራ ማስታወቂያዎች ለማየት /jobs ይላኩ።"
+      },
+      "answer": {
+        "en": "Job alerts show current job opportunities. Send /jobs to see the list. Tap a job title to see the organization, location, type of work, deadline, and application link.",
+        "am": "የሥራ ማስታወቂያዎች የአሁኑን የሥራ ዕድሎች ያሳያሉ። ዝርዝሩን ለማየት /jobs ይላኩ። ድርጅቱን፣ ቦታውን፣ የሥራ ዓይነቱን፣ የማብቂያ ቀኑን እና የማመልከቻ ሊንኩን ለማየት የሥራ ርዕሱን ይንኩ።"
+      },
+      "source": {
+        "lesson": "Career Gateway",
+        "section": "Job Alerts",
+        "url": "https://example.com/career/job-alerts"
+      }
+    },
+    {
+      "title": "Track 3 Support",
+      "keywords": [
+        "track 3",
+        "support",
+        "help",
+        "accessible learning",
+        "employment support",
+        "የTrack 3 ድጋፍ",
+        "ድጋፍ",
+        "እርዳታ"
+      ],
+      "simple": {
+        "en": "Track 3 helps you learn, get support, find jobs, and request interview accommodations.",
+        "am": "Track 3 ለመማረክ፣ ድጋፍ ለማግኘት፣ ሥራ ለማግኘት እና የቃለ መጠይቅ ድጋፍ ለመጠየቅ ይረዳል።"
+      },
+      "answer": {
+        "en": "Track 3 provides accessible learning and employment support. You can ask course questions, request help from a teacher, share your screen if needed, see job alerts, and request interview accommodations. Send /track3 to open the Track 3 menu.",
+        "am": "Track 3 ተደራሽ ትምህርት እና የሥራ ድጋፍ ይሰጣል። የትምህርት ጥያቄ መጠየቅ፣ ከመምህር ድጋፍ መጠየቅ፣ አስፈላጊ ከሆነ ስክሪን መጋራት፣ የሥራ ማስታወቂያ ማየት እና የቃለ መጠይቅ ድጋፍ መጠየቅ ይችላሉ። የTrack 3 ምናሌን ለመክፈት /track3 ይላኩ።"
+      },
+      "source": {
+        "lesson": "Track 3",
+        "section": "Support",
+        "url": "https://example.com/track3"
+      }
+    }
+  ]
+}
