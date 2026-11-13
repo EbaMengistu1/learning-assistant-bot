@@ -2471,11 +2471,12 @@ const questionInput = document.getElementById("question");
 })();
 
 /* =========================
-   FINAL AMHARIC READ ALOUD
+   FINAL READ ALOUD
+   English + Amharic
    ========================= */
 
-let amharicReading = false;
-let amharicAudio = new Audio();
+let isReading = false;
+let audioPlayer = new Audio();
 
 function getAnswerTextArea() {
   return (
@@ -2484,81 +2485,93 @@ function getAnswerTextArea() {
   );
 }
 
-function getAmharicPart(text) {
-  const start = text.search(/[\u1200-\u137f]/);
-  return start === -1 ? "" : text.slice(start).trim();
-}
+function getEnglishPart(text) {
+  const amharicStart = text.search(/[\u1200-\u137f]/);
 
-async function translateToAmharic(text) {
-  const shortText = text.slice(0, 400);
-
-  const googleUrl =
-    "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=am&dt=t&q=" +
-    encodeURIComponent(shortText);
-
-  const response = await fetch(googleUrl);
-  const data = await response.json();
-
-  const translated = data[0].map(part => part[0]).join("");
-
-  if (!translated.trim()) {
-    throw new Error("Could not translate to Amharic");
+  if (amharicStart === -1) {
+    return text.trim();
   }
 
-  return translated;
+  return text.slice(0, amharicStart).trim();
 }
 
-function splitText(text) {
+function getAmharicPart(text) {
+  const amharicStart = text.search(/[\u1200-\u137f]/);
+
+  if (amharicStart === -1) {
+    return "";
+  }
+
+  return text.slice(amharicStart).trim();
+}
+
+function splitText(text, maxLength) {
   const clean = text.replace(/\s+/g, " ").trim();
   const parts = [];
 
-  for (let i = 0; i < clean.length; i += 180) {
-    parts.push(clean.slice(i, i + 180).trim());
+  for (let i = 0; i < clean.length; i += maxLength) {
+    parts.push(clean.slice(i, i + maxLength).trim());
   }
 
   return parts.filter(Boolean);
 }
 
-function playGoogleAmharic(text) {
+function stopAllReading() {
+  isReading = false;
+
+  try {
+    audioPlayer.pause();
+    audioPlayer.currentTime = 0;
+  } catch (error) {
+    console.warn("Audio stop failed:", error);
+  }
+
+  try {
+    if (window.speechSynthesis) {
+      speechSynthesis.cancel();
+    }
+  } catch (error) {
+    console.warn("Speech stop failed:", error);
+  }
+}
+
+function speakEnglish(text) {
   return new Promise((resolve, reject) => {
-    const urls = [
-      "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=am&q=" +
-        encodeURIComponent(text),
-
-      "https://translate.googleapis.com/translate_tts?ie=UTF-8&client=tw-ob&tl=am&q=" +
-        encodeURIComponent(text)
-    ];
-
-    let index = 0;
-
-    function tryNext() {
-      if (index >= urls.length) {
-        reject(new Error("Google Amharic audio is unavailable"));
-        return;
-      }
-
-      amharicAudio.src = urls[index];
-      index++;
-
-      amharicAudio.onended = resolve;
-
-      amharicAudio.onerror = () => {
-        tryNext();
-      };
-
-      amharicAudio.play().catch(() => {
-        tryNext();
-      });
+    if (!window.speechSynthesis) {
+      reject(new Error("This browser cannot read English"));
+      return;
     }
 
-    tryNext();
+    const voices = speechSynthesis.getVoices();
+
+    const englishVoice =
+      voices.find(voice => (voice.lang || "").toLowerCase().startsWith("en")) ||
+      voices[0];
+
+    if (!englishVoice) {
+      reject(new Error("No English voice is available"));
+      return;
+    }
+
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.voice = englishVoice;
+    speech.lang = englishVoice.lang || "en-US";
+    speech.rate = 0.95;
+    speech.pitch = 1;
+
+    speech.onend = resolve;
+    speech.onerror = event => {
+      reject(new Error(event.error || "English reading failed"));
+    };
+
+    speechSynthesis.speak(speech);
   });
 }
 
-function playDeviceAmharic(text) {
+function speakAmharic(text) {
   return new Promise((resolve, reject) => {
     if (!window.speechSynthesis) {
-      reject(new Error("This browser has no speech reader"));
+      reject(new Error("This browser cannot read Amharic"));
       return;
     }
 
@@ -2573,7 +2586,7 @@ function playDeviceAmharic(text) {
     });
 
     if (!amharicVoice) {
-      reject(new Error("No Amharic voice is installed on this computer"));
+      reject(new Error("NO_AMHARIC_VOICE"));
       return;
     }
 
@@ -2585,14 +2598,14 @@ function playDeviceAmharic(text) {
 
     speech.onend = resolve;
     speech.onerror = event => {
-      reject(new Error(event.error || "Device Amharic voice failed"));
+      reject(new Error(event.error || "Amharic reading failed"));
     };
 
     speechSynthesis.speak(speech);
   });
 }
 
-async function readAmharicAloud() {
+async function readAnswerAloud() {
   const answerArea = getAnswerTextArea();
   const answerText = answerArea?.value?.trim() || "";
 
@@ -2601,59 +2614,61 @@ async function readAmharicAloud() {
     return;
   }
 
-  if (amharicReading) {
-    amharicReading = false;
-
-    amharicAudio.pause();
-    amharicAudio.currentTime = 0;
-
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel();
-    }
-
+  if (isReading) {
+    stopAllReading();
     return;
   }
 
-  amharicReading = true;
+  isReading = true;
 
   try {
-    let amharicText = getAmharicPart(answerText);
+    const englishText = getEnglishPart(answerText);
+    const amharicText = getAmharicPart(answerText);
 
-    if (!amharicText) {
-      amharicText = await translateToAmharic(answerText);
+    if (englishText) {
+      const englishParts = splitText(englishText, 180);
+
+      for (const part of englishParts) {
+        if (!isReading) return;
+        await speakEnglish(part);
+      }
     }
 
-    if (!amharicText) {
-      throw new Error("No Amharic text was created");
-    }
+    if (amharicText) {
+      const amharicParts = splitText(amharicText, 170);
 
-    const parts = splitText(amharicText);
+      for (const part of amharicParts) {
+        if (!isReading) return;
 
-    for (const part of parts) {
-      if (!amharicReading) return;
+        try {
+          await speakAmharic(part);
+        } catch (error) {
+          if (error.message === "NO_AMHARIC_VOICE") {
+            alert(
+              "ይህ መሣሪያ ላይ የአማርኛ ድምፅ አልተጫነም።\n\n" +
+              "Android: Settings → Accessibility → Text-to-speech output → Install voice data → Amharic\n\n" +
+              "Windows: Settings → Time & language → Speech → Add voices → Amharic"
+            );
+            return;
+          }
 
-      try {
-        await playGoogleAmharic(part);
-      } catch (googleError) {
-        console.warn("Google Amharic failed:", googleError);
-
-        if (!amharicReading) return;
-
-        await playDeviceAmharic(part);
+          throw error;
+        }
       }
     }
   } catch (error) {
-    console.warn("Amharic reading failed:", error);
-
-    alert(
-      "Amharic reading failed: " +
-      (error?.message || error) +
-      "\n\nPlease install an Amharic voice on your computer, or try Microsoft Edge."
-    );
+    console.warn("Read aloud failed:", error);
+    alert("Read aloud failed: " + (error?.message || error));
   } finally {
-    amharicReading = false;
+    isReading = false;
   }
 }
+
+const readAloudButton =
+  document.getElementById("speakEnglishBtn") ||
+  [...document.querySelectorAll("button")].find(button =>
+    /read aloud|read|english/i.test(button.textContent || "")
+  );
 
 const amharicReadButton =
   document.getElementById("speakAmharicBtn") ||
@@ -2661,4 +2676,5 @@ const amharicReadButton =
     /አማርኛ|amharic/i.test(button.textContent || "")
   );
 
-amharicReadButton?.addEventListener("click", readAmharicAloud);
+readAloudButton?.addEventListener("click", readAnswerAloud);
+amharicReadButton?.addEventListener("click", readAnswerAloud);
