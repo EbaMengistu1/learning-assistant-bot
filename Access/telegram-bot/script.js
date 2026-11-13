@@ -2,13 +2,13 @@
 
 (() => {
   /* =========================================================
-     LEARNING AND EMPLOYMENT — FINAL SCRIPT.JS
-     Connects to your existing Railway Telegram bot API.
+     LEARNING AND EMPLOYMENT — TRACK 3 FINAL SCRIPT.JS
+     Course answers + Railway API + Telegram teacher/admin
      ========================================================= */
 
-  const TELEGRAM_URL = "https://t.me/EbaMengistBot";
+  const TELEGRAM_BOT_URL = "https://t.me/EbaMengistBot";
 
-  // Change this only if your Railway domain changes.
+  // Your existing Railway API
   const API_BASE_URL =
     "https://learning-assistant-bot-production.up.railway.app";
 
@@ -38,9 +38,9 @@
   const voiceStatus = $("voiceStatus");
 
   const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v4";
-  const SETTINGS_KEY = "learningSettings_v4";
-  const CHAT_ID_KEY = "learningChatId_v4";
+  const CACHE_KEY = "learningAnswers_v6";
+  const SETTINGS_KEY = "learningSettings_v6";
+  const CHAT_ID_KEY = "learningChatId_v6";
 
   let language = "am";
   let fontSize = 1.05;
@@ -56,7 +56,7 @@
 
   /* =========================================================
      OFFLINE COURSE FAQ
-     This is the first answer layer. Add more course answers here.
+     Add approved course answers here.
      ========================================================= */
 
   const courseFAQ = {
@@ -167,7 +167,7 @@
   }
 
   /* =========================================================
-     BASIC HELPERS
+     HELPERS
      ========================================================= */
 
   function announce(text) {
@@ -227,7 +227,6 @@
       item.classList.remove("active-primary", "active");
     });
 
-    // Get Answer always remains blue.
     if (button !== getAnswerBtn) {
       button.classList.add("active-primary");
     }
@@ -618,10 +617,8 @@
   }
 
   async function getRailwayAnswer(question) {
-    const chatId = getChatId();
-
     const data = await apiRequest("/api/ask", {
-      chatId,
+      chatId: getChatId(),
       question,
       language
     });
@@ -752,7 +749,6 @@
     getAnswerBtn.setAttribute("aria-busy", "true");
 
     try {
-      // 1. Try your Railway bot first.
       const railwayAnswer = await getRailwayAnswer(question);
       cacheAnswer(cacheKey, railwayAnswer);
 
@@ -766,7 +762,6 @@
     }
 
     try {
-      // 2. Use web search as backup.
       const webAnswer = await getWebAnswer(question);
       cacheAnswer(cacheKey, webAnswer);
 
@@ -1178,8 +1173,22 @@
      ========================================================= */
 
   on(helpBtn, () => {
-    window.open(TELEGRAM_URL, "_blank", "noopener,noreferrer");
+    window.open(TELEGRAM_BOT_URL, "_blank", "noopener,noreferrer");
   });
+
+  /* =========================================================
+     OPEN TELEGRAM WITH PRE-FILLED MESSAGE
+     ========================================================= */
+
+  function openTelegramWithMessage(message) {
+    const telegramMessage = encodeURIComponent(message);
+
+    window.open(
+      `https://t.me/EbaMengistBot?text=${telegramMessage}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
 
   /* =========================================================
      SCREEN SHARE REQUEST
@@ -1224,11 +1233,14 @@
 
     screenShareBtn.disabled = true;
 
+    const requestData = {
+      chatId: getChatId(),
+      meetingLink,
+      source: "web"
+    };
+
     try {
-      await apiRequest("/api/screen-share", {
-        chatId: getChatId(),
-        meetingLink
-      });
+      await apiRequest("/api/screen-share", requestData);
 
       status(
         "የስብሰባ ሊንኩ ተልኳል።",
@@ -1238,9 +1250,15 @@
     } catch (error) {
       console.warn("Screen-share request failed:", error);
 
+      openTelegramWithMessage(
+        language === "am"
+          ? `🖥️ የስክሪን ማጋራት ጥያቄ\n\nሊንክ፦ ${meetingLink}`
+          : `🖥️ Screen-sharing request\n\nMeeting link: ${meetingLink}`
+      );
+
       status(
-        "ጥያቄው አልተላከም። እርዳታ አስፈልገኛል የሚለውን ይጫኑ።",
-        "Could not submit the request. Use I Need Help for Telegram support.",
+        "ጥያቄው ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
+        "Telegram opened with your request. Please press Send.",
         "warn"
       );
     } finally {
@@ -1257,7 +1275,7 @@
       "Learning and Employment / ትምህርት እና ሥራ",
       "Accessibility Hackathon 2026 Ethiopia",
       "",
-      `Support: ${TELEGRAM_URL}`,
+      `Support: ${TELEGRAM_BOT_URL}`,
       "",
       questionInput.value ? `Question:\n${questionInput.value}` : "",
       answerBox.value ? `Answer:\n${answerBox.value}` : ""
@@ -1286,34 +1304,16 @@
   });
 
   /* =========================================================
-     JOB ALERTS
+     JOB ALERTS — CONNECT TO TELEGRAM TEACHER/ADMIN
      ========================================================= */
 
-  async function sendForm(endpoint, data, button) {
-    button.disabled = true;
-
-    try {
-      await apiRequest(endpoint, data);
-      status("ጥያቄዎ ተልኳል።", "Your request was submitted.", "ok");
-    } catch (error) {
-      console.warn("Form request failed:", error);
-
-      status(
-        "ጥያቄው አልተላከም። እርዳታ አስፈልገኛል የሚለውን ይጫኑ።",
-        "Could not submit the request. Use I Need Help for Telegram support.",
-        "warn"
-      );
-    } finally {
-      button.disabled = false;
-    }
-  }
-
-  jobAlertForm?.addEventListener("submit", event => {
+  jobAlertForm?.addEventListener("submit", async event => {
     event.preventDefault();
 
     const phone = $("jobPhone")?.value.trim() || "";
     const telegram = $("jobTelegram")?.value.trim() || "";
     const area = $("jobArea")?.value || "";
+    const button = $("jobAlertBtn");
 
     if (!phone && !telegram) {
       status(
@@ -1325,27 +1325,98 @@
       return;
     }
 
-    sendForm(
-      "/api/job-alert",
-      {
-        chatId: getChatId(),
-        phone,
-        telegram,
-        area
-      },
-      $("jobAlertBtn")
-    );
+    if (!area) {
+      status(
+        "እባክዎ የሥራ መስክ ይምረጡ።",
+        "Please choose a job area.",
+        "warn"
+      );
+
+      return;
+    }
+
+    button.disabled = true;
+
+    const requestData = {
+      chatId: getChatId(),
+      phone,
+      telegram,
+      area,
+      notify: true,
+      source: "web"
+    };
+
+    try {
+      await apiRequest("/api/job-alert", requestData);
+
+      status(
+        phone && telegram
+          ? "✅ የሥራ ማሳወቂያ ተመዝግቧል። ማሳወቂያ ወደ ስልክዎ እና Telegram ይላካል።"
+          : phone
+            ? "✅ የሥራ ማሳወቂያ ተመዝግቧል። ማሳወቂያ ወደ ስልክዎ ይላካል።"
+            : "✅ የሥራ ማሳወቂያ ተመዝግቧል። ማሳወቂያ ወደ Telegram ይላካል።",
+
+        phone && telegram
+          ? "✅ Job alerts registered. Notifications will be sent to your phone and Telegram."
+          : phone
+            ? "✅ Job alerts registered. Notifications will be sent to your phone."
+            : "✅ Job alerts registered. Notifications will be sent to your Telegram.",
+
+        "ok"
+      );
+
+      jobAlertForm.reset();
+    } catch (error) {
+      console.warn("Job alert failed:", error);
+
+      const message = language === "am"
+        ? `🔔 የሥራ ማሳወቂያ ጥያቄ\n\nስልክ፦ ${phone || "—"}\nTelegram፦ ${telegram || "—"}\nየሥራ መስክ፦ ${area}`
+        : `🔔 Job alert request\n\nPhone: ${phone || "—"}\nTelegram: ${telegram || "—"}\nJob area: ${area}`;
+
+      openTelegramWithMessage(message);
+
+      status(
+        "የሥራ ማሳወቂያ ጥያቄ ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
+        "Job alert request opened in Telegram. Please press Send.",
+        "warn"
+      );
+    } finally {
+      button.disabled = false;
+    }
   });
 
   /* =========================================================
-     INTERVIEW ACCOMMODATIONS
+     INTERVIEW SUPPORT — SEND TO TELEGRAM TEACHER/ADMIN
      ========================================================= */
 
-  accommodationForm?.addEventListener("submit", event => {
+  accommodationForm?.addEventListener("submit", async event => {
     event.preventDefault();
 
+    const name = $("accommodationName")?.value.trim() || "";
+    const phone = $("accommodationPhone")?.value.trim() || "";
     const type = $("accommodationType")?.value || "";
     const details = $("accommodationDetails")?.value.trim() || "";
+    const button = $("accommodationBtn");
+
+    if (!name) {
+      status(
+        "እባክዎ ሙሉ ስምዎን ይጻፉ።",
+        "Please enter your full name.",
+        "warn"
+      );
+
+      return;
+    }
+
+    if (!phone) {
+      status(
+        "እባክዎ ስልክ ቁጥርዎን ያስገቡ።",
+        "Please enter your phone number.",
+        "warn"
+      );
+
+      return;
+    }
 
     if (!type) {
       status(
@@ -1357,15 +1428,45 @@
       return;
     }
 
-    sendForm(
-      "/api/accommodation",
-      {
-        chatId: getChatId(),
-        type,
-        details
-      },
-      $("accommodationBtn")
-    );
+    button.disabled = true;
+
+    const requestData = {
+      chatId: getChatId(),
+      name,
+      phone,
+      type,
+      details,
+      status: "requested",
+      source: "web"
+    };
+
+    try {
+      await apiRequest("/api/accommodation", requestData);
+
+      status(
+        "✅ የቃለ መጠይቅ ድጋፍ ጥያቄዎ ተልኳል። መምህር ወይም ድጋፍ ሰጪ ቡድን ወደ Telegram ይገናኛል።",
+        "✅ Your interview support request has been sent. A teacher or support team will contact you on Telegram.",
+        "ok"
+      );
+
+      accommodationForm.reset();
+    } catch (error) {
+      console.warn("Interview support request failed:", error);
+
+      const message = language === "am"
+        ? `♿ የቃለ መጠይቅ ድጋፍ ጥያቄ\n\nስም፦ ${name}\nስልክ፦ ${phone}\nየሚፈልጉት ድጋፍ፦ ${type}\nዝርዝር፦ ${details || "—"}`
+        : `♿ Interview support request\n\nName: ${name}\nPhone: ${phone}\nSupport needed: ${type}\nDetails: ${details || "—"}`;
+
+      openTelegramWithMessage(message);
+
+      status(
+        "የቃለ መጠይቅ ድጋፍ ጥያቄ ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
+        "Interview support request opened in Telegram. Please press Send.",
+        "warn"
+      );
+    } finally {
+      button.disabled = false;
+    }
   });
 
   /* =========================================================
@@ -1394,7 +1495,7 @@
   }
 
   /* =========================================================
-     FINAL TEST
+     FINAL WEBSITE TEST
      ========================================================= */
 
   async function testWebsite() {
@@ -1412,7 +1513,9 @@
         getAnswerBtn &&
         helpBtn &&
         screenShareBtn &&
-        downloadBtn
+        downloadBtn &&
+        jobAlertForm &&
+        accommodationForm
       )
     );
 
@@ -1433,7 +1536,7 @@
 
     add(
       "Telegram bot link",
-      TELEGRAM_URL === "https://t.me/EbaMengistBot"
+      TELEGRAM_BOT_URL === "https://t.me/EbaMengistBot"
     );
 
     try {
@@ -1464,9 +1567,8 @@
     );
   }
 
-  // To test the website, type this in the browser console:
+  // Open browser console and type:
   // testWebsite()
-
   window.testWebsite = testWebsite;
 
   /* =========================================================

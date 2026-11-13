@@ -3,10 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Learning and Employment assistant for Amharic and English learners. Ask course questions, get support, receive job alerts, and request interview accommodations.">
+  <meta name="theme-color" content="#1d4ed8">
+
   <title>Learning and Employment | ትምህርት እና ሥራ</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;800&display=swap"
     rel="stylesheet">
@@ -22,7 +26,10 @@
       <span>ትምህርት እና ሥራ</span>
     </h1>
 
-    <!-- COURSE QUESTION -->
+    <!-- =====================================================
+         COURSE QUESTION AND ANSWER
+         ===================================================== -->
+
     <section class="boxes">
 
       <section class="ask-box">
@@ -30,29 +37,49 @@
 
         <textarea
           id="question"
+          name="question"
           rows="6"
           placeholder="ለምሳሌ፦ ማውረድ ምን ማለት ነው?"></textarea>
 
         <div class="question-buttons">
-          <button id="getAnswerBtn" class="primary" type="button">
+
+          <button
+            id="getAnswerBtn"
+            class="primary"
+            type="button">
             🤖 መልስ አግኝ
           </button>
 
-          <button id="clearBtn" class="secondary" type="button">
+          <button
+            id="clearBtn"
+            class="secondary"
+            type="button">
             🧹 አጽዳ
           </button>
 
-          <button id="copyBtn" class="secondary" type="button">
+          <button
+            id="copyBtn"
+            class="secondary"
+            type="button">
             📋 ቅዳ
           </button>
 
-          <button id="voiceAmharicBtn" class="secondary" type="button">
+          <button
+            id="voiceAmharicBtn"
+            class="secondary"
+            type="button"
+            aria-pressed="false">
             🎤 አማርኛ
           </button>
 
-          <button id="voiceEnglishBtn" class="secondary" type="button">
+          <button
+            id="voiceEnglishBtn"
+            class="secondary"
+            type="button"
+            aria-pressed="false">
             🎤 English
           </button>
+
         </div>
       </section>
 
@@ -73,28 +100,50 @@
 
         <textarea
           id="answer"
+          name="answer"
           rows="6"
           readonly
           placeholder="መልሱ እዚህ ይታያል..."></textarea>
 
         <div class="answer-buttons">
-          <button id="speakAmharicBtn" class="secondary" type="button">
+
+          <button
+            id="speakAmharicBtn"
+            class="secondary"
+            type="button"
+            aria-pressed="false">
             🔊 አማርኛ
           </button>
 
-          <button id="speakEnglishBtn" class="secondary" type="button">
+          <button
+            id="speakEnglishBtn"
+            class="secondary"
+            type="button"
+            aria-pressed="false">
             🔊 English
           </button>
 
-          <button id="fontSmall" class="secondary zoom-btn" type="button">
+          <button
+            id="fontSmall"
+            class="secondary zoom-btn"
+            type="button"
+            aria-label="ጽሑፍ አሳንስ">
             አ− / A−
           </button>
 
-          <button id="fontNormal" class="secondary zoom-btn" type="button">
+          <button
+            id="fontNormal"
+            class="secondary zoom-btn"
+            type="button"
+            aria-label="መደበኛ የጽሑፍ መጠን">
             አ / A
           </button>
 
-          <button id="fontLarge" class="secondary zoom-btn" type="button">
+          <button
+            id="fontLarge"
+            class="secondary zoom-btn"
+            type="button"
+            aria-label="ጽሑፍ አሳድግ">
             አ+ / A+
           </button>
 
@@ -102,31 +151,51 @@
             id="contrastBtn"
             class="secondary"
             type="button"
-            aria-pressed="false">
+            aria-pressed="false"
+            aria-label="ከፍተኛ ንፅፅር">
             🌗 ከፍተኛ ንፅፅር
           </button>
+
         </div>
       </section>
 
     </section>
 
-    <p id="voiceStatus" class="voice-status" aria-live="polite"></p>
-    <p id="liveRegion" class="sr-only" aria-live="polite"></p>
+    <p
+      id="voiceStatus"
+      class="voice-status"
+      aria-live="polite"></p>
 
-    <!-- COURSE MATERIAL -->
+    <p
+      id="liveRegion"
+      class="sr-only"
+      aria-live="polite"></p>
+
+    <!-- =====================================================
+         COURSE MATERIAL
+         ===================================================== -->
+
     <section class="course-section">
-      <h2 class="section-title">📚 Course Material / የትምህርት መረጃ</h2>
+      <h2 class="section-title">
+        📚 Course Material / የትምህርት መረጃ
+      </h2>
 
       <p class="section-text">
-        Answers come from approved course material. The assistant shows the
-        source so learners can check where the information came from.
+        Open approved learning materials. Answers should come from course
+        content and show where the information came from.
       </p>
 
       <div class="course-grid">
+
         <article class="course-card">
           <h3>Computer Basics</h3>
           <p>የኮምፒውተር መሠረታዊ ትምህርት</p>
-          <a class="course-link" href="course/computer-basics.pdf" target="_blank" rel="noopener">
+
+          <a
+            class="course-link"
+            href="https://www.digitallearn.org/courses/computer-basics"
+            target="_blank"
+            rel="noopener noreferrer">
             Open material / ክፈት
           </a>
         </article>
@@ -134,7 +203,12 @@
         <article class="course-card">
           <h3>Internet and Email</h3>
           <p>ኢንተርኔት እና ኢሜይል</p>
-          <a class="course-link" href="course/internet-email.pdf" target="_blank" rel="noopener">
+
+          <a
+            class="course-link"
+            href="https://www.digitallearn.org/courses/internet-basics"
+            target="_blank"
+            rel="noopener noreferrer">
             Open material / ክፈት
           </a>
         </article>
@@ -142,60 +216,107 @@
         <article class="course-card">
           <h3>Jobs and Interviews</h3>
           <p>ሥራ እና ቃለ መጠይቅ</p>
-          <a class="course-link" href="course/jobs-interviews.pdf" target="_blank" rel="noopener">
+
+          <a
+            class="course-link"
+            href="https://www.indeed.com/career-advice/interviewing/job-interview-tips"
+            target="_blank"
+            rel="noopener noreferrer">
             Open material / ክፈት
           </a>
         </article>
+
       </div>
     </section>
 
-    <!-- HUMAN HELP -->
+    <!-- =====================================================
+         HUMAN HELP
+         ===================================================== -->
+
     <section class="support-section">
-      <h2 class="section-title">🙋 Need a Person? / ሰው ያስፈልገኛል?</h2>
+      <h2 class="section-title">
+        🙋 Need a Person? / ሰው ያስፈልገኛል?
+      </h2>
 
       <p class="section-text">
         If you need more help, request a teacher or support person. You can
-        also choose to share a meeting link.
+        choose to share a meeting link. Screen sharing happens only if you
+        choose it.
       </p>
 
       <div class="outside-buttons">
-        <button id="helpBtn" class="support-btn" type="button">
+
+        <button
+          id="helpBtn"
+          class="support-btn"
+          type="button">
           🙋 I Need Help
         </button>
 
-        <button id="screenShareBtn" class="support-btn" type="button">
+        <button
+          id="screenShareBtn"
+          class="support-btn"
+          type="button">
           🖥️ Share My Screen
         </button>
 
-        <button id="downloadBtn" class="support-btn" type="button">
+        <button
+          id="downloadBtn"
+          class="support-btn"
+          type="button">
           ⬇️ Download
         </button>
+
       </div>
     </section>
 
-    <!-- JOB ALERTS -->
+    <!-- =====================================================
+         JOB ALERTS
+         ===================================================== -->
+
     <section class="form-section">
-      <h2 class="section-title">💼 Job Alerts / የሥራ ማሳወቂያ</h2>
+      <h2 class="section-title">
+        💼 Job Alerts / የሥራ ማሳወቂያ
+      </h2>
 
       <p class="section-text">
-        Get job alerts by Telegram or SMS.
+        Get job alerts by Telegram or SMS. After you submit the form, job
+        notifications will be sent to your Telegram account or phone number.
       </p>
 
-      <form id="jobAlertForm" class="support-form">
-        <label for="jobPhone">Phone number / ስልክ ቁጥር</label>
+      <form
+        id="jobAlertForm"
+        class="support-form"
+        novalidate>
+
+        <label for="jobPhone">
+          Phone number / ስልክ ቁጥር
+        </label>
+
         <input
           id="jobPhone"
+          name="phone"
           type="tel"
-          placeholder="+251..."
+          inputmode="tel"
+          autocomplete="tel"
+          placeholder="+251912345678">
 
-        <label for="jobTelegram">Telegram username / Telegram ስም</label>
+        <label for="jobTelegram">
+          Telegram username / Telegram ስም
+        </label>
+
         <input
           id="jobTelegram"
+          name="telegram"
           type="text"
-          placeholder="@username"
+          autocomplete="username"
+          placeholder="@your_telegram_username">
 
-        <label for="jobArea">Job area / የሥራ መስክ</label>
-        <select id="jobArea">
+        <label for="jobArea">
+          Job area / የሥራ መስክ
+        </label>
+
+        <select id="jobArea" name="area">
           <option value="">Choose / ይምረጡ</option>
           <option value="computer">Computer basics</option>
           <option value="data">Data entry</option>
@@ -204,26 +325,63 @@
           <option value="health">Health</option>
         </select>
 
-        <button id="jobAlertBtn" class="support-btn" type="submit">
+        <button
+          id="jobAlertBtn"
+          class="support-btn"
+          type="submit">
           🔔 Get Job Alerts
         </button>
+
       </form>
     </section>
 
-    <!-- INTERVIEW SUPPORT -->
+    <!-- =====================================================
+         INTERVIEW SUPPORT
+         ===================================================== -->
+
     <section class="form-section">
-      <h2 class="section-title">♿ Interview Support / የቃለ መጠይቅ ድጋፍ</h2>
+      <h2 class="section-title">
+        ♿ Interview Support / የቃለ መጠይቅ ድጋፍ
+      </h2>
 
       <p class="section-text">
-        Request support for a job interview.
+        Request support for a job interview. Your request will be sent to the
+        support team.
       </p>
 
-      <form id="accommodationForm" class="support-form">
+      <form
+        id="accommodationForm"
+        class="support-form"
+        novalidate>
+
+        <label for="accommodationName">
+          Full name / ሙሉ ስም
+        </label>
+
+        <input
+          id="accommodationName"
+          name="name"
+          type="text"
+          autocomplete="name"
+          placeholder="ሙሉ ስምዎን ይጻፉ">
+
+        <label for="accommodationPhone">
+          Phone number / ስልክ ቁጥር
+        </label>
+
+        <input
+          id="accommodationPhone"
+          name="phone"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          placeholder="+251912345678">
+
         <label for="accommodationType">
           What support do you need?
         </label>
 
-        <select id="accommodationType">
+        <select id="accommodationType" name="type">
           <option value="">Choose / ይምረጡ</option>
           <option value="amharic">Amharic interpreter</option>
           <option value="sign">Sign language interpreter</option>
@@ -239,27 +397,45 @@
 
         <textarea
           id="accommodationDetails"
+          name="details"
           rows="4"
           placeholder="እባክዎ የሚፈልጉትን ድጋፍ ይግለጹ..."></textarea>
 
-        <button id="accommodationBtn" class="support-btn" type="submit">
+        <button
+          id="accommodationBtn"
+          class="support-btn"
+          type="submit">
           ♿ Request Interview Support
         </button>
+
       </form>
     </section>
 
-    <!-- TEACHER VIEW -->
+    <!-- =====================================================
+         TEACHER VIEW
+         ===================================================== -->
+
     <section class="teacher-section">
-      <h2 class="section-title">👩‍🏫 Teacher View / የመምህር ገጽ</h2>
+      <h2 class="section-title">
+        👩‍🏫 Teacher View / የመምህር ገጽ
+      </h2>
 
       <p class="section-text">
-        Teachers can see the most asked questions. Learner names are not shown.
+        Teachers can see the most asked questions. Learner names and personal
+        information are not shown.
       </p>
 
-      <div id="teacherStats" class="teacher-stats">
+      <div
+        id="teacherStats"
+        class="teacher-stats"
+        aria-live="polite">
         <p>Loading popular questions...</p>
       </div>
     </section>
+
+    <!-- =====================================================
+         FOOTER
+         ===================================================== -->
 
     <footer class="site-footer">
       <p>
