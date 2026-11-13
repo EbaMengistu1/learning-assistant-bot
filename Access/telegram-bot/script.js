@@ -1,1033 +1,2479 @@
-const questionInput = document.getElementById("question");
-const answerBox = document.getElementById("answer");
-const getAnswerBtn = document.getElementById("getAnswerBtn");
-const speakEnglishBtn = document.getElementById("speakEnglishBtn");
-const speakAmharicBtn = document.getElementById("speakAmharicBtn");
-const contrastBtn = document.getElementById("contrastBtn");
-const clearBtn = document.getElementById("clearBtn");
-const copyBtn = document.getElementById("copyBtn");
-const fontSmall = document.getElementById("fontSmall");
-const fontNormal = document.getElementById("fontNormal");
-const fontLarge = document.getElementById("fontLarge");
-const voiceAmharicBtn = document.getElementById("voiceAmharicBtn");
-const voiceEnglishBtn = document.getElementById("voiceEnglishBtn");
-const liveRegion = document.getElementById("liveRegion");
+"use strict";
 
+(() => {
+  const INSTANCE_KEY = "__learningEmploymentWebFinal";
+  if (window[INSTANCE_KEY]) return;
+  window[INSTANCE_KEY] = true;
 
-let currentFontSize = 1.05;
+  function init() {
+    /* =====================================================
+       CONFIGURATION
+       ===================================================== */
 
+    const CONFIG = {
+      apiBase:
+        "https://learning-assistant-bot-production.up.railway.app",
 
-// Softer beep
-function playBeep() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.setValueAtTime(660, ctx.currentTime);
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.25);
-  } catch (e) {}
-}
+      telegram: "https://t.me/EbaMengistuBot",
 
+      /*
+       * Optional supported speech endpoint.
+       * Leave empty unless your backend implements it.
+       *
+       * POST { text, language: "am-ET" | "en-US" }
+       * Response: audio bytes with an audio/* Content-Type.
+       */
+      speechPath: "",
 
-if (localStorage.getItem("highContrast") === "true") {
-  document.body.classList.add("high-contrast");
-  if (contrastBtn) contrastBtn.setAttribute("aria-pressed", "true");
-}
+      /*
+       * Unofficial, best-effort fallback.
+       * Answer text is sent to Google when used.
+       */
+      googleSpeechFallback: true,
 
+      /*
+       * Your current bot.js has no unsubscribe endpoint.
+       * Leave empty to submit a support request instead.
+       */
+      unsubscribePath: ""
+    };
 
-function getVoices() {
-  return new Promise(resolve => {
-    if (!("speechSynthesis" in window)) return resolve([]);   // NEW: safe on browsers without TTS
-    let voices = speechSynthesis.getVoices();
-    if (voices.length) return resolve(voices);
-    const timeout = setTimeout(() => resolve(speechSynthesis.getVoices()), 1200);
-    speechSynthesis.addEventListener("voiceschanged", () => {
-      clearTimeout(timeout);
-      resolve(speechSynthesis.getVoices());
-    }, { once: true });
-  });
-}
+    const $ = id => document.getElementById(id);
+    const question = $("question");
+    const answer = $("answer");
 
-
-function hasWord(text, words) {
-  return words.some(w => new RegExp(`\\b${w}\\b`, "i").test(text));
-}
-
-
-document.querySelectorAll("button").forEach(btn => {
-  btn.addEventListener("click", function () {
-    document.querySelectorAll("button").forEach(b => b.classList.remove("active-primary"));
-    this.classList.add("active-primary");
-  });
-});
-
-
-if (getAnswerBtn) getAnswerBtn.addEventListener("click", getAnswer);
-if (speakEnglishBtn) speakEnglishBtn.addEventListener("click", speakEnglish);
-if (speakAmharicBtn) speakAmharicBtn.addEventListener("click", speakAmharic);
-
-
-if (contrastBtn) {
-  contrastBtn.addEventListener("click", () => {
-    const on = document.body.classList.toggle("high-contrast");
-    contrastBtn.setAttribute("aria-pressed", on);
-    localStorage.setItem("highContrast", on);
-  });
-}
-
-
-if (clearBtn) clearBtn.addEventListener("click", clearAll);
-if (copyBtn) copyBtn.addEventListener("click", copyAnswer);
-
-
-if (voiceAmharicBtn) voiceAmharicBtn.addEventListener("click", () => startVoice("am-ET", voiceAmharicBtn));
-if (voiceEnglishBtn) voiceEnglishBtn.addEventListener("click", () => startVoice("en-US", voiceEnglishBtn));
-
-
-if (fontSmall) fontSmall.addEventListener("click", () => changeFontSize(-0.08));
-if (fontNormal) fontNormal.addEventListener("click", () => changeFontSize(0, true));
-if (fontLarge) fontLarge.addEventListener("click", () => changeFontSize(0.08));
-
-
-document.querySelectorAll(".suggest").forEach(btn => {
-  btn.addEventListener("click", () => {
-    questionInput.value = btn.dataset.q;
-    questionInput.focus();
-  });
-});
-
-
-function changeFontSize(delta, reset = false) {
-  currentFontSize = reset ? 1.05 : Math.max(0.9, Math.min(1.6, currentFontSize + delta));
-  if (answerBox) answerBox.style.fontSize = currentFontSize + "rem";
-  if (questionInput) questionInput.style.fontSize = currentFontSize + "rem";
-  autoResizeAnswer();
-}
-
-
-function autoResizeAnswer() {
-  if (!answerBox) return;
-  answerBox.style.height = "auto";
-  answerBox.style.height = (answerBox.scrollHeight + 8) + "px";
-}
-
-
-async function getAnswer() {
-  const question = questionInput.value.trim();
-  if (!question) {
-    const msg = "Please type a question.\nእባክዎ ጥያቄ ይጻፉ።";
-    answerBox.value = msg;
-    if (liveRegion) liveRegion.textContent = msg;
-    autoResizeAnswer();
-    return;
-  }
-
-  stopAllSpeech();
-
-  // 1) Built-in answers (fast, work offline)
-  const local = getLocalAnswer(question);
-  if (local) return showAnswer(local);
-
-  // 2) Asked before? Use the saved answer (works offline too)
-  const saved = getSavedAnswer(question);
-  if (saved) return showAnswer(saved);
-
-  // 3) New question but no internet -> friendly message
-  if (!isOnline()) return showAnswer(OFFLINE_MESSAGE);
-
-  // 4) New question + internet -> ask the Railway backend (Groq bilingual answer)
-  showAnswer("🔎 እየፈለግሁ ነው... / Searching...");
-  if (getAnswerBtn) getAnswerBtn.disabled = true;
-  try {
-    const backendUrl = window.BACKEND_URL || "/api/ask";
-    const response = await fetch(backendUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        question: question,
-        language: /[\u1200-\u137F]/.test(question) ? "am" : "en",
-        simpleMode: false
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || "The answer service could not complete the request.");
-    }
-
-    const answer = data.answer || [
-      data.answerEn && `🇬🇧 English:\n${data.answerEn}`,
-      data.answerAm && `🇪🇹 አማርኛ:\n${data.answerAm}`,
-      data.source && `📚 Source / ምንጭ: ${data.source}`
-    ].filter(Boolean).join("\n\n");
-
-    showAnswer(answer);
-    saveAnswer(question, answer);
-
-  } catch (err) {
-    console.warn("Backend answer failed:", err);
-
-    if (!isOnline()) {
-      showAnswer(OFFLINE_MESSAGE);
+    if (!question || !answer) {
+      console.error("Missing #question or #answer.");
       return;
     }
 
-    showAnswer(
-      "Sorry, I could not get an answer right now. Please try again later.\n\n" +
-      "ይቅርታ፣ አሁን መልስ ማግኘት አልቻልኩም። እባክዎ እንደገና ይሞክሩ።"
-    );
-  } finally {
-    if (getAnswerBtn) getAnswerBtn.disabled = false;
-  }
-}
+    const ETHIOPIC =
+      /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/;
 
-/* ---------- NEW: offline support ---------- */
-function isOnline() {
-  return navigator.onLine !== false;
-}
+    const STORAGE_KEY = "learning_employment_web_settings";
 
-const OFFLINE_MESSAGE =
-  "📶 This is a new question and it needs internet. Please connect to the internet to get a better answer. " +
-  "Without internet you can still ask about greetings, time, date, Ethiopian date, math, Ethiopia and accessibility.\n\n" +
-  "📶 ይህ አዲስ ጥያቄ ኢንተርኔት ያስፈልገዋል። የተሻለ መልስ ለማግኘት እባክዎ ኢንተርኔት ያገናኙ። " +
-  "ያለ ኢንተርኔት ስለ ሰላምታ፣ ሰዓት፣ ቀን፣ የኢትዮጵያ ቀን፣ ሂሳብ፣ ኢትዮጵያ እና ተደራሽነት መጠየቅ ይችላሉ።";
-
-// Saved answers (so questions asked before also work offline)
-const SAVED_KEY = "savedAnswers_v1";
-function loadSaved() {
-  try { return JSON.parse(localStorage.getItem(SAVED_KEY)) || {}; } catch (e) { return {}; }
-}
-function getSavedAnswer(question) {
-  return loadSaved()[question.trim().toLowerCase()] || null;
-}
-function saveAnswer(question, answer) {
-  try {
-    const all = loadSaved();
-    all[question.trim().toLowerCase()] = answer;
-    const keys = Object.keys(all);
-    if (keys.length > 100) delete all[keys[0]];     // keep the last 100
-    localStorage.setItem(SAVED_KEY, JSON.stringify(all));
-  } catch (e) {}
-}
-
-// Small online/offline badge + message when connection changes
-function updateConnectionBadge(announceChange) {
-  let badge = document.getElementById("netBadge");
-  if (!badge) {
-    badge = document.createElement("div");
-    badge.id = "netBadge";
-    badge.setAttribute("role", "status");
-    badge.style.cssText = "text-align:center;font-size:.85rem;font-weight:600;margin:4px 0 8px;";
-    const main = document.getElementById("main");
-    if (main) main.prepend(badge);
-  }
-  const on = isOnline();
-  badge.textContent = on ? "🟢 ኢንተርኔት አለ / Online" : "🔴 ኢንተርኔት የለም — መሰረታዊ መልሶች ይሰራሉ / Offline — basic answers still work";
-  badge.style.color = on ? "#0a7d3b" : "#b3261e";
-  if (announceChange && liveRegion) liveRegion.textContent = badge.textContent;
-}
-window.addEventListener("online", () => updateConnectionBadge(true));
-window.addEventListener("offline", () => updateConnectionBadge(true));
-document.addEventListener("DOMContentLoaded", () => updateConnectionBadge(false));
-if (document.readyState !== "loading") setTimeout(() => updateConnectionBadge(false), 0);
-
-function showAnswer(text) {
-  answerBox.value = text;
-  if (liveRegion) liveRegion.textContent = text;
-  autoResizeAnswer();
-}
-
-
-function getLocalAnswer(question) {
-  const q = question.toLowerCase();
-  const now = new Date();
-  let reply = "";
-
-
-  // Greetings
-  if (hasWord(q, ["hello", "hi", "hey", "selam"]) || q.includes("ሰላም")) {
-    reply = "Hello! Welcome. I'm here to help you with questions about learning, accessibility, and more. What would you like to know today?\n\nሰላም! እንኳን ደህና መጡ። ስለ ትምህርት፣ ተደራሽነት እና ሌሎች ጥያቄዎች ልረዳዎት እችላለሁ። ዛሬ ምን ማወቅ ይፈልጋሉ?";
-  }
-  else if (hasWord(q, ["morning"]) || q.includes("እንደምን አደር")) {
-    reply = "Good morning! I hope you have a peaceful and productive day ahead.\n\nእንደምን አደሩ! መልካም እና ሰላማዊ ቀን ይሁንልዎ።";
-  }
-  else if (hasWord(q, ["afternoon"]) || q.includes("እንደምን ዋል")) {
-    reply = "Good afternoon! How is your day going so far?\n\nእንደምን ዋሉ! ቀንዎ እንዴት እየሄደ ነው?";
-  }
-  else if (hasWord(q, ["evening"]) || q.includes("እንደምን አመሽ")) {
-    reply = "Good evening! I hope you're having a relaxing time.\n\nእንደምን አመሹ! መልካም ምሽት።";
-  }
-  else if (hasWord(q, ["thank", "thanks"]) || q.includes("አመሰግናለሁ")) {
-    reply = "You're very welcome! I'm happy to help. Feel free to ask more questions anytime.\n\nበጣም አመሰግናለሁ! ሌላ ጥያቄ ካለዎት በማንኛውም ጊዜ ይጠይቁ።";
-  }
-  else if (hasWord(q, ["bye", "goodbye"]) || q.includes("ቻው") || q.includes("ደህና ሁን")) {
-    reply = "Goodbye! Take care and have a wonderful day. See you next time.\n\nደህና ሁኑ! መልካም ቀን ይሁንልዎ።";
-  }
-
-
-  // Time, Date, Year, Month
-  else if (hasWord(q, ["time"]) || q.includes("ሰዓት")) {
-    const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    reply = `The current time is ${time}.\n\nአሁን ሰዓቱ ${time} ነው።`;
-  }
-  else if ((hasWord(q, ["year"]) || q.includes("አመት") || q.includes("ዓመት")) && !isEthiopianDateQuestion(q)) {
-    reply = `We are currently in the year ${now.getFullYear()}.\n\nአሁን ዓመቱ ${now.getFullYear()} ነው።`;
-  }
-  else if ((hasWord(q, ["month"]) || q.includes("ወር")) && !isEthiopianDateQuestion(q)) {
-    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-    reply = `The current month is ${months[now.getMonth()]}.\n\nወሩ ${months[now.getMonth()]} ነው።`;
-  }
-  else if ((hasWord(q, ["date", "today", "day"]) || q.includes("ዛሬ") || q.includes("ቀን")) && !isEthiopianDateQuestion(q)) {
-    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    const amDays = ["እሑድ","ሰኞ","ማክሰኞ","ረቡዕ","ሐሙስ","አርብ","ቅዳሜ"];
-    reply = `Today is ${days[now.getDay()]}.\n\nዛሬ ${amDays[now.getDay()]} ነው።`;
-  }
-
-
-  // Countries
-  else if (hasWord(q, ["ethiopia"]) || q.includes("ኢትዮጵያ")) {
-    reply = "Ethiopia is a country located in East Africa. It has a rich history and culture. The capital city is Addis Ababa.\n\nኢትዮጵያ በምሥራቅ አፍሪካ ያለች ሀገር ናት። የበለጸገ ታሪክ እና ባህል አላት። ዋና ከተማዋ አዲስ አበባ ናት።";
-  }
-  else if (hasWord(q, ["kenya"]) || q.includes("ኬንያ")) {
-    reply = "Kenya is a country in East Africa known for its wildlife and national parks. Its capital is Nairobi.\n\nኬንያ በምሥራቅ አፍሪካ ያለች ሀገር ናት። በዱር እንስሳት እና ብሔራዊ ፓርኮች ትታወቃለች። ዋና ከተማዋ ናይሮቢ ነው።";
-  }
-  else if (hasWord(q, ["addis"]) || q.includes("አዲስ አበባ")) {
-    reply = "Addis Ababa is the capital and largest city of Ethiopia. It is an important political and cultural center.\n\nአዲስ አበባ የኢትዮጵያ ዋና ከተማ እና ትልቁ ከተማ ናት። አስፈላጊ የፖለቲካ እና የባህል ማዕከል ናት።";
-  }
-
-
-  // NEW: more built-in answers
-  else if (hasWord(q, ["how are you"]) || q.includes("እንዴት ነህ") || q.includes("እንዴት ነሽ") || q.includes("እንዴት ኖት") || q.includes("እንዴት ነዎት")) {
-    reply = "I'm doing well, thank you for asking! How can I help you today?\n\nደህና ነኝ፣ ስለጠየቁኝ አመሰግናለሁ! ዛሬ በምን ልርዳዎት?";
-  }
-  else if (hasWord(q, ["your name", "who are you"]) || q.includes("ስምህ") || q.includes("ስምሽ") || q.includes("ማን ነህ") || q.includes("ማን ነሽ")) {
-    reply = "I am the Multilingual Learning Assistant. I answer questions in English and Amharic and can read answers aloud.\n\nእኔ የመማሪያ ረዳት ነኝ። በእንግሊዝኛ እና በአማርኛ ጥያቄዎችን እመልሳለሁ፣ መልሶችንም በድምፅ አነባለሁ።";
-  }
-  else if (hasWord(q, ["help"]) || q.includes("እርዳኝ") || q.includes("እርዳታ")) {
-    reply = "You can ask me almost anything: science, history, countries, people, health, technology and more. You can also ask math like 25 * 4, or the Ethiopian date.\n\nማንኛውንም ጥያቄ መጠየቅ ይችላሉ፦ ሳይንስ፣ ታሪክ፣ ሀገራት፣ ሰዎች፣ ጤና፣ ቴክኖሎጂ እና ሌሎችም። እንደ 25 * 4 ያሉ የሂሳብ ጥያቄዎችን ወይም የኢትዮጵያን ቀን መጠየቅ ይችላሉ።";
-  }
-  else if (isEthiopianDateQuestion(q)) {
-    const et = toEthiopianDate(now);
-    reply = `Today in the Ethiopian calendar is ${et.monthEn} ${et.day}, ${et.year}.\n\nዛሬ በኢትዮጵያ ዘመን አቆጣጠር ${et.monthAm} ${et.day} ቀን ${et.year} ዓ.ም. ነው።`;
-  }
-  else if (isMathQuestion(q)) {
-    const result = solveMath(q);
-    reply = result === null ? "" : `The answer is ${result}.\n\nመልሱ ${result} ነው።`;
-  }
-
-  // Accessibility - Long Answers
-  else if (hasWord(q, ["visual"]) || q.includes("ዕይታ")) {
-    reply = "Visual support is designed for people who have low vision or are blind. This tool includes Read Aloud so users can listen to answers, High Contrast mode for better visibility, and text size controls. These features help make information more accessible and independent.\n\nየዕይታ ድጋፍ ማየት ለሚቸግራቸው ወይም ለዓይነ ስውራን የተሰራ ነው። ይህ መሳሪያ የድምፅ ንባብ፣ ከፍተኛ ንፅፅር እና የጽሑፍ መጠን ማስተካከል ያካትታል።";
-  }
-  else if (hasWord(q, ["hearing"]) || q.includes("መስማት")) {
-    reply = "Hearing support helps people who are Deaf or hard of hearing. All answers are displayed clearly in written text in both Amharic and English, so users can access information without needing sound.\n\nየመስማት ድጋፍ ለመስማት ለሚቸግራቸው ሰዎች ይረዳል። መልሶች በአማርኛ እና በእንግሊዝኛ በጽሑፍ በግልጽ ይታያሉ።";
-  }
-  else if (hasWord(q, ["mobility"]) || q.includes("እንቅስቃሴ")) {
-    reply = "Mobility support is for people with physical disabilities. The buttons are large and easy to press, and voice input is available so users do not always need to type with their hands.\n\nየእንቅስቃሴ ድጋፍ አካላዊ እንቅስቃሴ ለሚቸግራቸው ሰዎች የተሰራ ነው። ቁልፎች ትልቅ ናቸው እና የድምፅ ግብዓትም ይገኛል።";
-  }
-  else if (hasWord(q, ["learn", "learning", "hackathon", "project"]) || q.includes("መማር") || q.includes("ሃክአቶን")) {
-    reply = "This Multilingual Learning Assistant was created for the Accessibility Hackathon 2026. The goal is to build simple and inclusive tools that help people who are blind, Deaf, have physical or cognitive disabilities, and refugees in Ethiopia access information and learning more easily.\n\nይህ የመማሪያ ረዳት ለተደራሽነት ሃክአቶን 2026 የተሰራ ነው። ዓላማው ለአካል ጉዳተኞች እና ስደተኞች ቀላል እና ተደራሽ መሳሪያዎችን መገንባት ነው።";
-  }
-  return reply || null;
-}
-
-
-
-
-/* =========================================================
-   NEW: ANSWER ANY QUESTION (free, no API key)
-   1) If the question is Amharic -> translate to English
-   2) Search Wikipedia and take a short summary (3 sentences)
-   3) Translate the summary to Amharic
-   4) Show: English part, blank line, Amharic part
-   ========================================================= */
-const ETHIOPIC_RE = /[\u1200-\u137F]/;
-const answerCache = {};
-
-async function fetchJson(url, ms = 9000) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    return await res.json();
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// Translate text. from/to = "en" | "am" | "auto"
-async function translateText(text, from, to) {
-  if (!text.trim()) return "";
-  // Try Google first
-  try {
-    const url = "https://translate.googleapis.com/translate_a/single?client=gtx&dt=t" +
-      "&sl=" + from + "&tl=" + to + "&q=" + encodeURIComponent(text);
-    const data = await fetchJson(url);
-    const out = data[0].map(part => part[0]).join("");
-    if (out.trim()) return out;
-  } catch (e) { console.warn("Google translate failed, trying MyMemory", e); }
-
-  // Backup: MyMemory (max ~450 chars per request)
-  const src = from === "auto" ? (ETHIOPIC_RE.test(text) ? "am" : "en") : from;
-  const parts = splitForSpeech(text, 450);
-  const results = [];
-  for (const part of parts) {
-    const url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(part) +
-      "&langpair=" + src + "|" + to;
-    const data = await fetchJson(url);
-    results.push(data.responseData.translatedText);
-  }
-  return results.join(" ");
-}
-
-// Turn a question into search words
-function cleanQuestion(q) {
-  return q
-    .replace(/[?？!.።]/g, " ")
-    .replace(/^\s*(please\s+)?(can you\s+)?(tell me|explain|define|describe|what('s| is| are| was| were)|who('s| is| are| was| were)|where('s| is| are| was)|when (is|was|did)|why (is|are|do|does)|how (do|does|is|are|to|did)|give me|i want to know)\s+(about\s+)?/i, "")
-    .replace(/\b(the meaning of|meaning of|information about|info about)\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// Remove Amharic letters/brackets from English text (so reading works well)
-function cleanEnglishSummary(text) {
-  return text
-    .replace(/\([^)]*[\u1200-\u137F][^)]*\)/g, "")
-    .replace(/[\u1200-\u137F]+/g, "")
-    .replace(/\s{2,}/g, " ")
-    .replace(/\s+([,.;])/g, "$1")
-    .trim();
-}
-
-function firstSentences(text, n = 3) {
-  const s = text.match(/[^.!?]+[.!?]+(\s|$)/g);
-  return s ? s.slice(0, n).join("").trim() : text;
-}
-
-async function searchWikipedia(query) {
-  const searchUrl = "https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=1&srsearch=" +
-    encodeURIComponent(query);
-  const data = await fetchJson(searchUrl);
-  const hit = data.query && data.query.search && data.query.search[0];
-  if (!hit) return null;
-
-  const sumUrl = "https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(hit.title.replace(/ /g, "_"));
-  const sum = await fetchJson(sumUrl);
-  if (!sum.extract) return null;
-  return { title: sum.title, text: firstSentences(cleanEnglishSummary(sum.extract), 2) };
-}
-
-async function getOnlineAnswer(question) {
-  const key = question.toLowerCase();
-  if (answerCache[key]) return answerCache[key];
-
-  const isAmharic = ETHIOPIC_RE.test(question);
-
-  // 1) Question in English (translate if Amharic)
-  let englishQ = question;
-  if (isAmharic) englishQ = await translateText(question, "am", "en");
-
-  // 2) Search Wikipedia (try cleaned words first, then full question)
-  let result = await searchWikipedia(cleanQuestion(englishQ) || englishQ);
-  if (!result) result = await searchWikipedia(englishQ);
-  if (!result) throw new Error("No result");
-
-  // 3) Translate summary to Amharic
-  let amharic = "";
-  try { amharic = await translateText(result.text, "en", "am"); }
-  catch (e) { amharic = "(የአማርኛ ትርጉም አሁን አልተገኘም።)"; }
-
-  const answer = result.text + "\n\n" + amharic + "\n\n📚 Source / ምንጭ: Wikipedia – " + result.title;
-  answerCache[key] = answer;
-  saveAnswer(question, answer);
-  return answer;
-}
-
-
-/* ---------- NEW: simple math (e.g. "what is 25 * 4", "12 plus 8") ---------- */
-function normalizeMath(q) {
-  return q.toLowerCase()
-    .replace(/×|x(?=\s*\d)/g, "*").replace(/÷/g, "/")
-    .replace(/\bplus\b|ሲደመር/g, "+").replace(/\bminus\b|ሲቀነስ/g, "-")
-    .replace(/\btimes\b|\bmultiplied by\b|ሲባዛ/g, "*").replace(/\bdivided by\b|ሲካፈል/g, "/")
-    .replace(/[^0-9+\-*/().\s]/g, " ")
-    .replace(/\s+/g, " ").trim();
-}
-function isMathQuestion(q) {
-  const m = normalizeMath(q);
-  return /\d/.test(m) && /[+\-*/]/.test(m) && /^[0-9+\-*/().\s]+$/.test(m) && /\d\s*[+\-*/]\s*[\d(]/.test(m);
-}
-function solveMath(q) {
-  try {
-    const expr = normalizeMath(q);
-    if (!/^[0-9+\-*/().\s]+$/.test(expr)) return null;
-    const value = Function('"use strict"; return (' + expr + ')')();
-    if (typeof value !== "number" || !isFinite(value)) return null;
-    return Math.round(value * 10000) / 10000;
-  } catch (e) { return null; }
-}
-
-
-/* ---------- NEW: Ethiopian calendar ---------- */
-function isEthiopianDateQuestion(q) {
-  return hasWord(q, ["ethiopian date", "ethiopian calendar", "ethiopian year", "ethiopian month"]) ||
-         q.includes("የኢትዮጵያ ቀን") || q.includes("ዘመን አቆጣጠር") || q.includes("ዓ.ም") || q.includes("የኢትዮጵያ ወር");
-}
-function toEthiopianDate(date) {
-  // Julian Day Number of the Gregorian date
-  const y = date.getFullYear(), m = date.getMonth() + 1, d = date.getDate();
-  const a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
-  const jdn = d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
-  // JDN -> Ethiopian (epoch 1724221)
-  const r = (jdn - 1723856) % 1461;
-  const n = (r % 365) + 365 * Math.floor(r / 1460);
-  const year = 4 * Math.floor((jdn - 1723856) / 1461) + Math.floor(r / 365) - Math.floor(r / 1460);
-  const month = Math.floor(n / 30) + 1;
-  const day = (n % 30) + 1;
-  const am = ["መስከረም","ጥቅምት","ኅዳር","ታኅሣሥ","ጥር","የካቲት","መጋቢት","ሚያዝያ","ግንቦት","ሰኔ","ሐምሌ","ነሐሴ","ጳጉሜ"];
-  const en = ["Meskerem","Tikimt","Hidar","Tahsas","Tir","Yekatit","Megabit","Miyazya","Ginbot","Sene","Hamle","Nehase","Pagume"];
-  return { year, month, day, monthAm: am[month - 1], monthEn: en[month - 1] };
-}
-/* ================= END NEW ANSWER CODE ================= */
-
-
-/* =========================================================
-   NEW: RECORDED VOICES (natural male voices, work OFFLINE)
-   Built-in answers have recorded audio in /audio:
-   English = Andrew (warm male), Amharic = Ameha (male)
-   ========================================================= */
-let CLIPS = {};
-fetch("audio/manifest.json").then(r => r.json()).then(m => { CLIPS = m; }).catch(() => {});
-
-function clipKey(text) { return text.replace(/\s+/g, " ").trim(); }
-function findClip(text) { return CLIPS[clipKey(text)] || null; }
-
-const clipUrls = {};
-async function playClip(file) {
-  // Load as a blob (works offline from the saved copy, also on iPhone Safari)
-  if (!clipUrls[file]) {
-    const res = await fetch(file);
-    if (!res.ok) throw new Error("clip missing");
-    clipUrls[file] = URL.createObjectURL(await res.blob());
-  }
-  if (stopRequested) return;
-  return new Promise((resolve, reject) => {
-    onlinePlayer.onended = resolve;
-    onlinePlayer.onerror = () => reject("clip failed");
-    onlinePlayer.src = clipUrls[file];
-    onlinePlayer.playbackRate = 1;
-    onlinePlayer.play().catch(reject);
-  });
-}
-
-// Pick the softest male English voice the device has
-const SOFT_MALE_EN = ["Andrew", "Brian", "Guy", "Christopher", "Eric", "Roger", "Ryan", "Daniel",
-                      "Google UK English Male", "Alex", "Aaron", "Arthur", "Fred", "David", "Mark", "George", "Male"];
-function pickEnglishVoices(voices) {
-  const en = voices.filter(v => v.lang.toLowerCase().startsWith("en"));
-  const score = v => {
-    let i = SOFT_MALE_EN.findIndex(n => v.name.includes(n));
-    let sc = i === -1 ? 100 : i;
-    if (!isOnline() && !v.localService) sc += 1000;     // offline: device voices first
-    if (/natural|neural|online/i.test(v.name) && isOnline()) sc -= 0.5;
-    return sc;
-  };
-  return en.sort((a, b) => score(a) - score(b));
-}
-
-async function speakEnglish() {
-  const text = answerBox.value;
-  if (!text) return;
-  stopAllSpeech();
-  stopRequested = false;
-
-  const clean = text.replace(/\n*📚.*$/s, "").trim();
-  const cut = clean.search(/[\u1200-\u137F]/);
-  const firstPara = clean.split(/\n\s*\n/)[0];
-  const english = /[\u1200-\u137F]/.test(firstPara) ? (cut > 5 ? clean.slice(0, cut).trim() : clean) : firstPara.trim();
-
-  // 1) Recorded natural voice (works offline)
-  const clip = findClip(english);
-  if (clip) {
-    try { await playClip(clip); return; }
-    catch (e) { if (stopRequested) return; console.warn("English clip failed", e); }
-  }
-
-  // 2) Device voice — softer male, slower and a bit warmer
-  const voices = pickEnglishVoices(await getVoices());
-  for (const voice of voices.slice(0, 3)) {
-    try {
-      await speakLocalVoice(english, voice, voice.lang, 0.92, 1.05);
-      return;
-    } catch (e) { if (stopRequested) return; console.warn("English voice failed:", voice.name, e); }
-  }
-
-  // 3) Online voice as last option
-  try { await speakOnline(english, "en"); }
-  catch (e) {
-    if (!stopRequested) showVoiceStatus("⚠️ English voice is not available right now. The answer is shown on screen.", "warn");
-  }
-}
-
-
-/* =========================================================
-   NEW: AMHARIC READ ALOUD — works on Chrome (mobile + PC),
-   Edge, Safari, Firefox, Samsung Internet.
-   1) Uses the device Amharic voice if it exists (e.g. Edge)
-   2) Otherwise uses Google's online Amharic voice (no API key)
-   ========================================================= */
-
-const onlinePlayer = new Audio();      // one reusable player (needed on mobile)
-let amharicPlaying = false;
-let stopRequested = false;
-
-// Split text into parts of max ~180 characters (Google limit)
-function splitForSpeech(text, max = 180) {
-  const parts = text.replace(/\s+/g, " ").trim().split(/(?<=[።፤፥፣፡?!.,;:])\s*/);
-  const chunks = [];
-  let cur = "";
-  for (const p of parts) {
-    if ((cur + " " + p).trim().length <= max) { cur = (cur + " " + p).trim(); continue; }
-    if (cur) chunks.push(cur);
-    if (p.length <= max) { cur = p; continue; }
-    cur = "";
-    for (const w of p.split(" ")) {
-      if ((cur + " " + w).trim().length > max) { if (cur) chunks.push(cur); cur = w; }
-      else cur = (cur + " " + w).trim();
-    }
-  }
-  if (cur) chunks.push(cur);
-  return chunks.filter(Boolean);
-}
-
-function playAudioUrl(url) {
-  return new Promise((resolve, reject) => {
-    onlinePlayer.onended = resolve;
-    onlinePlayer.onerror = () => reject("audio failed");
-    onlinePlayer.src = url;
-    onlinePlayer.play().catch(reject);
-  });
-}
-
-// Online voice (Google). lang = "am" or "en"
-async function speakOnline(text, lang) {
-  stopRequested = false;
-  const urls = [
-    t => `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${lang}&q=${encodeURIComponent(t)}`,
-    t => `https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=${lang}&q=${encodeURIComponent(t)}`
-  ];
-  for (const chunk of splitForSpeech(text)) {
-    if (stopRequested) return;
-    let ok = false, lastErr;
-    for (const makeUrl of urls) {
-      try { await playAudioUrl(makeUrl(chunk)); ok = true; break; }
-      catch (e) { lastErr = e; if (stopRequested) return; }
-    }
-    if (!ok) throw lastErr;
-  }
-}
-
-function speakLocalVoice(text, voice, lang, rate, pitch = 1) {
-  return new Promise((resolve, reject) => {
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.voice = voice;
-    u.lang = lang;
-    u.rate = rate;
-    u.pitch = pitch;
-    let started = false;
-    u.onstart = () => { started = true; };
-    u.onend = resolve;
-    u.onerror = e => reject(e.error || "speech error");
-    speechSynthesis.speak(u);
-    // If the voice does not start in 4 seconds, treat it as failed
-    setTimeout(() => { if (!started && !stopRequested) { speechSynthesis.cancel(); reject("voice did not start"); } }, 4000);
-  });
-}
-
-function setAmharicButton(playing) {
-  if (!speakAmharicBtn) return;
-  if (!speakAmharicBtn.dataset.label) speakAmharicBtn.dataset.label = speakAmharicBtn.textContent;
-  speakAmharicBtn.textContent = playing ? "⏹ አቁም" : speakAmharicBtn.dataset.label;
-  speakAmharicBtn.setAttribute("aria-pressed", playing ? "true" : "false");
-}
-
-function stopAllSpeech() {
-  stopRequested = true;
-  amharicPlaying = false;
-  try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
-  onlinePlayer.pause();
-  onlinePlayer.removeAttribute("src");
-  onlinePlayer.load();
-  setAmharicButton(false);
-}
-
-async function speakAmharic() {
-  // Press again while reading = stop
-  if (amharicPlaying) {
-    stopAllSpeech();
-    if (liveRegion) liveRegion.textContent = "ንባብ ቆሟል";
-    return;
-  }
-
-  const text = answerBox.value;
-  if (!text) return showVoiceStatus("ለማንበብ መልስ የለም። / No answer to read.", "warn");
-
-  // Take only the Amharic part (after the English part)
-  // Take only the Amharic part (2nd paragraph), skip the source line
-  const clean = text.replace(/\n*📚.*$/s, "").trim();
-  const paras = clean.split(/\n\s*\n/);
-  let amharicText = paras.length > 1 ? paras.slice(1).join(" ").trim() : "";
-  if (!/[\u1200-\u137F]/.test(amharicText)) {
-    const start = clean.search(/[\u1200-\u137F]/);
-    amharicText = start === -1 ? "" : clean.slice(start).trim();
-  }
-  if (!amharicText) return showVoiceStatus("ለማንበብ የአማርኛ ጽሑፍ የለም። / No Amharic text found.", "warn");
-
-  stopAllSpeech();
-  stopRequested = false;
-  amharicPlaying = true;
-  setAmharicButton(true);
-  if (liveRegion) liveRegion.textContent = "አማርኛ እየተነበበ ነው";
-
-  try {
-    const voices = await getVoices();
-    // 1) Recorded natural male voice (Ameha) — works offline
-    const clip = findClip(amharicText);
-    if (clip) {
+    function loadSettings() {
       try {
-        await playClip(clip);
-        if (!stopRequested && liveRegion) liveRegion.textContent = "ንባብ ተጠናቋል";
-        return;
-      } catch (e) { if (stopRequested) return; console.warn("Amharic clip failed", e); }
-    }
-
-    // 2) Device Amharic voice (Ameha/Mekdes in Edge), 3) Google online voice
-    const amVoices = voices.filter(v => v.lang.toLowerCase().replace("_", "-").startsWith("am"));
-    const rank = v => (v.name.includes("Ameha") ? 0 : 1) + (v.localService ? 0 : (isOnline() ? 0.5 : 10));
-    const tryOrder = amVoices.sort((a, b) => rank(a) - rank(b));
-
-    let done = false;
-    for (const voice of tryOrder) {
-      try { await speakLocalVoice(amharicText, voice, "am-ET", 0.9); done = true; break; }
-      catch (e) { if (stopRequested) return; console.warn("Amharic voice failed:", voice.name, e); }
-    }
-    if (!done && !stopRequested) {
-      await speakOnline(amharicText, "am");                      // Google Amharic voice
-    }
-    if (!stopRequested && liveRegion) liveRegion.textContent = "ንባብ ተጠናቋል";
-  } catch (err) {
-    console.warn("Amharic read failed:", err);
-    if (!stopRequested) {
-      showVoiceStatus("📶 የአማርኛ ድምፅ አሁን አልተገኘም (ኢንተርኔት ሊያስፈልግ ይችላል)። ጽሑፉ በማያ ገጹ ላይ ይታያል። / Amharic voice not available now (may need internet). The text is shown on screen.", "warn");
-    }
-  } finally {
-    amharicPlaying = false;
-    setAmharicButton(false);
-  }
-}
-/* ================= END NEW AMHARIC CODE ================= */
-
-
-function clearAll() {
-  if (questionInput) questionInput.value = "";
-  if (answerBox) answerBox.value = "";
-  stopAllSpeech();                                       // NEW: stops Amharic audio too
-}
-
-
-function copyAnswer() {
-  if (!answerBox?.value) return;
-  navigator.clipboard.writeText(answerBox.value);
-}
-
-
-/* =========================================================
-   NEW: VOICE INPUT
-   - Stops any reading before recording
-   - 🎤 አማርኛ  = Amharic only  (warns if you speak English)
-   - 🎤 English = English only (warns if you speak Amharic/other)
-   - Press the mic again to stop listening
-   ========================================================= */
-const voiceStatus = document.getElementById("voiceStatus");
-let activeRecognizer = null;
-
-function showVoiceStatus(msg, type = "info") {
-  if (voiceStatus) {
-    voiceStatus.textContent = msg;
-    voiceStatus.className = "voice-status " + type;
-  }
-  if (liveRegion) liveRegion.textContent = msg;
-}
-
-function playWarnBeep() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "square";
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.setValueAtTime(260, ctx.currentTime);
-    gain.gain.setValueAtTime(0.05, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.35);
-  } catch (e) {}
-}
-
-/* ---------- NEW: language checks for the mic buttons ---------- */
-const ETH_LETTER = /[\u1200-\u137F]/g;
-
-// Common English words (if most words are here, it is English)
-const COMMON_EN = new Set(("a about above after again all am an and any are as ask at be because been before being " +
- "best better big book but by call can capital city come could country day did do does doing done down each " +
- "eat english ethiopia ethiopian every explain find first for from food future get give go going good great " +
- "had has have he health hear hearing hello help her here hi him his history home hot how i if in into is it " +
- "its job just know language large last learn learning let life like little live long look make man many may " +
- "me mean meaning more most much must my name need new news next no not now number of off old on one only or " +
- "other our out over people person place plant please read right said say school science see she should show " +
- "small so some speak start student study support tell than thank thanks that the their them then there these " +
- "they thing think this those time to today tomorrow too two under up us use very visual want was water way we " +
- "weather well were what when where which who why will with woman work world would write year yes yesterday you " +
- "your morning afternoon evening night good bye goodbye hey okay ok teacher class university computer phone " +
- "internet accessibility disability blind deaf mobility hackathon project question answer africa addis ababa " +
- "kenya math plus minus times divided is are was the of three four five six seven eight nine ten hundred " +
- "thousand million capital population president king queen river mountain animal disease doctor medicine " +
- "god church sun moon earth sky rain coffee").split(" "));
-
-// Amharic words that English recognition often writes in Latin letters
-const AM_ROMAN = ["selam","salam","selamnew","endet","indet","neh","nesh","noh","nachu","ameseginalehu",
- "amesegnalehu","eshi","ishi","awo","aydelem","betam","tenastelign","tenayistilign","dehna","dena","deh",
- "yelem","alle","ale","new","nat","nachew","min","man","yet","lemin","melkam","konjo","gobez","wedaje",
- "abet","bakih","bakish","egziabher","yikirta","chigir","yelegnim","ande","hulet","sost","ishi"];
-
-function looksLikeAmharic(text, confidence) {
-  const eth = (text.match(ETH_LETTER) || []).length;
-  const latin = (text.match(/[A-Za-z]/g) || []).length;
-  if (eth === 0) return false;
-  if (latin > eth) return false;
-  if (confidence > 0 && confidence < 0.35) return false;
-  return true;
-}
-
-function looksLikeEnglish(text, confidence, alternatives = []) {
-  // Any Amharic letters (in the answer or the alternatives) = not English
-  if (/[\u1200-\u137F]/.test(text) || alternatives.some(a => /[\u1200-\u137F]/.test(a))) return false;
-
-  const words = text.toLowerCase().replace(/[^a-z'\s]/g, " ").split(/\s+/).filter(Boolean);
-  if (words.length === 0) return false;
-
-  // Amharic words written in Latin letters (e.g. "selam endet neh")
-  const amHits = words.filter(w => AM_ROMAN.includes(w)).length;
-  if (amHits >= 1 && amHits >= words.length / 3) return false;
-
-  // Chrome is not sure it heard English
-  if (confidence > 0 && confidence < 0.6) return false;
-
-  // How many words are common English words?
-  const known = words.filter(w => COMMON_EN.has(w.replace(/'s$/, ""))).length;
-  const ratio = known / words.length;
-  if (words.length >= 3 && ratio < 0.34) return false;
-  if (words.length === 2 && known === 0 && confidence < 0.85) return false;
-  if (words.length === 1 && known === 0 && confidence > 0 && confidence < 0.8) return false;
-
-  return true;
-}
-
-// Say the warning out loud
-async function speakWarning(isAmMode) {
-  setTimeout(async () => {
-    try {
-      if (isAmMode) {
-        await speakOnline("ይህ ቁልፍ ለአማርኛ ብቻ ነው። እባክዎ በአማርኛ ይናገሩ።", "am");
-      } else if ("speechSynthesis" in window) {
-        const u = new SpeechSynthesisUtterance("This button is for English only. Please speak in English.");
-        u.lang = "en-US";
-        u.rate = 0.95;
-        speechSynthesis.speak(u);
+        const value = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "{}"
+        );
+        return value && typeof value === "object" ? value : {};
+      } catch {
+        return {};
       }
-    } catch (e) {}
-  }, 400);   // wait for the warning beep
-}
-
-// Add spoken text where the cursor is (or at the end) — never deletes old text
-function addToQuestion(text) {
-  const el = questionInput;
-  const old = el.value;
-  let pos = (document.activeElement === el && typeof el.selectionStart === "number") ? el.selectionStart : old.length;
-  const end = (document.activeElement === el && typeof el.selectionEnd === "number") ? el.selectionEnd : pos;
-  const before = old.slice(0, pos);
-  const after = old.slice(end);
-  const spaceBefore = before && !/\s$/.test(before) ? " " : "";
-  const spaceAfter = after && !/^\s/.test(after) ? " " : "";
-  el.value = before + spaceBefore + text + spaceAfter + after;
-  const caret = (before + spaceBefore + text).length;
-  try { el.setSelectionRange(caret, caret); } catch (e) {}
-  el.dispatchEvent(new Event("input", { bubbles: true }));
-}
-
-/* ---------- NEW: offline voice typing (Chrome 139+ on-device) ----------
-   Chrome can recognise speech ON the device after a one-time language
-   pack download. We use it when available, so the mic works offline.
-   (Amharic on-device packs may not exist yet -> then internet is needed.) */
-async function onDeviceStatus(Rec, lang) {
-  if (typeof Rec.available !== "function") return "unsupported";
-  try { return await Rec.available({ langs: [lang], processLocally: true }); }
-  catch (e) { return "unsupported"; }
-}
-
-// While online, quietly download the offline packs for next time
-async function prepareOfflineVoiceTyping() {
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Rec || typeof Rec.install !== "function" || !isOnline()) return;
-  for (const lang of ["en-US", "am-ET"]) {
-    const st = await onDeviceStatus(Rec, lang);
-    if (st === "downloadable") {
-      try { await Rec.install({ langs: [lang], processLocally: true }); } catch (e) {}
     }
-  }
-}
 
-async function startRecognizer(r, Rec, lang, isAmMode, button, original) {
-  const st = await onDeviceStatus(Rec, lang);
-  if (st === "available") {
-    r.processLocally = true;          // works with or without internet
-    r._wentLocal = true;
-  } else if (!isOnline()) {
-    // Offline and no on-device pack -> explain instead of failing silently
-    activeRecognizer = null;
-    button.textContent = original;
-    button.setAttribute("aria-pressed", "false");
-    playWarnBeep();
-    showVoiceStatus(isAmMode
-      ? "📶 የአማርኛ ድምፅ ግብዓት ያለ ኢንተርኔት አይሰራም። እባክዎ ይጻፉ ወይም ኢንተርኔት ያገናኙ።"
-      : "📶 Offline English voice typing is not ready. Connect to the internet once, press 🎤 English, then it can work offline.", "warn");
-    return;
-  }
-  r.start();
-  // Online: download the offline pack in the background for next time
-  if (st === "downloadable" && isOnline()) prepareOfflineVoiceTyping();
-}
+    const settings = loadSettings();
 
-function startVoice(lang, button) {
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!Rec) {
-    showVoiceStatus("የድምፅ ግብዓት Chrome ወይም Edge ላይ ይሰራል። / Voice input works in Chrome or Edge.", "warn");
-    return;
-  }
+    let language = settings.language === "en" ? "en" : "am";
+    let fontSize = Math.max(
+      0.9,
+      Math.min(1.8, Number(settings.fontSize) || 1.05)
+    );
 
-  // Press again while listening = stop
-  if (activeRecognizer) {
-    activeRecognizer.abort();
-    return;
-  }
+    const chatId = settings.chatId ||
+      `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-  // 1) Stop any reading aloud first
-  stopAllSpeech();
+    let lessons = [];
+    let lessonsLoaded = false;
+    let currentAnswer = null;
+    let copiedQuestion = "";
 
-  const isAmMode = lang === "am-ET";
-  const r = new Rec();
-  r.lang = lang;
-  r.interimResults = false;
-  r.maxAlternatives = 3;
-  activeRecognizer = r;
-  r._wentLocal = false;
+    let answerVersion = 0;
+    let answerController = null;
 
-  const original = button.dataset.label || button.textContent;
-  button.dataset.label = original;
-  button.textContent = isAmMode ? "⏹ እያዳመጥኩ ነው..." : "⏹ Listening...";
-  button.setAttribute("aria-pressed", "true");
-  showVoiceStatus(isAmMode ? "🎤 በአማርኛ ይናገሩ..." : "🎤 Speak in English...", "info");
+    let readingLanguage = null;
+    let speechVersion = 0;
+    let speechCancel = null;
+    let speechController = null;
+    let activeUtterance = null;
+    let activeAudio = null;
 
-  // Small delay so the beep is not recorded
-  playBeep();
+    let microphone = null;
+    let audioContext = null;
 
-  r.onresult = (e) => {
-    const best = e.results[0][0];
-    const text = best.transcript.trim();
-    const confidence = typeof best.confidence === "number" ? best.confidence : 0;
-    const alternatives = Array.from(e.results[0]).map(alt => alt.transcript);
+    const flashTimers = new WeakMap();
+    const pendingForms = new WeakSet();
 
-    const wrongLanguage = isAmMode
-      ? !looksLikeAmharic(text, confidence)
-      : !looksLikeEnglish(text, confidence, alternatives);
+    function saveSetting(key, value) {
+      settings[key] = value;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      } catch {}
+    }
 
-    if (wrongLanguage) {
-      playWarnBeep();
-      showVoiceStatus(
-        isAmMode
-          ? "⚠️ ይህ ቁልፍ ለአማርኛ ብቻ ነው። እባክዎ በአማርኛ ይናገሩ። / Amharic only."
-          : "⚠️ This button is for English only. Please speak in English. / እንግሊዝኛ ብቻ።",
-        "warn"
+    saveSetting("chatId", chatId);
+
+    function on(id, callback) {
+      $(id)?.addEventListener("click", callback);
+    }
+
+    function announce(text) {
+      const live = $("liveRegion");
+      if (live) live.textContent = text;
+    }
+
+    function status(
+      id,
+      am,
+      en,
+      type = "info",
+      shouldAnnounce = true
+    ) {
+      const text = language === "am" ? am : en;
+      const node = $(id);
+
+      if (node) {
+        node.textContent = text;
+        node.className = `voice-status ${type}`;
+      }
+
+      /*
+       * A visible role=status already announces its own text.
+       * Avoid duplicating the same announcement.
+       */
+      if (shouldAnnounce && !node) announce(text);
+    }
+
+    function busy(button, enabled) {
+      if (!button) return;
+      button.disabled = enabled;
+
+      if (enabled) button.setAttribute("aria-busy", "true");
+      else button.removeAttribute("aria-busy");
+    }
+
+    function detectLanguage(text) {
+      if (ETHIOPIC.test(text)) return "am";
+      if (/[A-Za-z]/.test(text)) return "en";
+      return language;
+    }
+
+    function normalizeText(text) {
+      return String(text || "")
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/[\u200b-\u200d\ufeff]/g, "")
+        .replace(/\be[\s-]?mail\b/g, "email")
+        .replace(/[፠-፨?؟!.,،;:'"“”‘’()[\]{}]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function safeHttpUrl(value) {
+      try {
+        const url = new URL(String(value));
+        return ["https:", "http:"].includes(url.protocol)
+          ? url.href
+          : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function fieldValue(id) {
+      return $(id)?.value.trim() || "";
+    }
+
+    function selectedMode() {
+      return $("assistantMode")?.value === "career"
+        ? "career"
+        : "course";
+    }
+
+    function selectedLesson() {
+      const value = $("lessonSelect")?.value || "";
+      return lessons.find(item => item.key === value) || null;
+    }
+
+    function focusSection(id) {
+      const section = $(id);
+      if (!section) return;
+
+      section.scrollIntoView({
+        behavior: window.matchMedia(
+          "(prefers-reduced-motion: reduce)"
+        ).matches ? "auto" : "smooth",
+        block: "start"
+      });
+    }
+
+    /* =====================================================
+       NETWORK
+       ===================================================== */
+
+    async function api(
+      path,
+      { method = "GET", body, signal, timeout = 30000 } = {}
+    ) {
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+
+      if (signal?.aborted) controller.abort();
+      else signal?.addEventListener("abort", abort, { once: true });
+
+      const timer = setTimeout(abort, timeout);
+
+      try {
+        const response = await fetch(`${CONFIG.apiBase}${path}`, {
+          method,
+          headers: body
+            ? { "Content-Type": "application/json" }
+            : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal,
+          cache: "no-store"
+        });
+
+        const raw = await response.text();
+
+        if (!response.ok) {
+          console.error(
+            `${method} ${path}: HTTP ${response.status}`,
+            raw.slice(0, 1200)
+          );
+
+          const error = new Error(`HTTP ${response.status}`);
+          error.status = response.status;
+          throw error;
+        }
+
+        let data;
+
+        try {
+          data = raw.trim() ? JSON.parse(raw) : {};
+        } catch {
+          throw new Error("The server returned a non-JSON response.");
+        }
+
+        if (data.ok === false || data.success === false) {
+          throw new Error("The server rejected the request.");
+        }
+
+        return data;
+      } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
+      }
+    }
+
+    /* =====================================================
+       INTERFACE LANGUAGE
+       ===================================================== */
+
+    const labels = {
+      am: {
+        getAnswerBtn: "መልስ አግኝ",
+        clearBtn: "አጽዳ",
+        copyBtn: "ጥያቄውን ቅዳ",
+        helpBtn: "እርዳታ አስፈልገኛል",
+        screenShareBtn: "አማራጭ የስብሰባ ድጋፍ",
+        downloadBtn: "አውርድ",
+        readAm: "አማርኛ አንብብ",
+        readEn: "English አንብብ",
+        micAm: "በአማርኛ ተናገር",
+        micEn: "በእንግሊዝኛ ተናገር",
+        stop: "አቁም",
+        listening: "እያዳመጥኩ ነው..."
+      },
+      en: {
+        getAnswerBtn: "Get Answer",
+        clearBtn: "Clear",
+        copyBtn: "Copy Question",
+        helpBtn: "I Need Help",
+        screenShareBtn: "Optional meeting support",
+        downloadBtn: "Download",
+        readAm: "Read Amharic",
+        readEn: "Read English",
+        micAm: "Speak Amharic",
+        micEn: "Speak English",
+        stop: "Stop",
+        listening: "Listening..."
+      }
+    };
+
+    function updateMediaButtons() {
+      const t = labels[language];
+
+      [
+        ["speakAmharicBtn", readingLanguage === "am", t.readAm, false],
+        ["speakEnglishBtn", readingLanguage === "en", t.readEn, false],
+        ["voiceAmharicBtn", microphone?.lang === "am", t.micAm, true],
+        ["voiceEnglishBtn", microphone?.lang === "en", t.micEn, true]
+      ].forEach(([id, enabled, normal, isMic]) => {
+        const button = $(id);
+        if (!button) return;
+
+        button.textContent = enabled
+          ? isMic ? t.listening : t.stop
+          : normal;
+
+        button.setAttribute("aria-pressed", String(enabled));
+      });
+    }
+
+    function updateConnection() {
+      const badge = $("netBadge");
+      if (!badge) return;
+
+      const online = navigator.onLine !== false;
+
+      badge.textContent = language === "am"
+        ? online ? "ግንኙነት አለ" : "ከመስመር ውጭ"
+        : online ? "Online" : "Offline";
+
+      badge.style.color =
+        document.body.classList.contains("high-contrast")
+          ? "#ffd166"
+          : online ? "#176139" : "#a32222";
+    }
+
+    function updateModeDescription() {
+      const career = selectedMode() === "career";
+      const node = $("modeDescription");
+
+      if (node) {
+        node.textContent = career
+          ? language === "am"
+            ? "የሥራ መመሪያ ሁኔታ፦ አጠቃላይ የሥራ ምክር ሊሰጥ ይችላል። የሥራ ዕድሎችንና መስፈርቶችን ከመጀመሪያው ምንጭ ያረጋግጡ።"
+            : "Career guidance mode: general advice may be AI-generated. Verify vacancies and requirements with the original source."
+          : language === "am"
+            ? "የትምህርት ሁኔታ፦ መልሱ ከተፈቀደው ትምህርት መደገፍና ምንጭ ማሳየት አለበት።"
+            : "Course mode: answers must be supported by approved lesson material and include a reference.";
+      }
+
+      if ($("lessonSelect")) {
+        $("lessonSelect").disabled = career;
+      }
+    }
+
+    function updateLanguage() {
+      document.documentElement.lang = language;
+      const t = labels[language];
+
+      [
+        "getAnswerBtn", "clearBtn", "copyBtn",
+        "helpBtn", "screenShareBtn", "downloadBtn"
+      ].forEach(id => {
+        if ($(id)) $(id).textContent = t[id];
+      });
+
+      if ($("questionLabel")) {
+        $("questionLabel").textContent =
+          language === "am" ? "ጥያቄዎን ይጻፉ" : "Ask your question";
+      }
+
+      if ($("answerLabel")) {
+        $("answerLabel").textContent =
+          language === "am" ? "መልስ" : "Answer";
+      }
+
+      question.placeholder = language === "am"
+        ? "ለምሳሌ፦ ኢሜይል ምንድን ነው?"
+        : "Example: What is email?";
+
+      answer.placeholder = language === "am"
+        ? "መልሱ እዚህ ይታያል..."
+        : "Your answer will appear here...";
+
+      $("languageToggleBtn")?.setAttribute(
+        "aria-label",
+        language === "am"
+          ? "Switch interface to English"
+          : "የገጹን ቋንቋ ወደ አማርኛ ቀይር"
       );
-      speakWarning(isAmMode);   // also say it out loud (for blind users)
-      return;   // do not type wrong-language text
+
+      updateMediaButtons();
+      updateConnection();
+      updateModeDescription();
     }
 
-    addToQuestion(text);
-    showVoiceStatus(isAmMode ? "✅ ተመዝግቧል። መልስ ያግኙ ይጫኑ።" : "✅ Got it. Press መልስ ያግኙ.", "ok");
-  };
-
-  r.onerror = (e) => {
-    if (e.error === "aborted") {
-      showVoiceStatus(isAmMode ? "ማዳመጥ ቆሟል።" : "Stopped listening.", "info");
-    } else if (e.error === "no-speech") {
-      showVoiceStatus(isAmMode ? "ምንም ድምፅ አልተሰማም። እንደገና ይሞክሩ።" : "No speech heard. Please try again.", "warn");
-    } else if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-      showVoiceStatus("ማይክሮፎን አልተፈቀደም። / Please allow microphone access.", "warn");
-    } else if (e.error === "network" || (!isOnline() && e.error === "language-not-supported")) {
-      showVoiceStatus(isAmMode
-        ? "📶 የአማርኛ ድምፅ ግብዓት ያለ ኢንተርኔት አይሰራም። እባክዎ ይጻፉ ወይም ኢንተርኔት ያገናኙ።"
-        : "📶 Offline English voice typing is not ready on this device. Please type, or connect once to download it.", "warn");
-    } else if (e.error === "language-not-supported") {
-      showVoiceStatus("ይህ አሳሽ ይህን ቋንቋ አይደግፍም። / This browser does not support this language.", "warn");
-    } else if (e.error === "network") {
-      showVoiceStatus("📶 የድምፅ ግብዓት አሁን አልሰራም (ኢንተርኔት ሊያስፈልግ ይችላል)። እባክዎ ይጻፉ። / Voice input not available now (may need internet). Please type.", "warn");
-    } else {
-      showVoiceStatus("ስህተት ተፈጥሯል። እንደገና ይሞክሩ። / Error, please try again.", "warn");
+    function applyFont() {
+      question.style.fontSize = `${fontSize}rem`;
+      answer.style.fontSize = `${fontSize}rem`;
+      saveSetting("fontSize", fontSize);
     }
-  };
 
-  r.onend = () => {
-    activeRecognizer = null;
-    button.textContent = original;
-    button.setAttribute("aria-pressed", "false");
-  };
-
-  try {
-    startRecognizer(r, Rec, lang, isAmMode, button, original).catch(() => {
-      activeRecognizer = null;
-      button.textContent = original;
-      button.setAttribute("aria-pressed", "false");
-      showVoiceStatus("እንደገና ይሞክሩ። / Please try again.", "warn");
+    on("languageToggleBtn", () => {
+      language = language === "am" ? "en" : "am";
+      saveSetting("language", language);
+      updateLanguage();
     });
-  } catch (err) {
-    activeRecognizer = null;
-    button.textContent = original;
-    showVoiceStatus("እንደገና ይሞክሩ። / Please try again.", "warn");
+
+    $("assistantMode")?.addEventListener("change", () => {
+      stopReading();
+      invalidateAnswerRequest();
+      clearCurrentAnswer();
+      updateModeDescription();
+    });
+
+    $("lessonSelect")?.addEventListener("change", () => {
+      stopReading();
+      invalidateAnswerRequest();
+      clearCurrentAnswer();
+    });
+
+    on("fontSmall", () => {
+      fontSize = Math.max(0.9, fontSize - 0.08);
+      applyFont();
+    });
+
+    on("fontNormal", () => {
+      fontSize = 1.05;
+      applyFont();
+    });
+
+    on("fontLarge", () => {
+      fontSize = Math.min(1.8, fontSize + 0.08);
+      applyFont();
+    });
+
+    on("contrastBtn", () => {
+      const enabled =
+        document.body.classList.toggle("high-contrast");
+
+      saveSetting("highContrast", enabled);
+      $("contrastBtn")?.setAttribute("aria-pressed", String(enabled));
+      updateConnection();
+    });
+
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
+
+    /* =====================================================
+       DELEGATED BUTTON EFFECTS
+       Also covers lesson cards created later.
+       ===================================================== */
+
+    document.addEventListener("click", event => {
+      const button = event.target.closest("button");
+      if (!button || button.disabled) return;
+
+      document.querySelectorAll("button.active-primary")
+        .forEach(item => item.classList.remove("active-primary"));
+
+      if (button.id === "getAnswerBtn") return;
+
+      button.classList.add("active-primary");
+
+      clearTimeout(flashTimers.get(button));
+      button.classList.remove("button-flash");
+      void button.offsetWidth;
+      button.classList.add("button-flash");
+
+      flashTimers.set(button, setTimeout(() => {
+        button.classList.remove("button-flash");
+      }, 650));
+    });
+
+    /* =====================================================
+       LESSONS AND SAFE SOURCE RENDERING
+       ===================================================== */
+
+    function stringArray(value) {
+      return Array.isArray(value)
+        ? value.filter(item => typeof item === "string")
+        : [];
+    }
+
+    const topicAliases = [
+      [["downloading", "download"], ["ማውረድ", "ዳውንሎድ"]],
+      [["uploading", "upload"], ["ፋይል መስቀል", "አፕሎድ"]],
+      [["email"], ["ኢሜይል", "ኢሜል"]],
+      [["internet"], ["ኢንተርኔት"]],
+      [["browser", "web browser"], ["የድር አሳሽ", "ብሮውዘር"]],
+      [["password", "passwords"], ["የይለፍ ቃል", "ፓስወርድ"]],
+      [["cv", "resume"], ["ሲቪ"]]
+    ];
+
+    function lessonPhrases(item) {
+      const phrases = [
+        item.title,
+        ...stringArray(item.keywords),
+        ...stringArray(item.questions)
+      ].filter(value => typeof value === "string")
+        .map(normalizeText)
+        .filter(Boolean);
+
+      topicAliases.forEach(([english, amharic]) => {
+        const related = english.some(term =>
+          phrases.some(phrase =>
+            ` ${phrase} `.includes(` ${normalizeText(term)} `)
+          )
+        );
+
+        if (related) phrases.push(...amharic.map(normalizeText));
+      });
+
+      return [...new Set(phrases)];
+    }
+
+    function sourceForLesson(item) {
+      const source = item.source;
+
+      if (typeof source === "string") {
+        return {
+          label: source,
+          url: safeHttpUrl(source)
+        };
+      }
+
+      return {
+        label: [
+          source?.lesson || item.title || "Course lesson",
+          source?.section || ""
+        ].filter(Boolean).join(" — "),
+        url: safeHttpUrl(source?.url || "")
+      };
+    }
+
+    function lessonRecord(item) {
+      const simple = $("simpleModeToggle")?.checked === true;
+
+      return {
+        am: String(
+          simple
+            ? item.simple?.am || item.answer?.am || ""
+            : item.answer?.am || item.simple?.am || ""
+        ).trim(),
+
+        en: String(
+          simple
+            ? item.simple?.en || item.answer?.en || ""
+            : item.answer?.en || item.simple?.en || ""
+        ).trim(),
+
+        sources: [sourceForLesson(item)],
+        provider: "course",
+        lessonTitle: item.title || ""
+      };
+    }
+
+    function findDirectLesson(text) {
+      const selected = selectedLesson();
+      const candidates = selected ? [selected] : lessons;
+      const normalized = normalizeText(text);
+      const padded = ` ${normalized} `;
+
+      let best = null;
+      let bestScore = 0;
+      let tied = false;
+
+      for (const item of candidates) {
+        const explicit = stringArray(item.questions)
+          .map(normalizeText)
+          .includes(normalized);
+
+        const phrases = lessonPhrases(item);
+        const exactTopic = phrases.includes(normalized);
+
+        const definition =
+          /^(what is |what are |define |explain |tell me about )/.test(normalized) ||
+          /(?:ምንድን ነው|ምን ማለት ነው)$/.test(normalized) ||
+          /^ስለ .+ አብራራልኝ$/.test(normalized);
+
+        if (!explicit && !exactTopic && !definition) continue;
+
+        let score = explicit ? 100 : 0;
+
+        for (const phrase of phrases) {
+          if (phrase === normalized) score += 30;
+          else if (padded.includes(` ${phrase} `)) {
+            score += 5 + phrase.split(" ").length;
+          }
+        }
+
+        if (score > bestScore) {
+          best = item;
+          bestScore = score;
+          tied = false;
+        } else if (score > 0 && score === bestScore) {
+          tied = true;
+        }
+      }
+
+      return bestScore > 0 && !tied ? best : null;
+    }
+
+    function renderSources(container, sources) {
+      if (!container) return;
+      container.replaceChildren();
+
+      if (!sources.length) {
+        const p = document.createElement("p");
+        p.textContent = "No course reference was supplied.";
+        container.append(p);
+        return;
+      }
+
+      const list = document.createElement("ul");
+
+      sources.forEach(source => {
+        const item = document.createElement("li");
+
+        if (source.url) {
+          const link = document.createElement("a");
+          link.href = source.url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = source.label || source.url;
+          item.append(link);
+        } else {
+          item.textContent = source.label;
+        }
+
+        list.append(item);
+      });
+
+      container.append(list);
+    }
+
+    async function loadLessons() {
+      status(
+        "courseStatus",
+        "ትምህርቶች እየተጫኑ ነው...",
+        "Loading the course library..."
+      );
+
+      try {
+        const data = await api("/api/lessons");
+
+        if (!Array.isArray(data.lessons)) {
+          throw new Error("Invalid lesson response.");
+        }
+
+        lessons = data.lessons
+          .filter(item => item && typeof item === "object")
+          .map((item, index) => ({
+            ...item,
+            key: String(item.id ?? `lesson-${index}`)
+          }));
+
+        lessonsLoaded = true;
+
+        const select = $("lessonSelect");
+        const previousSelection = select?.value || "";
+
+        if (select) {
+          select.replaceChildren();
+
+          const all = document.createElement("option");
+          all.value = "";
+          all.textContent = "All approved lessons / ሁሉም ትምህርቶች";
+          select.append(all);
+
+          lessons.forEach(item => {
+            const option = document.createElement("option");
+            option.value = item.key;
+            option.textContent = item.title || item.key;
+            select.append(option);
+          });
+
+          if (lessons.some(item => item.key === previousSelection)) {
+            select.value = previousSelection;
+          }
+        }
+
+        const grid = $("courseGrid");
+        grid?.replaceChildren();
+
+        lessons.forEach(item => {
+          if (!grid) return;
+
+          const card = document.createElement("article");
+          card.className = "course-card";
+
+          const title = document.createElement("h3");
+          title.textContent = item.title || "Course lesson";
+
+          const source = document.createElement("p");
+          source.textContent = sourceForLesson(item).label;
+
+          const choose = document.createElement("button");
+          choose.type = "button";
+          choose.textContent = "Choose lesson / ትምህርቱን ምረጥ";
+
+          choose.addEventListener("click", () => {
+            if ($("assistantMode")) $("assistantMode").value = "course";
+            if ($("lessonSelect")) $("lessonSelect").value = item.key;
+
+            stopReading();
+            invalidateAnswerRequest();
+            clearCurrentAnswer();
+            updateModeDescription();
+
+            question.focus({ preventScroll: true });
+            focusSection("assistantSection");
+          });
+
+          card.append(title, source, choose);
+          grid.append(card);
+        });
+
+        status(
+          "courseStatus",
+          `${lessons.length} ትምህርቶች ተጭነዋል።`,
+          `${lessons.length} lessons loaded.`,
+          lessons.length ? "ok" : "warn"
+        );
+      } catch (error) {
+        lessonsLoaded = false;
+
+        status(
+          "courseStatus",
+          "ትምህርቶችን መጫን አልተቻለም።",
+          "The course library could not load. Check the server.",
+          "warn"
+        );
+
+        console.warn("Lessons:", error.message);
+      }
+    }
+
+    /* =====================================================
+       ACCESSIBLE CONVERSATION
+       ===================================================== */
+
+    function appendMessage(role, parts, sources = []) {
+      const log = $("conversation");
+      if (!log) return;
+
+      const article = document.createElement("article");
+      article.className = `chat-message ${role}`;
+      article.dataset.role = role;
+
+      const heading = document.createElement("p");
+      heading.className = "message-role";
+      heading.textContent = role === "user"
+        ? "You / እርስዎ"
+        : "Assistant / ረዳት";
+
+      article.append(heading);
+
+      parts.forEach(({ text, lang }) => {
+        if (!text) return;
+
+        const block = document.createElement("div");
+        block.className = "message-language";
+        block.lang = lang || detectLanguage(text);
+        block.dir = "auto";
+
+        const paragraph = document.createElement("p");
+        paragraph.textContent = text;
+
+        block.append(paragraph);
+        article.append(block);
+      });
+
+      if (sources.length) {
+        const reference = document.createElement("div");
+        reference.className = "message-sources";
+        renderSources(reference, sources);
+        article.append(reference);
+      }
+
+      /*
+       * Complete the node before appending so the live log
+       * receives one coherent addition.
+       */
+      log.append(article);
+
+      if ($("conversationEmpty")) {
+        $("conversationEmpty").hidden = true;
+      }
+
+      /*
+       * No automatic page scrolling or focus changes.
+       * The learner controls when to inspect the log.
+       */
+    }
+
+    function showAnswer(record, firstLanguage) {
+      currentAnswer = record;
+
+      const am = record.am ||
+        "የአማርኛ ትርጉም ከአገልጋዩ አልተመለሰም።";
+
+      const en = record.en ||
+        "The server did not return an English translation.";
+
+      const parts = firstLanguage === "am"
+        ? [{ text: am, lang: "am" }, { text: en, lang: "en" }]
+        : [{ text: en, lang: "en" }, { text: am, lang: "am" }];
+
+      const sections = parts.map(part =>
+        `${part.lang === "am" ? "አማርኛ" : "English"}\n${part.text}`
+      );
+
+      if (record.sources.length) {
+        sections.push(
+          "Source / ምንጭ:\n" +
+          record.sources.map(source =>
+            [source.label, source.url].filter(Boolean).join("\n")
+          ).join("\n")
+        );
+      }
+
+      const questionScroll = question.scrollTop;
+
+      answer.value = sections.join("\n\n");
+      answer.style.removeProperty("height");
+      answer.scrollTop = 0;
+      answer.scrollLeft = 0;
+
+      question.scrollTop = questionScroll;
+
+      renderSources($("answerSources"), record.sources);
+      appendMessage("assistant", parts, record.sources);
+    }
+
+    function extractLanguage(text, lang) {
+      return String(text || "")
+        .split(/\n\s*(?:Source\s*:|Source\s*\/|ምንጭ\s*:|📚)/i)[0]
+        .split(/\n+/)
+        .filter(line => {
+          if (/^\s*(English|አማርኛ)\s*:?\s*$/i.test(line)) return false;
+
+          return lang === "am"
+            ? ETHIOPIC.test(line)
+            : /[A-Za-z]/.test(line) && !ETHIOPIC.test(line);
+        })
+        .join("\n")
+        .trim();
+    }
+
+    function normalizeApiAnswer(data) {
+      const object = data.answer && typeof data.answer === "object"
+        ? data.answer
+        : data;
+
+      let am = typeof object.answerAm === "string"
+        ? object.answerAm.trim()
+        : typeof object.am === "string" ? object.am.trim() : "";
+
+      let en = typeof object.answerEn === "string"
+        ? object.answerEn.trim()
+        : typeof object.en === "string" ? object.en.trim() : "";
+
+      const raw = typeof data.answer === "string"
+        ? data.answer
+        : typeof data.response === "string"
+          ? data.response
+          : typeof data.text === "string" ? data.text : "";
+
+      if (!am && !en && raw) {
+        am = extractLanguage(raw, "am");
+        en = extractLanguage(raw, "en");
+      }
+
+      if (!am && !en) throw new Error("No readable answer returned.");
+
+      const sources = [];
+
+      if (Array.isArray(data.sources)) {
+        data.sources.forEach(source => {
+          if (typeof source === "string") {
+            sources.push({
+              label: source,
+              url: safeHttpUrl(source)
+            });
+          } else if (source && typeof source === "object") {
+            sources.push({
+              label: String(
+                source.label || source.lesson || source.title || "Reference"
+              ),
+              url: safeHttpUrl(source.url || "")
+            });
+          }
+        });
+      } else if (typeof data.source === "string" && data.source.trim()) {
+        sources.push({
+          label: data.source.trim(),
+          url: safeHttpUrl(data.source.trim())
+        });
+      }
+
+      return {
+        am,
+        en,
+        sources,
+        provider: data.provider || "",
+        lessonTitle: data.lessonTitle || "",
+        grounded: data.grounded === true,
+        lessonId: data.lessonId == null ? "" : String(data.lessonId)
+      };
+    }
+
+    function courseRefusal() {
+      return {
+        am:
+          "ከተጫነው የትምህርት መረጃ ለዚህ ጥያቄ የተደገፈ መልስ ማረጋገጥ አልቻልኩም። ሌላ ትምህርት ይምረጡ ወይም የሰው ድጋፍ ይጠይቁ።",
+        en:
+          "I could not verify a supported answer from the available course material. Choose another lesson or request human help.",
+        sources: [],
+        provider: "course-refusal"
+      };
+    }
+
+    function courseResponseAllowed(record, selected) {
+      /*
+       * Current bot.js labels general and lesson-assisted
+       * generation as provider=groq, without a strict grounded
+       * guarantee. Do not silently treat that as course-only.
+       */
+      if (record.provider === "course") {
+        if (!record.sources.length) return false;
+
+        if (
+          selected &&
+          normalizeText(record.lessonTitle) !== normalizeText(selected.title)
+        ) return false;
+
+        return true;
+      }
+
+      /*
+       * Future strict backend contract:
+       * grounded:true + references + selected lesson identity.
+       * The backend must actually enforce this contract.
+       */
+      if (record.grounded && record.sources.length) {
+        if (
+          selected &&
+          record.lessonId !== selected.key &&
+          normalizeText(record.lessonTitle) !== normalizeText(selected.title)
+        ) return false;
+
+        return true;
+      }
+
+      return false;
+    }
+
+    function invalidateAnswerRequest() {
+      answerVersion++;
+      answerController?.abort();
+      answerController = null;
+      busy($("getAnswerBtn"), false);
+    }
+
+    function clearCurrentAnswer() {
+      currentAnswer = null;
+      answer.value = "";
+      answer.scrollTop = 0;
+      answer.style.removeProperty("height");
+      renderSources($("answerSources"), []);
+    }
+
+    async function getAnswer() {
+      const text = question.value.trim();
+
+      if (!text || text.length > 6000) {
+        status(
+          "voiceStatus",
+          "ከ1 እስከ 6000 ቁምፊዎች ያለውን ጥያቄ ይጻፉ።",
+          "Enter a question between 1 and 6,000 characters.",
+          "warn"
+        );
+        question.focus({ preventScroll: true });
+        return;
+      }
+
+      stopReading();
+      stopMicrophone();
+      invalidateAnswerRequest();
+
+      const version = answerVersion;
+      const firstLanguage = detectLanguage(text);
+      const mode = selectedMode();
+      const selected = selectedLesson();
+
+      appendMessage("user", [{ text, lang: firstLanguage }]);
+
+      if (mode === "course" && lessonsLoaded) {
+        const local = findDirectLesson(text);
+
+        if (local) {
+          const record = lessonRecord(local);
+
+          if (record.am && record.en) {
+            showAnswer(record, firstLanguage);
+
+            status(
+              "voiceStatus",
+              "መልሱ ከተጫነው ትምህርት ተገኝቷል።",
+              "Answer found in the loaded course material.",
+              "ok"
+            );
+            return;
+          }
+        }
+      }
+
+      currentAnswer = null;
+      answer.value = firstLanguage === "am"
+        ? "መልስ እየተጠየቀ ነው..."
+        : "Requesting an answer...";
+
+      answer.scrollTop = 0;
+      busy($("getAnswerBtn"), true);
+
+      const controller = new AbortController();
+      answerController = controller;
+
+      const payload = {
+        chatId,
+        question: text,
+        language: firstLanguage,
+        mode,
+        simpleMode: $("simpleModeToggle")?.checked === true,
+        responseLanguages: ["am", "en"]
+      };
+
+      if (selected) payload.lessonId = selected.key;
+
+      try {
+        const data = await api("/api/ask", {
+          method: "POST",
+          body: payload,
+          signal: controller.signal
+        });
+
+        if (version !== answerVersion) return;
+
+        let record = normalizeApiAnswer(data);
+
+        if (
+          mode === "course" &&
+          !courseResponseAllowed(record, selected)
+        ) {
+          record = courseRefusal();
+        }
+
+        showAnswer(record, firstLanguage);
+
+        status(
+          "voiceStatus",
+          record.provider === "course-refusal"
+            ? "የትምህርት ድጋፉ አልተረጋገጠም። የሰው ድጋፍ መጠየቅ ይችላሉ።"
+            : "መልሱ ዝግጁ ነው።",
+          record.provider === "course-refusal"
+            ? "Course support was not verified. Human help is available."
+            : mode === "career"
+              ? "Career answer ready. Verify important details with the original source."
+              : "Your answer is ready.",
+          record.provider === "course-refusal" ? "warn" : "ok"
+        );
+      } catch (error) {
+        if (version !== answerVersion) return;
+
+        const am = error.status === 404
+          ? "የመልስ አገልጋዩ መንገድ አልተገኘም።"
+          : "ከአገልጋዩ መልስ ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም የሰው ድጋፍ ይጠይቁ።";
+
+        const en = error.status === 404
+          ? "The answer route was not found. Check the Railway deployment."
+          : "The answer request failed. Try again or request human help.";
+
+        showAnswer({
+          am,
+          en,
+          sources: [],
+          provider: "error"
+        }, firstLanguage);
+
+        status(
+          "voiceStatus",
+          "ጥያቄው አልተሳካም።",
+          "The request did not complete.",
+          "warn"
+        );
+
+        console.warn("Answer request:", error.message);
+      } finally {
+        if (version === answerVersion) {
+          answerController = null;
+          busy($("getAnswerBtn"), false);
+        }
+      }
+    }
+
+    on("getAnswerBtn", getAnswer);
+
+    question.addEventListener("keydown", event => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        event.key === "Enter" &&
+        !$("getAnswerBtn")?.disabled
+      ) {
+        event.preventDefault();
+        getAnswer();
+      }
+    });
+
+    /* =====================================================
+       READING — ONE OUTPUT AT A TIME
+       ===================================================== */
+
+    function stopReading() {
+      speechVersion++;
+      readingLanguage = null;
+
+      speechController?.abort();
+      speechController = null;
+
+      const cancel = speechCancel;
+      speechCancel = null;
+      cancel?.();
+
+      if (activeUtterance) {
+        activeUtterance.onend = null;
+        activeUtterance.onerror = null;
+        activeUtterance = null;
+      }
+
+      try { window.speechSynthesis?.cancel(); } catch {}
+
+      if (activeAudio) {
+        activeAudio.pause();
+        activeAudio.removeAttribute("src");
+        activeAudio.load();
+        activeAudio = null;
+      }
+
+      updateMediaButtons();
+    }
+
+    function chooseVoice(voices, lang) {
+      const preferred = lang === "am"
+        ? ["Ameha"]
+        : ["David", "Mark", "Guy", "Ryan", "George", "Daniel"];
+
+      const score = voice => {
+        let value = voice.localService ? 2 : 0;
+
+        preferred.forEach((name, index) => {
+          if (voice.name.toLowerCase().includes(name.toLowerCase())) {
+            value += 100 - index;
+          }
+        });
+
+        return value;
+      };
+
+      return voices.filter(voice => {
+        const code = voice.lang.toLowerCase().replace(/_/g, "-");
+        return code === lang || code.startsWith(`${lang}-`);
+      }).sort((a, b) => score(b) - score(a))[0] || null;
+    }
+
+    function waitForVoices(run, lang) {
+      return new Promise(resolve => {
+        const synth = window.speechSynthesis;
+
+        if (!synth) {
+          resolve([]);
+          return;
+        }
+
+        let done = false;
+        let timer;
+
+        function finish(voices) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          synth.removeEventListener("voiceschanged", check);
+          if (speechCancel === cancel) speechCancel = null;
+          resolve(voices);
+        }
+
+        function cancel() { finish([]); }
+
+        function check() {
+          if (run !== speechVersion) return finish([]);
+          const voices = synth.getVoices();
+          if (chooseVoice(voices, lang)) finish(voices);
+        }
+
+        speechCancel = cancel;
+        synth.addEventListener("voiceschanged", check);
+
+        timer = setTimeout(
+          () => finish(run === speechVersion ? synth.getVoices() : []),
+          1200
+        );
+
+        check();
+      });
+    }
+
+    function makeChunks(text, limit = 170) {
+      const sentences = String(text)
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[*#`]/g, "")
+        .match(/[^.!?።፧\n]+[.!?።፧]?/g) || [];
+
+      const output = [];
+
+      for (const sentence of sentences) {
+        let chunk = "";
+
+        for (let word of sentence.trim().split(/\s+/)) {
+          if (chunk && `${chunk} ${word}`.length > limit) {
+            output.push(chunk);
+            chunk = "";
+          }
+
+          while (word.length > limit) {
+            output.push(word.slice(0, limit));
+            word = word.slice(limit);
+          }
+
+          if (word) chunk = chunk ? `${chunk} ${word}` : word;
+        }
+
+        if (chunk) output.push(chunk);
+      }
+
+      return output;
+    }
+
+    function speakChunk(text, voice, lang, run) {
+      return new Promise((resolve, reject) => {
+        if (run !== speechVersion) return resolve(false);
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = voice;
+        utterance.lang = lang === "am" ? "am-ET" : "en-US";
+        utterance.rate = lang === "am" ? 0.85 : 0.88;
+        utterance.pitch = 0.94;
+        utterance.volume = 0.8;
+
+        let done = false;
+
+        function finish(error, completed = true) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+
+          utterance.onend = null;
+          utterance.onerror = null;
+
+          if (activeUtterance === utterance) activeUtterance = null;
+          if (speechCancel === cancel) speechCancel = null;
+
+          error ? reject(error) : resolve(completed);
+        }
+
+        function cancel() { finish(null, false); }
+
+        const timer = setTimeout(() => {
+          finish(new Error("Reading timed out."));
+          try { window.speechSynthesis.cancel(); } catch {}
+        }, 60000);
+
+        utterance.onend = () => finish(null, true);
+
+        utterance.onerror = event => {
+          if (
+            run !== speechVersion ||
+            ["canceled", "interrupted"].includes(event.error)
+          ) finish(null, false);
+          else finish(new Error(event.error || "Speech failed."));
+        };
+
+        activeUtterance = utterance;
+        speechCancel = cancel;
+
+        try {
+          window.speechSynthesis.speak(utterance);
+        } catch (error) {
+          finish(error);
+        }
+      });
+    }
+
+    async function playAudio(source, run) {
+      if (run !== speechVersion) return false;
+
+      const player = new Audio();
+      player.volume = 0.8;
+      activeAudio = player;
+
+      try {
+        return await new Promise((resolve, reject) => {
+          let done = false;
+
+          function finish(error, completed = true) {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            player.onended = null;
+            player.onerror = null;
+
+            if (speechCancel === cancel) speechCancel = null;
+            error ? reject(error) : resolve(completed);
+          }
+
+          function cancel() {
+            player.pause();
+            finish(null, false);
+          }
+
+          const timer = setTimeout(() => {
+            player.pause();
+            finish(new Error("Online audio timed out."));
+          }, 120000);
+
+          speechCancel = cancel;
+          player.onended = () => finish(null, true);
+          player.onerror = () =>
+            finish(new Error("Online audio was unavailable or blocked."));
+
+          if (run !== speechVersion) return cancel();
+
+          player.src = source;
+          player.play().catch(error => finish(error));
+        });
+      } finally {
+        player.pause();
+        player.removeAttribute("src");
+        player.load();
+        if (activeAudio === player) activeAudio = null;
+      }
+    }
+
+    async function googleSpeech(text, lang, run) {
+      for (const chunk of makeChunks(text)) {
+        if (run !== speechVersion) return;
+
+        const url = new URL(
+          "https://translate.google.com/translate_tts"
+        );
+
+        url.searchParams.set("ie", "UTF-8");
+        url.searchParams.set("client", "tw-ob");
+        url.searchParams.set("tl", lang);
+        url.searchParams.set("q", chunk);
+
+        const completed = await playAudio(url.href, run);
+        if (!completed || run !== speechVersion) return;
+      }
+    }
+
+    async function serverSpeech(text, lang, run) {
+      const controller = new AbortController();
+      speechController = controller;
+
+      let objectURL;
+      const timer = setTimeout(() => controller.abort(), 30000);
+
+      try {
+        const response = await fetch(
+          `${CONFIG.apiBase}${CONFIG.speechPath}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text,
+              language: lang === "am" ? "am-ET" : "en-US"
+            }),
+            signal: controller.signal
+          }
+        );
+
+        if (
+          !response.ok ||
+          !response.headers.get("Content-Type")
+            ?.toLowerCase().startsWith("audio/")
+        ) throw new Error("Speech endpoint did not return audio.");
+
+        const blob = await response.blob();
+        if (run !== speechVersion) return;
+
+        objectURL = URL.createObjectURL(blob);
+        await playAudio(objectURL, run);
+      } finally {
+        clearTimeout(timer);
+        if (speechController === controller) speechController = null;
+        if (objectURL) URL.revokeObjectURL(objectURL);
+      }
+    }
+
+    async function readAloud(lang) {
+      const same = readingLanguage === lang;
+      stopReading();
+      if (same) return;
+
+      stopMicrophone();
+
+      const text = currentAnswer
+        ? String(currentAnswer[lang] || "").trim()
+        : extractLanguage(answer.value, lang);
+
+      if (!text) {
+        status(
+          "voiceStatus",
+          "በተመረጠው ቋንቋ የመልስ ጽሑፍ የለም።",
+          `There is no ${lang === "am" ? "Amharic" : "English"} answer text.`,
+          "warn"
+        );
+        return;
+      }
+
+      const run = speechVersion;
+      readingLanguage = lang;
+      updateMediaButtons();
+
+      try {
+        const voices = await waitForVoices(run, lang);
+        if (run !== speechVersion) return;
+
+        const voice = chooseVoice(voices, lang);
+
+        if (voice) {
+          for (const chunk of makeChunks(text)) {
+            if (run !== speechVersion) return;
+            const completed = await speakChunk(chunk, voice, lang, run);
+            if (!completed || run !== speechVersion) return;
+          }
+        } else if (CONFIG.speechPath) {
+          await serverSpeech(text, lang, run);
+        } else if (
+          CONFIG.googleSpeechFallback &&
+          navigator.onLine !== false
+        ) {
+          status(
+            "voiceStatus",
+            "የመስመር ላይ የንባብ አገልግሎት እየተሞከረ ነው...",
+            "Trying online speech. Answer text will be sent to Google."
+          );
+
+          await googleSpeech(text, lang, run);
+        } else {
+          status(
+            "voiceStatus",
+            "ለዚህ ቋንቋ የንባብ ድምፅ አልተገኘም።",
+            "No matching reading voice is available.",
+            "warn"
+          );
+        }
+      } catch (error) {
+        if (run !== speechVersion) return;
+
+        try { window.speechSynthesis?.cancel(); } catch {}
+        activeAudio?.pause();
+
+        status(
+          "voiceStatus",
+          "የድምፅ ንባቡ አልተሳካም።",
+          "Reading was unavailable. Check the device voice or speech service.",
+          "warn"
+        );
+
+        console.warn("Reading:", error.message);
+      } finally {
+        if (run === speechVersion) {
+          readingLanguage = null;
+          updateMediaButtons();
+        }
+      }
+    }
+
+    on("speakAmharicBtn", () => readAloud("am"));
+    on("speakEnglishBtn", () => readAloud("en"));
+
+    /* =====================================================
+       MICROPHONE / BEEPS
+       ===================================================== */
+
+    function unlockAudio() {
+      const Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) return;
+
+      try {
+        audioContext ||= new Context();
+        audioContext.resume().catch(() => {});
+      } catch {}
+    }
+
+    function beep(startTone) {
+      if (audioContext?.state !== "running") return;
+
+      try {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const now = audioContext.currentTime;
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(startTone ? 620 : 820, now);
+        osc.frequency.exponentialRampToValueAtTime(
+          startTone ? 820 : 580, now + 0.16
+        );
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.045, now + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+
+        osc.onended = () => {
+          osc.disconnect();
+          gain.disconnect();
+        };
+
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } catch {}
+    }
+
+    function finishMicrophone(session) {
+      if (session.finished) return;
+      session.finished = true;
+
+      if (session.started) beep(false);
+      if (microphone === session) microphone = null;
+
+      updateMediaButtons();
+    }
+
+    function stopMicrophone() {
+      const session = microphone;
+      if (!session) return;
+
+      microphone = null;
+      session.recognizer.onresult = null;
+
+      try { session.recognizer.abort(); } catch {}
+      finishMicrophone(session);
+    }
+
+    function startMicrophone(lang) {
+      const previous = microphone?.lang;
+      stopMicrophone();
+      if (previous === lang) return;
+
+      stopReading();
+      unlockAudio();
+
+      const Recognizer =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!Recognizer) {
+        status(
+          "voiceStatus",
+          "የድምፅ ግብዓት አይገኝም። እባክዎ ይጻፉ።",
+          "Voice input is unavailable. Please type.",
+          "warn"
+        );
+        return;
+      }
+
+      const recognizer = new Recognizer();
+      const session = {
+        recognizer, lang, started: false, finished: false
+      };
+
+      microphone = session;
+      recognizer.lang = lang === "am" ? "am-ET" : "en-US";
+      recognizer.continuous = false;
+      recognizer.interimResults = false;
+
+      recognizer.onstart = () => {
+        if (microphone !== session) {
+          try { recognizer.abort(); } catch {}
+          return;
+        }
+
+        session.started = true;
+        beep(true);
+        updateMediaButtons();
+
+        status(
+          "voiceStatus",
+          "እባክዎ ይናገሩ።",
+          "Listening. Please speak."
+        );
+      };
+
+      recognizer.onresult = event => {
+        if (microphone !== session) return;
+
+        const text = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join(" ")
+          .trim();
+
+        question.value = [
+          question.value.trim(),
+          text
+        ].filter(Boolean).join(" ");
+
+        status(
+          "voiceStatus",
+          "ጥያቄዎ ተጽፏል። መልስ አግኝ ይጫኑ።",
+          "Your words were added. Press Get Answer.",
+          "ok"
+        );
+      };
+
+      recognizer.onerror = event => {
+        if (microphone === session && event.error !== "aborted") {
+          status(
+            "voiceStatus",
+            "የድምፅ ግብዓት አልተሳካም።",
+            `Microphone error: ${event.error}.`,
+            "warn"
+          );
+        }
+      };
+
+      recognizer.onend = () => finishMicrophone(session);
+
+      updateMediaButtons();
+
+      try {
+        recognizer.start();
+      } catch {
+        finishMicrophone(session);
+
+        status(
+          "voiceStatus",
+          "ማይክሮፎኑን መጀመር አልተቻለም።",
+          "The microphone could not start.",
+          "warn"
+        );
+      }
+    }
+
+    on("voiceAmharicBtn", () => startMicrophone("am"));
+    on("voiceEnglishBtn", () => startMicrophone("en"));
+
+    /* =====================================================
+       CLEAR / COPY / DOWNLOAD
+       ===================================================== */
+
+    on("clearBtn", () => {
+      invalidateAnswerRequest();
+      stopReading();
+      stopMicrophone();
+
+      question.value = "";
+      question.scrollTop = 0;
+      copiedQuestion = "";
+      clearCurrentAnswer();
+
+      status(
+        "voiceStatus",
+        "ጥያቄውና መልሱ ተጽድተዋል።",
+        "Question and answer cleared. Conversation history is unchanged."
+      );
+
+      question.focus({ preventScroll: true });
+    });
+
+    on("clearHistoryBtn", () => {
+      $("conversation")?.replaceChildren();
+      if ($("conversationEmpty")) $("conversationEmpty").hidden = false;
+
+      announce(
+        language === "am"
+          ? "የውይይት ታሪኩ ተጽድቷል።"
+          : "Conversation history cleared from this page."
+      );
+    });
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    on("copyBtn", async () => {
+      const text = question.value.trim();
+
+      if (!text) {
+        status(
+          "voiceStatus",
+          "መጀመሪያ ጥያቄ ይጻፉ።",
+          "Please type a question first.",
+          "warn"
+        );
+        return;
+      }
+
+      copiedQuestion = text;
+      const copied = await copyText(text);
+
+      status(
+        "voiceStatus",
+        copied ? "ጥያቄው ተቀድቷል።" : "ጥያቄው ለእርዳታ ተዘጋጅቷል።",
+        copied
+          ? "Question copied."
+          : "Saved for Help, but clipboard access was unavailable.",
+        copied ? "ok" : "warn"
+      );
+    });
+
+    on("downloadBtn", () => {
+      const content =
+        "Learning and Employment / ትምህርት እና ሥራ\n\n" +
+        `Question:\n${question.value}\n\nAnswer:\n${answer.value}`;
+
+      const url = URL.createObjectURL(new Blob(["\uFEFF", content], {
+        type: "text/plain;charset=utf-8"
+      }));
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "learning-and-employment.txt";
+      document.body.append(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    });
+
+    /* =====================================================
+       FORM UTILITIES
+       ===================================================== */
+
+    function validInternationalPhone(value) {
+      return /^\+[1-9]\d{7,14}$/.test(
+        String(value).replace(/[\s()-]/g, "")
+      );
+    }
+
+    function normalizePhone(value) {
+      return String(value).replace(/[\s()-]/g, "");
+    }
+
+    function clearForm(form) {
+      form.reset();
+
+      form.querySelectorAll("input, textarea, select").forEach(field => {
+        if (field instanceof HTMLSelectElement) {
+          field.selectedIndex = 0;
+        } else if (["checkbox", "radio"].includes(field.type)) {
+          field.checked = false;
+        } else if (!["button", "submit", "hidden"].includes(field.type)) {
+          field.value = "";
+        }
+      });
+    }
+
+    function referenceFrom(data) {
+      const value = data.requestId || data.reference || data.subscriptionId;
+      return value == null ? "" : String(value);
+    }
+
+    async function submitRequest({
+      form,
+      buttonId,
+      statusId,
+      path,
+      payload,
+      successAm,
+      successEn,
+      onSuccess
+    }) {
+      if (pendingForms.has(form)) return;
+
+      pendingForms.add(form);
+      busy($(buttonId), true);
+
+      status(
+        statusId,
+        "ጥያቄዎ እየተላከ ነው...",
+        "Submitting your request..."
+      );
+
+      try {
+        const data = await api(path, {
+          method: "POST",
+          body: payload
+        });
+
+        clearForm(form);
+
+        status(statusId, successAm, successEn, "ok");
+        onSuccess?.(data);
+      } catch (error) {
+        status(
+          statusId,
+          "ጥያቄው መቀበሉ አልተረጋገጠም። መረጃዎ አልተጽዳም። Telegram ወይም እንደገና መሞከር ይችላሉ።",
+          "Submission was not confirmed. Your fields were kept. Try again or contact the Telegram support bot.",
+          "warn"
+        );
+
+        console.warn(path, error.message);
+      } finally {
+        pendingForms.delete(form);
+        busy($(buttonId), false);
+      }
+    }
+
+    /* =====================================================
+       HUMAN HELP
+       Contact is included in question text for compatibility
+       with the current /api/help implementation.
+       ===================================================== */
+
+    on("helpBtn", () => {
+      stopReading();
+      stopMicrophone();
+
+      if ($("helpQuestion")) {
+        $("helpQuestion").value =
+          question.value.trim() || copiedQuestion;
+      }
+
+      focusSection("humanHelpSection");
+
+      $("helpQuestion")?.focus({ preventScroll: true });
+    });
+
+    const helpForm = $("humanHelpForm");
+
+    helpForm?.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!helpForm.reportValidity()) return;
+
+      const text = fieldValue("helpQuestion");
+      const method = fieldValue("helpContactMethod");
+      const contact = fieldValue("helpContact");
+
+      if (!text || !contact || !$("helpConsent")?.checked) return;
+
+      const validContact =
+        method === "phone"
+          ? validInternationalPhone(contact)
+          : method === "email"
+            ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)
+            : method === "telegram"
+              ? /^@?[A-Za-z0-9_]{5,32}$/.test(contact)
+              : false;
+
+      if (!validContact) {
+        status(
+          "humanHelpStatus",
+          "ከተመረጠው የመገናኛ ዓይነት ጋር የሚጣጣም ትክክለኛ መረጃ ያስገቡ።",
+          "Enter valid contact details for the selected contact method.",
+          "warn"
+        );
+        return;
+      }
+
+      submitRequest({
+        form: helpForm,
+        buttonId: "humanHelpSubmitBtn",
+        statusId: "humanHelpStatus",
+        path: "/api/help",
+        payload: {
+          chatId,
+          question:
+            `Question:\n${text}\n\nReply method: ${method}\n` +
+            `Contact: ${contact}\nConsent: provided`,
+          contactMethod: method,
+          contact,
+          consent: true
+        },
+        successAm:
+          "የእርዳታ ጥያቄዎ ተቀብሏል። የምላሽ ጊዜ የተለያየ ሊሆን ይችላል።",
+        successEn:
+          "Your help request was accepted. Response times may vary.",
+        onSuccess(data) {
+          const reference = referenceFrom(data);
+
+          if ($("helpRequestReference")) {
+            $("helpRequestReference").textContent = reference
+              ? `Request reference: ${reference}`
+              : "The server did not issue a request reference.";
+          }
+        }
+      });
+    });
+
+    $("telegramSupportLink")?.addEventListener("click", event => {
+      const text =
+        fieldValue("helpQuestion") ||
+        question.value.trim() ||
+        copiedQuestion;
+
+      const url = new URL(CONFIG.telegram);
+
+      if (text) {
+        url.searchParams.set(
+          "text",
+          `Learning support request\n\nQuestion:\n${text}`
+        );
+      }
+
+      event.currentTarget.href = url.href;
+    });
+
+    /* =====================================================
+       OPTIONAL MEETING SUPPORT
+       ===================================================== */
+
+    on("screenShareBtn", () => {
+      stopReading();
+      stopMicrophone();
+      focusSection("screenShareSection");
+      $("meetingLink")?.focus({ preventScroll: true });
+    });
+
+    const screenForm = $("screenShareForm");
+
+    screenForm?.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!screenForm.reportValidity()) return;
+
+      let meetingLink;
+
+      try {
+        const url = new URL(fieldValue("meetingLink"));
+        if (url.protocol !== "https:") throw new Error();
+        meetingLink = url.href;
+      } catch {
+        status(
+          "screenShareStatus",
+          "ትክክለኛ HTTPS ሊንክ ያስገቡ።",
+          "Enter a valid HTTPS meeting link.",
+          "warn"
+        );
+        return;
+      }
+
+      if (!$("screenShareConsent")?.checked) return;
+
+      submitRequest({
+        form: screenForm,
+        buttonId: "screenShareSubmitBtn",
+        statusId: "screenShareStatus",
+        path: "/api/screen-share",
+        payload: {
+          chatId,
+          meetingLink,
+          consent: true
+        },
+        successAm:
+          "የስብሰባ ሊንኩ ተቀብሏል። ስክሪን ማጋራት አልተጀመረም።",
+        successEn:
+          "Your meeting-link request was accepted. Screen sharing has not started."
+      });
+    });
+
+    /* =====================================================
+       JOB ALERT REQUESTS
+       The current backend forwards a request, not a verified
+       active subscription.
+       ===================================================== */
+
+    const jobForm = $("jobAlertForm");
+
+    jobForm?.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!jobForm.reportValidity()) return;
+
+      const channels = [
+        $("jobChannelTelegram")?.checked ? "telegram" : "",
+        $("jobChannelSms")?.checked ? "sms" : ""
+      ].filter(Boolean);
+
+      const phone = normalizePhone(fieldValue("jobPhone"));
+      const telegram = fieldValue("jobTelegram");
+      const area = fieldValue("jobArea");
+      const location = fieldValue("jobLocation");
+
+      if (
+        !channels.length ||
+        (channels.includes("sms") && !validInternationalPhone(phone)) ||
+        (channels.includes("telegram") && !/^@?[A-Za-z0-9_]{5,32}$/.test(telegram)) ||
+        !$("jobAlertConsent")?.checked
+      ) {
+        status(
+          "jobAlertStatus",
+          "የማሳወቂያ መንገድ ይምረጡና ለዚያ መንገድ ትክክለኛ የመገናኛ መረጃ ያስገቡ።",
+          "Choose at least one channel and enter valid contact details for each selected channel.",
+          "warn"
+        );
+        return;
+      }
+
+      /*
+       * Current backend forwards area/phone/telegram only.
+       * Include preferences in area so the support admin sees
+       * them until dedicated storage fields are implemented.
+       */
+      const requestArea =
+        `${area}; location: ${location || "not specified"}; ` +
+        `channels: ${channels.join(", ")}; consent: provided`;
+
+      submitRequest({
+        form: jobForm,
+        buttonId: "jobAlertBtn",
+        statusId: "jobAlertStatus",
+        path: "/api/job-alert",
+        payload: {
+          chatId,
+          phone,
+          telegram,
+          area: requestArea,
+          jobArea: area,
+          location,
+          channels,
+          consent: true,
+          consentAt: new Date().toISOString()
+        },
+        successAm:
+          "የሥራ ማሳወቂያ ጥያቄዎ ተቀብሏል። ምዝገባው ገቢር መሆኑ ገና አልተረጋገጠም።",
+        successEn:
+          "Your job-alert request was accepted. This does not confirm an active subscription or notification delivery."
+      });
+    });
+
+    /* =====================================================
+       UNSUBSCRIBE
+       No fake success when a subscription endpoint is absent.
+       ===================================================== */
+
+    const unsubscribeForm = $("unsubscribeForm");
+
+    unsubscribeForm?.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!unsubscribeForm.reportValidity()) return;
+
+      const contact = fieldValue("unsubscribeContact");
+
+      const configured = Boolean(CONFIG.unsubscribePath);
+
+      submitRequest({
+        form: unsubscribeForm,
+        buttonId: "unsubscribeBtn",
+        statusId: "unsubscribeStatus",
+        path: configured ? CONFIG.unsubscribePath : "/api/help",
+        payload: configured
+          ? { chatId, contact }
+          : {
+              chatId,
+              question:
+                "UNSUBSCRIBE REQUEST\n" +
+                `Registered contact or reference: ${contact}\n` +
+                "Please stop job-alert notifications for this subscription."
+            },
+        successAm:
+          "የማቋረጥ ጥያቄዎ ተቀብሏል። አገልግሎቱ መቋረጡን ድጋፍ ሰጪው ማረጋገጥ ያስፈልጋል።",
+        successEn:
+          "Your unsubscribe request was accepted for handling. Support must confirm that notifications have stopped."
+      });
+    });
+
+    /* =====================================================
+       INTERVIEW ACCOMMODATIONS
+       ===================================================== */
+
+    const accommodationForm = $("accommodationForm");
+
+    accommodationForm?.addEventListener("submit", event => {
+      event.preventDefault();
+      if (!accommodationForm.reportValidity()) return;
+
+      const name = fieldValue("accommodationName");
+      const phone = normalizePhone(fieldValue("accommodationPhone"));
+      const type = fieldValue("accommodationType");
+      const details = fieldValue("accommodationDetails");
+
+      if (
+        !validInternationalPhone(phone) ||
+        !$("accommodationConsent")?.checked
+      ) {
+        status(
+          "accommodationStatus",
+          "ትክክለኛ ዓለም አቀፍ ስልክ ቁጥር ያስገቡና ፈቃድዎን ያረጋግጡ።",
+          "Enter a valid international phone number and confirm consent.",
+          "warn"
+        );
+        return;
+      }
+
+      const accommodation =
+        `Name: ${name}\nPhone: ${phone}\nSupport: ${type}\n` +
+        `Details: ${details || "Not provided"}\nConsent: provided`;
+
+      submitRequest({
+        form: accommodationForm,
+        buttonId: "accommodationBtn",
+        statusId: "accommodationStatus",
+        path: "/api/accommodation",
+        payload: {
+          chatId,
+          accommodation,
+          name,
+          phone,
+          type,
+          details,
+          consent: true
+        },
+        successAm:
+          "የድጋፍ ጥያቄዎ ተቀብሏል። የተጠየቀው ድጋፍ መዘጋጀቱ ገና አልተረጋገጠም።",
+        successEn:
+          "Your request was accepted. This does not confirm that the accommodation has been arranged."
+      });
+    });
+
+    /* =====================================================
+       JOB LISTINGS — SAFE DEMO / EXPIRED LABELS
+       ===================================================== */
+
+    async function loadJobs() {
+      busy($("refreshJobsBtn"), true);
+
+      status(
+        "jobsStatus",
+        "የሥራ ዝርዝር እየተጫነ ነው...",
+        "Loading job listings..."
+      );
+
+      try {
+        const data = await api("/api/jobs");
+
+        const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+        const grid = $("jobsGrid");
+        grid?.replaceChildren();
+
+        jobs.forEach(job => {
+          if (!grid || !job || typeof job !== "object") return;
+
+          const card = document.createElement("article");
+          card.className = "job-card";
+
+          const title = document.createElement("h3");
+          title.textContent = job.title || "Job listing";
+
+          const demo = data.demo === true || job.demo === true;
+          const deadline = typeof job.deadline === "string"
+            ? job.deadline
+            : "";
+
+          const validDate = /^\d{4}-\d{2}-\d{2}$/.test(deadline);
+          const expired = validDate &&
+            new Date(`${deadline}T23:59:59Z`).getTime() < Date.now();
+
+          if (demo || expired) {
+            const badge = document.createElement("span");
+            badge.className = "demo-badge";
+            badge.textContent = demo
+              ? "DEMONSTRATION — not a verified vacancy"
+              : "Deadline passed";
+            card.append(badge);
+          }
+
+          const meta = document.createElement("p");
+          meta.className = "job-meta";
+          meta.textContent = [
+            job.organization,
+            job.location,
+            job.type,
+            deadline && `Deadline: ${deadline}`
+          ].filter(Boolean).join(" · ");
+
+          card.append(title, meta);
+
+          const url = safeHttpUrl(job.link || "");
+
+          if (url && !demo && !expired) {
+            const link = document.createElement("a");
+            link.className = "course-link";
+            link.href = url;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = "View original listing";
+            card.append(link);
+          } else {
+            const note = document.createElement("p");
+            note.textContent = demo
+              ? "Example only. Do not treat this as an application opportunity."
+              : expired
+                ? "Check the employer for current opportunities."
+                : "No valid application link was supplied.";
+
+            card.append(note);
+          }
+
+          grid.append(card);
+        });
+
+        status(
+          "jobsStatus",
+          `${jobs.length} ዝርዝሮች ተጭነዋል። የምሳሌ ምልክቶችን ያስተውሉ።`,
+          `${jobs.length} listings loaded. Check demonstration labels and original sources.`,
+          jobs.length ? "ok" : "warn"
+        );
+      } catch (error) {
+        status(
+          "jobsStatus",
+          "የሥራ ዝርዝሩን መጫን አልተቻለም።",
+          "Job listings could not load.",
+          "warn"
+        );
+
+        console.warn("Jobs:", error.message);
+      } finally {
+        busy($("refreshJobsBtn"), false);
+      }
+    }
+
+    on("refreshJobsBtn", loadJobs);
+
+    /* =====================================================
+       AGGREGATE TEACHER TOPICS
+       ===================================================== */
+
+    async function loadTeacherStats() {
+      const container = $("teacherStats");
+      if (!container) return;
+
+      busy($("refreshTeacherStatsBtn"), true);
+
+      try {
+        const data = await api("/api/teacher-stats");
+
+        /*
+         * Latest bot.js explicitly marks aggregate topic data.
+         * Do not render an unknown older endpoint containing
+         * raw learner questions.
+         */
+        if (data.aggregateOnly !== true) {
+          throw new Error("Aggregate-only response was not confirmed.");
+        }
+
+        const topics = Array.isArray(data.questions)
+          ? data.questions.slice(0, 20)
+          : [];
+
+        container.replaceChildren();
+
+        if (!topics.length) {
+          const p = document.createElement("p");
+          p.textContent = "No aggregate lesson-topic counts yet.";
+          container.append(p);
+        } else {
+          const list = document.createElement("ol");
+
+          topics.forEach(item => {
+            const row = document.createElement("li");
+            row.textContent =
+              `${String(item.question || "Topic")} — ${Number(item.count) || 0}`;
+            list.append(row);
+          });
+
+          container.append(list);
+        }
+
+        status(
+          "teacherStatsStatus",
+          "የተጠቃለሉ የርዕስ ቆጠራዎች ተጭነዋል።",
+          "Aggregate topic counts loaded. In-memory counts may reset on server restart.",
+          "ok"
+        );
+      } catch (error) {
+        container.textContent =
+          "Anonymous aggregate statistics are unavailable.";
+
+        status(
+          "teacherStatsStatus",
+          "የተጠቃለሉ መረጃዎችን መጫን አልተቻለም።",
+          "Aggregate statistics could not be verified or loaded.",
+          "warn"
+        );
+
+        console.warn("Teacher statistics:", error.message);
+      } finally {
+        busy($("refreshTeacherStatsBtn"), false);
+      }
+    }
+
+    on("refreshTeacherStatsBtn", loadTeacherStats);
+
+    /* =====================================================
+       DIAGNOSTICS
+       ===================================================== */
+
+    window.explainLessonMatch = text => {
+      const match = findDirectLesson(text);
+
+      const result = {
+        original: text,
+        normalized: normalizeText(text),
+        selectedLesson: selectedLesson()?.title || "All lessons",
+        match: match?.title || null,
+        nextStep: match ? "Approved lesson text" : "Backend request"
+      };
+
+      console.table([result]);
+      return result;
+    };
+
+    window.testWebsite = async () => {
+      const results = [];
+
+      [
+        "question", "answer", "getAnswerBtn", "clearBtn",
+        "copyBtn", "conversation", "assistantMode", "lessonSelect",
+        "simpleModeToggle", "humanHelpForm", "screenShareForm",
+        "jobAlertForm", "unsubscribeForm", "accommodationForm",
+        "speakAmharicBtn", "speakEnglishBtn"
+      ].forEach(id => {
+        const count =
+          document.querySelectorAll(`[id="${id}"]`).length;
+
+        results.push({
+          test: `Unique #${id}`,
+          passed: count === 1,
+          details: `Found ${count}`
+        });
+      });
+
+      results.push({
+        test: "Course library loaded",
+        passed: lessonsLoaded && lessons.length > 0,
+        details: `${lessons.length} lessons`
+      });
+
+      results.push({
+        test: "Question direction",
+        passed: question.getAttribute("dir") === "auto",
+        details: ""
+      });
+
+      const voices = window.speechSynthesis?.getVoices() || [];
+
+      results.push({
+        test: "Amharic device voice",
+        passed: Boolean(chooseVoice(voices, "am")),
+        details: "Online fallback may be needed."
+      });
+
+      results.push({
+        test: "English device voice",
+        passed: Boolean(chooseVoice(voices, "en")),
+        details: ""
+      });
+
+      try {
+        const health = await api("/api/health", { timeout: 8000 });
+
+        results.push({
+          test: "API health",
+          passed: health.status === "ok",
+          details: "Does not verify Groq or delivery."
+        });
+      } catch (error) {
+        results.push({
+          test: "API health",
+          passed: false,
+          details: error.message
+        });
+      }
+
+      console.table(results);
+      return results;
+    };
+
+    window.testBackendFallback = async (
+      text = "ለቃለ መጠይቅ ሦስት የዝግጅት ምክሮችን ስጠኝ።"
+    ) => {
+      /*
+       * Explicit manual POST test. May incur AI usage.
+       * It does not display the answer or submit support forms.
+       */
+      try {
+        const data = await api("/api/ask", {
+          method: "POST",
+          body: {
+            chatId,
+            question: String(text),
+            language: detectLanguage(String(text)),
+            mode: "career",
+            responseLanguages: ["am", "en"]
+          }
+        });
+
+        const record = normalizeApiAnswer(data);
+
+        console.table([{
+          requestSucceeded: true,
+          amharicPresent: Boolean(record.am),
+          englishPresent: Boolean(record.en),
+          reportedProvider: record.provider,
+          note: "Check server logs for actual provider invocation."
+        }]);
+
+        return data;
+      } catch (error) {
+        console.error("Backend test failed:", error);
+        return {
+          requestSucceeded: false,
+          status: error.status || null,
+          message: error.message
+        };
+      }
+    };
+
+    /* =====================================================
+       INITIALIZATION / CLEANUP
+       ===================================================== */
+
+    document.body.classList.toggle(
+      "high-contrast",
+      settings.highContrast === true
+    );
+
+    $("contrastBtn")?.setAttribute(
+      "aria-pressed",
+      String(settings.highContrast === true)
+    );
+
+    if ($("simpleModeToggle")) {
+      $("simpleModeToggle").checked = settings.simpleMode === true;
+
+      $("simpleModeToggle").addEventListener("change", () => {
+        saveSetting(
+          "simpleMode",
+          $("simpleModeToggle").checked
+        );
+      });
+    }
+
+    applyFont();
+    updateLanguage();
+
+    Promise.allSettled([
+      loadLessons(),
+      loadJobs(),
+      loadTeacherStats()
+    ]);
+
+    window.addEventListener("pagehide", () => {
+      invalidateAnswerRequest();
+      stopReading();
+      stopMicrophone();
+    });
+
+    console.info(
+      "Learning assistant initialized once. Run testWebsite() for diagnostics."
+    );
   }
-}
 
-
-/* =========================================================
-   NEW: OFFLINE APP (service worker)
-   After the first visit with internet, the page, the script and
-   all recorded voices are saved, so the tool opens and talks offline.
-   ========================================================= */
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(err => console.warn("SW failed", err));
-  });
-}
-
-
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+})();
