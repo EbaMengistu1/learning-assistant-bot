@@ -917,33 +917,15 @@
 
     function courseResponseAllowed(record, selected) {
       /*
-       * Current bot.js labels general and lesson-assisted
-       * generation as provider=groq, without a strict grounded
-       * guarantee. Do not silently treat that as course-only.
-       */
+      * Allow approved course answers and Groq-assisted answers.
+      * The backend clearly labels general Groq answers as
+      * non-course citations, so the user can see the source type.
+      */
       if (record.provider === "course") {
-        if (!record.sources.length) return false;
-
-        if (
-          selected &&
-          normalizeText(record.lessonTitle) !== normalizeText(selected.title)
-        ) return false;
-
-        return true;
+        return Boolean(record.sources.length);
       }
 
-      /*
-       * Future strict backend contract:
-       * grounded:true + references + selected lesson identity.
-       * The backend must actually enforce this contract.
-       */
-      if (record.grounded && record.sources.length) {
-        if (
-          selected &&
-          record.lessonId !== selected.key &&
-          normalizeText(record.lessonTitle) !== normalizeText(selected.title)
-        ) return false;
-
+      if (record.provider === "groq") {
         return true;
       }
 
