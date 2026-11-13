@@ -850,28 +850,187 @@ async function sendAccommodationMenu(chatId) {
   );
 }
 
+/* =========================================================
+   BILINGUAL START MENUS
+   Student + Teacher / Admin
+   Uses the existing callback handlers.
+   ========================================================= */
+
 async function sendStartMenu(chatId) {
-  const rows = [
-    [button("ትምህርት / Lessons", "student_learning")],
-    [button("Support menu", "track3_menu")],
-    [button("Job examples", "track3_jobs")],
-    [button("Interview support", "track3_interview_support")],
-    [button("Request help", "track3_need_person")],
-    [button("Quiz", "open_quiz_menu")],
-    [button("Progress", "show_progress")],
-    [button("Simple mode", "toggle_simple_mode")],
-    [button("Learning reminder", "sms_notification")]
+  const teacher = isAdmin(chatId);
+
+  const studentWelcome = [
+    "🇪🇹 እንኳን ደህና መጡ!",
+    "",
+    "ይህ ቦት ለትምህርት፣ ለሥራ እና ለድጋፍ ይረዳዎታል።",
+    "",
+    "በአማርኛ ወይም በእንግሊዝኛ መጠየቅ ይችላሉ።",
+    "",
+    "🇬🇧 Welcome!",
+    "",
+    "This bot helps you learn, find jobs, and get support.",
+    "",
+    "You can ask in Amharic or English.",
+    "",
+    "Your role: Student",
+    "",
+    "ከታች አንዱን ይምረጡ።",
+    "Choose an option below."
+  ].join("\n");
+
+  const teacherWelcome = [
+    "🇪🇹 እንኳን ደህና መጡ መምህር!",
+    "",
+    "ተማሪዎችን ማየት፣ መልዕክት መላክ፣",
+    "ማስታወቂያ መላክ እና የትምህርት መረጃ ማየት ይችላሉ።",
+    "",
+    "🇬🇧 Welcome, Teacher!",
+    "",
+    "You can view students, send individual messages,",
+    "send announcements, and view learning analytics.",
+    "",
+    "Your role: Teacher / Admin",
+    "",
+    "ከታች አንዱን ይምረጡ።",
+    "Choose an option below."
+  ].join("\n");
+
+  const studentButtons = [
+    [
+      {
+        text: "📚 ትምህርት ጀምር / Start Learning",
+        callback_data: "student_learning"
+      }
+    ],
+    [
+      {
+        text: "🎯 የTrack 3 ድጋፍ / Track 3 Support",
+        callback_data: "track3_menu"
+      }
+    ],
+    [
+      {
+        text: "💼 የሥራ ማሳወቂያ / Job Alerts",
+        callback_data: "track3_jobs"
+      }
+    ],
+    [
+      {
+        text: "📋 የቃለ መጠይቅ ድጋፍ / Interview Support",
+        callback_data: "track3_interview_support"
+      }
+    ],
+    [
+      {
+        text: "🙋 እርዳታ አስፈልገኛል / I Need Help",
+        callback_data: "track3_need_person"
+      }
+    ],
+    [
+      {
+        text: "🖥️ ስክሪን ማጋራት / Share My Screen",
+        callback_data: "track3_share_screen"
+      }
+    ],
+    [
+      {
+        text: "📝 ፈተና / Take Quiz",
+        callback_data: "open_quiz_menu"
+      }
+    ],
+    [
+      {
+        text: "📊 የትምህርት ሂደቴ / My Progress",
+        callback_data: "show_progress"
+      }
+    ],
+    [
+      {
+        text: "🟢 ቀላል መልስ / Simple Mode",
+        callback_data: "toggle_simple_mode"
+      }
+    ],
+    [
+      {
+        text: "📩 የትምህርት አስታዋሽ / Learning Reminder",
+        callback_data: "sms_notification"
+      }
+    ]
   ];
 
-  if (isAdmin(chatId)) {
-    rows.unshift([button("Teacher panel", "teacher_panel")]);
-  }
+  const teacherButtons = [
+    [
+      {
+        text: "🧑‍🏫 የመምህር ፓነል / Teacher Panel",
+        callback_data: "teacher_panel"
+      }
+    ],
+    [
+      {
+        text: "👥 ተማሪዎች / Students",
+        callback_data: "view_students"
+      }
+    ],
+    [
+      {
+        text: "📢 የTelegram ማስታወቂያ / Telegram Announcement",
+        callback_data: "start_telegram_announcement"
+      }
+    ],
+    [
+      {
+        text: "📩 የSMS ማስታወቂያ / SMS Announcement",
+        callback_data: "start_sms_announcement"
+      }
+    ],
+    [
+      {
+        text: "📊 የትምህርት መረጃ / Teacher Analytics",
+        callback_data: "view_teacher_analytics"
+      }
+    ],
+    [
+      {
+        text: "🎯 የTrack 3 ድጋፍ / Track 3 Support",
+        callback_data: "track3_menu"
+      }
+    ],
+    [
+      {
+        text: "📚 ትምህርቶች / Lessons",
+        callback_data: "student_learning"
+      }
+    ],
+    [
+      {
+        text: "💼 የሥራ ማሳወቂያ / Job Alerts",
+        callback_data: "track3_jobs"
+      }
+    ],
+    [
+      {
+        text: "📋 የቃለ መጠይቅ ድጋፍ / Interview Support",
+        callback_data: "track3_interview_support"
+      }
+    ],
+    [
+      {
+        text: "🟢 ቀላል መልስ / Simple Mode",
+        callback_data: "toggle_simple_mode"
+      }
+    ]
+  ];
 
-  await send(
+  return send(
     chatId,
-    "እንኳን ደህና መጡ!\nበአማርኛ ወይም በእንግሊዝኛ ይጠይቁ።\n\n" +
-    "Welcome! Ask a lesson question in Amharic or English.",
-    { reply_markup: { inline_keyboard: rows } }
+    teacher ? teacherWelcome : studentWelcome,
+    {
+      reply_markup: {
+        inline_keyboard: teacher
+          ? teacherButtons
+          : studentButtons
+      }
+    }
   );
 }
 
