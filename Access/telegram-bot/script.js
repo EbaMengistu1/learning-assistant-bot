@@ -5,6 +5,7 @@
      LEARNING AND EMPLOYMENT — FINAL SCRIPT.JS
      Railway + Telegram @EbaMengistuBot + Track 3
      Soft voice | Voice beep | Language-first answers
+     Telegram fallback + form clearing
      ========================================================= */
 
   const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
@@ -38,9 +39,9 @@
   const voiceStatus = $("voiceStatus");
 
   const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v11";
-  const SETTINGS_KEY = "learningSettings_v11";
-  const CHAT_ID_KEY = "learningChatId_v11";
+  const CACHE_KEY = "learningAnswers_v12";
+  const SETTINGS_KEY = "learningSettings_v12";
+  const CHAT_ID_KEY = "learningChatId_v12";
 
   let language = "am";
   let fontSize = 1.05;
@@ -963,7 +964,6 @@
       utterance.voice = voice;
       utterance.lang = lang === "am" ? "am-ET" : "en-US";
 
-      // Soft, natural reading speed
       utterance.rate = 0.88;
       utterance.pitch = 1.02;
       utterance.volume = 0.9;
@@ -1322,9 +1322,15 @@
     try {
       await apiRequest("/api/screen-share", requestData);
 
+      openTelegramWithMessage(
+        language === "am"
+          ? `🖥️ የስክሪን ማጋራት ጥያቄ\n\nሊንክ፦ ${meetingLink}`
+          : `🖥️ Screen-sharing request\n\nMeeting link: ${meetingLink}`
+      );
+
       status(
-        "የስብሰባ ሊንኩ ተልኳል።",
-        "Your meeting-link request was submitted.",
+        "የስብሰባ ሊንኩ ተልኳል። እባክዎ Telegram ውስጥ Send ይጫኑ።",
+        "Your meeting-link request was submitted. Please press Send in Telegram.",
         "ok"
       );
     } catch (error) {
@@ -1385,6 +1391,8 @@
 
   /* =========================================================
      JOB ALERTS
+     Railway success -> Telegram -> clear form
+     Railway failure -> Telegram -> keep form
      ========================================================= */
 
   jobAlertForm?.addEventListener("submit", async event => {
@@ -1426,34 +1434,26 @@
       source: "web"
     };
 
+    const telegramMessage = language === "am"
+      ? `🔔 የሥራ ማሳወቂያ ጥያቄ\n\nስልክ፦ ${phone || "—"}\nTelegram፦ ${telegram || "—"}\nየሥራ መስክ፦ ${area}`
+      : `🔔 Job alert request\n\nPhone: ${phone || "—"}\nTelegram: ${telegram || "—"}\nJob area: ${area}`;
+
     try {
       await apiRequest("/api/job-alert", requestData);
 
-      status(
-        phone && telegram
-          ? "✅ የሥራ ማሳወቂያ ተመዝግቧል። ማሳወቂያ ወደ ስልክዎ እና Telegram ይላካል።"
-          : phone
-            ? "✅ የሥራ ማሳወቂያ ተመዝግቧል። ማሳወቂያ ወደ ስልክዎ ይላካል።"
-            : "✅ የሥራ ማሳወቂያ ተመዝግቧል። ማሳወቂያ ወደ Telegram ይላካል።",
-
-        phone && telegram
-          ? "✅ Job alerts registered. Notifications will be sent to your phone and Telegram."
-          : phone
-            ? "✅ Job alerts registered. Notifications will be sent to your phone."
-            : "✅ Job alerts registered. Notifications will be sent to your Telegram.",
-
-        "ok"
-      );
+      openTelegramWithMessage(telegramMessage);
 
       jobAlertForm.reset();
+
+      status(
+        "✅ የሥራ ማሳወቂያ ተመዝግቧል። Telegram ተከፍ቗ል። እባክዎ Send ይጫኑ።",
+        "✅ Job alert registered. Telegram opened. Please press Send.",
+        "ok"
+      );
     } catch (error) {
       console.warn("Job alert failed:", error);
 
-      const message = language === "am"
-        ? `🔔 የሥራ ማሳወቂያ ጥያቄ\n\nስልክ፦ ${phone || "—"}\nTelegram፦ ${telegram || "—"}\nየሥራ መስክ፦ ${area}`
-        : `🔔 Job alert request\n\nPhone: ${phone || "—"}\nTelegram: ${telegram || "—"}\nJob area: ${area}`;
-
-      openTelegramWithMessage(message);
+      openTelegramWithMessage(telegramMessage);
 
       status(
         "የሥራ ማሳወቂያ ጥያቄ ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
@@ -1467,6 +1467,8 @@
 
   /* =========================================================
      INTERVIEW SUPPORT
+     Railway success -> Telegram -> clear form
+     Railway failure -> Telegram -> keep form
      ========================================================= */
 
   accommodationForm?.addEventListener("submit", async event => {
@@ -1520,24 +1522,26 @@
       source: "web"
     };
 
+    const telegramMessage = language === "am"
+      ? `♿️ የቃለ መጠይቅ ድጋፍ ጥያቄ\n\nስም፦ ${name}\nስልክ፦ ${phone}\nየሚፈልጉት ድጋፍ፦ ${type}\nዝርዝር፦ ${details || "—"}`
+      : `♿️ Interview support request\n\nName: ${name}\nPhone: ${phone}\nSupport needed: ${type}\nDetails: ${details || "—"}`;
+
     try {
       await apiRequest("/api/accommodation", requestData);
 
-      status(
-        "✅ የቃለ መጠይቅ ድጋፍ ጥያቄዎ ተልኳል። መምህር ወይም ድጋፍ ሰጪ ቡድን ወደ Telegram ይገናኛል።",
-        "✅ Your interview support request has been sent. A teacher or support team will contact you on Telegram.",
-        "ok"
-      );
+      openTelegramWithMessage(telegramMessage);
 
       accommodationForm.reset();
+
+      status(
+        "✅ የቃለ መጠይቅ ድጋፍ ጥያቄዎ ተልኳል። Telegram ተከፍ቗ል። እባክዎ Send ይጫኑ።",
+        "✅ Your interview support request has been sent. Telegram opened. Please press Send.",
+        "ok"
+      );
     } catch (error) {
       console.warn("Interview support request failed:", error);
 
-      const message = language === "am"
-        ? `♿️ የቃለ መጠይቅ ድጋፍ ጥያቄ\n\nስም፦ ${name}\nስልክ፦ ${phone}\nየሚፈልጉት ድጋፍ፦ ${type}\nዝርዝር፦ ${details || "—"}`
-        : `♿️ Interview support request\n\nName: ${name}\nPhone: ${phone}\nSupport needed: ${type}\nDetails: ${details || "—"}`;
-
-      openTelegramWithMessage(message);
+      openTelegramWithMessage(telegramMessage);
 
       status(
         "የቃለ መጠይቅ ድጋፍ ጥያቄ ወደ Telegram ተከፍቷል። እባክዎ Send ይጫኑ።",
