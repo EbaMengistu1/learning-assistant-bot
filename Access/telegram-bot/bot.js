@@ -1906,7 +1906,6 @@ async function handleMessage(message) {
   if (command === "/start") {
   userState.delete(chatId);
   smsWaiting.delete(chatId);
-  teacherSession.delete(chatId);
   return sendStartMenu(chatId);
 }
 
