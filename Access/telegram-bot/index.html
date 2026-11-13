@@ -2,328 +2,1188 @@
 <html lang="am">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Learning and Employment — accessible learning assistant, job alerts, interview support, and teacher view for Ethiopia." />
-  <meta name="theme-color" content="#1d4ed8" />
 
-  <title>Learning and Employment / ትምህርት እና ሥራ</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <meta
+    name="description"
+    content="An accessible Amharic and English learning and career-support assistant with course references, human-help requests, and employment support."
+  />
+
+  <meta name="theme-color" content="#1c4acb" />
+
+  <title>
+    Learning and Employment | ትምህርት እና ሥራ
+  </title>
+
+  <link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+  />
+
+  <link
+    rel="preconnect"
+    href="https://fonts.gstatic.com"
+    crossorigin
+  />
+
   <link
     href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;700;800&display=swap"
     rel="stylesheet"
   />
 
   <link rel="stylesheet" href="style.css" />
+
+  <script src="script.js" defer></script>
 </head>
 
 <body>
+  <!-- Keyboard users can skip the introductory content. -->
+  <a class="skip-link" href="#question">
+    Skip to question / ወደ ጥያቄው ይሂዱ
+  </a>
+
   <main id="main" class="app">
-    <h1 class="app-title">
-      Learning and Employment
-      <span>ትምህርት እና ሥራ</span>
-    </h1>
 
-    <!-- =====================================================
-         QUESTION, LANGUAGE, ANSWER
-         ===================================================== -->
+    <!-- ==================================================
+         HEADER
+         ================================================== -->
 
-    <section class="boxes" aria-label="Learning assistant">
-      <div class="ask-box">
-        <label for="question">ጥያቄዎን ይጻፉ</label>
+    <header class="site-header">
+      <p
+        id="netBadge"
+        class="connection-status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        Checking connection / ግንኙነት በማረጋገጥ ላይ
+      </p>
 
-        <textarea
-          id="question"
-          rows="5"
-          placeholder="ለምሳሌ፦ ማውረድ ምን ማለት ነው?"
-          aria-label="Type your question"
-        ></textarea>
+      <h1 class="app-title">
+        <span class="title-en" lang="en">
+          Learning and Employment
+        </span>
 
-        <div class="question-buttons">
-          <button id="getAnswerBtn" type="button">🤖 መልስ አግኝ</button>
-          <button id="clearBtn" type="button">🧹 አጽዳ</button>
-          <button id="copyBtn" type="button">📋 ቅዳ</button>
-          <button id="voiceAmharicBtn" type="button">🎤 አማርኛ</button>
-          <button id="voiceEnglishBtn" type="button">🎤 English</button>
+        <span class="title-am" lang="am">
+          ትምህርት እና ሥራ
+        </span>
+      </h1>
+
+      <p class="app-intro">
+        <span lang="am">
+          በአማርኛ ወይም በእንግሊዝኛ ይጠይቁ።
+          የትምህርት መረጃ፣ የሥራ መመሪያና
+          የሰው ድጋፍ ያግኙ።
+        </span>
+
+        <span lang="en">
+          Ask in Amharic or English. Learn from course material,
+          explore career guidance, and request human support.
+        </span>
+      </p>
+
+      <nav class="section-nav" aria-label="Page sections">
+        <a href="#assistantSection">Tutor / አስተማሪ</a>
+        <a href="#courseSection">Lessons / ትምህርቶች</a>
+        <a href="#humanHelpSection">Human help / የሰው ድጋፍ</a>
+        <a href="#jobAlertSection">Job alerts / የሥራ ማሳወቂያ</a>
+        <a href="#interviewSection">Interview support / የቃለ መጠይቅ ድጋፍ</a>
+      </nav>
+    </header>
+
+    <noscript>
+      <section class="notice notice-warning">
+        <h2>JavaScript is required / JavaScript ያስፈልጋል</h2>
+
+        <p>
+          The interactive assistant requires JavaScript.
+          You can also open the Telegram bot:
+          <a
+            href="https://t.me/EbaMengistuBot"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            @EbaMengistuBot
+          </a>.
+        </p>
+      </section>
+    </noscript>
+
+    <!-- ==================================================
+         ASSISTANT SETTINGS
+         ================================================== -->
+
+    <section
+      id="assistantSection"
+      class="assistant-section"
+      aria-labelledby="assistantTitle"
+    >
+      <h2 id="assistantTitle" class="section-title">
+        Learning assistant / የትምህርት ረዳት
+      </h2>
+
+      <div class="assistant-settings">
+        <div class="setting-field">
+          <label for="assistantMode">
+            Choose support / የድጋፍ ዓይነት ይምረጡ
+          </label>
+
+          <select
+            id="assistantMode"
+            name="assistantMode"
+            aria-describedby="modeDescription"
+          >
+            <option value="course">
+              Course tutor / የትምህርት ረዳት
+            </option>
+
+            <option value="career">
+              Career guidance / የሥራ መመሪያ
+            </option>
+          </select>
         </div>
 
-        <p id="voiceStatus" class="voice-status" role="status" aria-live="polite"></p>
-      </div>
+        <div class="setting-field">
+          <label for="lessonSelect">
+            Lesson / ትምህርት
+          </label>
 
-      <div class="language-switch">
-        <button
-          id="languageToggleBtn"
-          class="lang-btn"
-          type="button"
-          aria-label="Change language"
-        >
-          <span class="am">አማ</span>
-          <span class="divider">/</span>
-          <span class="en">EN</span>
-        </button>
-      </div>
-
-      <div class="answer-box">
-        <label for="answer">መልስ</label>
-
-        <textarea
-          id="answer"
-          rows="8"
-          readonly
-          placeholder="መልሱ እዚህ ይታያል..."
-          aria-label="Answer"
-        ></textarea>
-
-        <div class="answer-buttons">
-          <button id="speakAmharicBtn" type="button">🔊 አማርኛ</button>
-          <button id="speakEnglishBtn" type="button">🔊 English</button>
-          <button id="fontSmall" class="zoom-btn" type="button">አ−</button>
-          <button id="fontNormal" class="zoom-btn" type="button">አ</button>
-          <button id="fontLarge" class="zoom-btn" type="button">አ+</button>
-          <button
-            id="contrastBtn"
-            class="zoom-btn"
-            type="button"
-            aria-pressed="false"
+          <select
+            id="lessonSelect"
+            name="lessonSelect"
+            aria-describedby="lessonSelectionNote"
           >
-            🌗
+            <option value="">
+              Search all approved lessons / ሁሉንም ትምህርቶች ፈልግ
+            </option>
+          </select>
+        </div>
+
+        <label class="checkbox-label" for="simpleModeToggle">
+          <input
+            id="simpleModeToggle"
+            name="simpleMode"
+            type="checkbox"
+          />
+
+          <span>
+            Simple mode: shorter explanations /
+            ቀላል ሁኔታ፦ አጭር ማብራሪያ
+          </span>
+        </label>
+      </div>
+
+      <p id="modeDescription" class="section-text">
+        <span lang="am">
+          በትምህርት ሁኔታ፣ መልሶች ከተፈቀደው
+          የትምህርት መረጃ ጋር መጣጣምና
+          ምንጫቸውን ማሳየት አለባቸው።
+        </span>
+
+        <span lang="en">
+          Course mode is intended for answers supported by
+          approved lesson material, with references.
+          Career guidance is a separate mode.
+        </span>
+      </p>
+
+      <p id="lessonSelectionNote" class="field-hint">
+        Lessons load from the server. A lesson selection does not
+        change the interface language.
+      </p>
+
+      <!-- ================================================
+           QUESTION / LANGUAGE / ANSWER
+           ================================================ -->
+
+      <div class="boxes">
+
+        <section class="ask-box" aria-labelledby="questionLabel">
+          <label id="questionLabel" for="question">
+            ጥያቄዎን ይጻፉ / Ask your question
+          </label>
+
+          <textarea
+            id="question"
+            name="question"
+            rows="7"
+            maxlength="6000"
+            dir="auto"
+            placeholder="ለምሳሌ፦ ኢሜይል ምንድን ነው?"
+            aria-describedby="questionHint"
+          ></textarea>
+
+          <p id="questionHint" class="field-hint">
+            Amharic or English. Maximum 6,000 characters.
+            Press Ctrl+Enter or Command+Enter to submit.
+          </p>
+
+          <div
+            class="question-buttons"
+            role="group"
+            aria-label="Question actions"
+          >
+            <button
+              id="getAnswerBtn"
+              type="button"
+              aria-controls="answer conversation"
+            >
+              መልስ አግኝ / Get Answer
+            </button>
+
+            <button id="clearBtn" type="button">
+              አጽዳ / Clear
+            </button>
+
+            <button
+              id="copyBtn"
+              type="button"
+              aria-label="Copy the question"
+            >
+              ጥያቄውን ቅዳ / Copy Question
+            </button>
+
+            <button
+              id="voiceAmharicBtn"
+              type="button"
+              aria-pressed="false"
+            >
+              በአማርኛ ተናገር / Speak Amharic
+            </button>
+
+            <button
+              id="voiceEnglishBtn"
+              type="button"
+              aria-pressed="false"
+            >
+              Speak English
+            </button>
+          </div>
+
+          <p
+            id="voiceStatus"
+            class="voice-status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          ></p>
+
+          <p class="field-hint">
+            Microphone input starts only after you choose a voice
+            button and grant permission. Depending on the browser,
+            speech recognition may use an online service.
+          </p>
+        </section>
+
+        <div class="language-switch">
+          <button
+            id="languageToggleBtn"
+            class="lang-btn"
+            type="button"
+            aria-label="Switch interface language between Amharic and English"
+          >
+            <span class="am" lang="am">አማ</span>
+            <span class="divider" aria-hidden="true">/</span>
+            <span class="en" lang="en">EN</span>
           </button>
         </div>
 
-        <div class="outside-buttons">
-          <button id="helpBtn" type="button">🙋 እርዳታ አስፈልገኛል</button>
-          <button id="screenShareBtn" type="button">🖥️ ስክሪን ማጋራት</button>
-          <button id="downloadBtn" type="button">⬇️ አውርድ</button>
-        </div>
+        <section class="answer-box" aria-labelledby="answerLabel">
+          <label id="answerLabel" for="answer">
+            መልስ / Answer
+          </label>
+
+          <textarea
+            id="answer"
+            rows="9"
+            readonly
+            dir="auto"
+            placeholder="መልሱ እዚህ ይታያል..."
+            aria-describedby="answerHint"
+          ></textarea>
+
+          <p id="answerHint" class="field-hint">
+            Long answers scroll inside this field.
+            Reading buttons choose the spoken language independently
+            of the interface language.
+          </p>
+
+          <div
+            class="answer-buttons"
+            role="group"
+            aria-label="Reading and accessibility controls"
+          >
+            <button
+              id="speakAmharicBtn"
+              type="button"
+              aria-pressed="false"
+            >
+              አማርኛ አንብብ / Read Amharic
+            </button>
+
+            <button
+              id="speakEnglishBtn"
+              type="button"
+              aria-pressed="false"
+            >
+              Read English
+            </button>
+
+            <button
+              id="fontSmall"
+              class="zoom-btn"
+              type="button"
+              aria-label="Decrease question and answer text size"
+            >
+              A−
+            </button>
+
+            <button
+              id="fontNormal"
+              class="zoom-btn"
+              type="button"
+              aria-label="Reset question and answer text size"
+            >
+              A
+            </button>
+
+            <button
+              id="fontLarge"
+              class="zoom-btn"
+              type="button"
+              aria-label="Increase question and answer text size"
+            >
+              A+
+            </button>
+
+            <button
+              id="contrastBtn"
+              class="zoom-btn"
+              type="button"
+              aria-pressed="false"
+              aria-label="Toggle high contrast"
+            >
+              Contrast / ንፅፅር
+            </button>
+          </div>
+
+          <div class="outside-buttons">
+            <button
+              id="helpBtn"
+              class="support-btn"
+              type="button"
+              aria-controls="humanHelpSection"
+            >
+              እርዳታ አስፈልገኛል / I Need Help
+            </button>
+
+            <button
+              id="screenShareBtn"
+              class="support-btn"
+              type="button"
+              aria-controls="screenShareSection"
+            >
+              Optional meeting support
+            </button>
+
+            <button id="downloadBtn" type="button">
+              አውርድ / Download
+            </button>
+          </div>
+
+          <section
+            id="answerSourcePanel"
+            class="answer-source"
+            aria-labelledby="answerSourceTitle"
+          >
+            <h3 id="answerSourceTitle">
+              References / ምንጮች
+            </h3>
+
+            <div id="answerSources">
+              <p>
+                References will appear here when a supported
+                course answer is returned.
+              </p>
+            </div>
+          </section>
+        </section>
       </div>
     </section>
 
-    <p id="liveRegion" class="sr-only" role="status" aria-live="polite"></p>
+    <!-- Short announcements only; conversation announces messages. -->
+    <p
+      id="liveRegion"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></p>
 
-    <!-- =====================================================
-         COURSE MATERIAL
-         ===================================================== -->
+    <!-- ==================================================
+         ACCESSIBLE CONVERSATION HISTORY
+         script.js appends messages with lang and dir attributes.
+         ================================================== -->
 
-    <section class="course-section" aria-labelledby="courseTitle">
-      <h2 id="courseTitle" class="section-title">📚 የትምህርት መረጃ</h2>
+    <section
+      class="conversation-section"
+      aria-labelledby="conversationTitle"
+    >
+      <h2 id="conversationTitle" class="section-title">
+        Conversation / ውይይት
+      </h2>
 
-      <p class="section-text">
-        የሚፈልጉትን የትምህርት ርዕስ ይምረጡ። መልሶች ከትምህርት መረጃ እና ከመስመር ላይ ይመጣሉ።
+      <p class="field-hint">
+        New answers appear below. Screen readers can announce
+        newly added messages.
       </p>
 
-      <div class="course-grid">
-        <article class="course-card">
-          <h3>Computer Basics</h3>
-          <p>የኮምፒውተር መሠረታዊ እውቀት፣ ፋይል ማስቀመጥ፣ እና ማውረድ።</p>
-          <a
-            class="course-link"
-            href="https://edu.gcfglobal.org/en/computerbasics/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Open Computer Basics
-          </a>
-        </article>
+      <div
+        id="conversation"
+        class="conversation-log"
+        role="log"
+        aria-labelledby="conversationTitle"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-atomic="false"
+        tabindex="0"
+      ></div>
 
-        <article class="course-card">
-          <h3>Internet and Email</h3>
-          <p>ኢንተርኔት፣ ኢሜይል፣ የይለፍ ቃል ደህንነት እና መረጃ መፈለግ።</p>
-          <a
-            class="course-link"
-            href="https://edu.gcfglobal.org/en/internetbasics/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Open Internet and Email
-          </a>
-        </article>
+      <p id="conversationEmpty" class="empty-state">
+        No messages yet / ገና መልዕክት የለም
+      </p>
 
-        <article class="course-card">
-          <h3>Jobs and Interviews</h3>
-          <p>CV ማዘጋጀት፣ የሥራ ማመልከቻ፣ እና የቃለ መጠይቅ ዝግጅት።</p>
-          <a
-            class="course-link"
-            href="https://edu.gcfglobal.org/en/jobsearchandnetworking/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Open Jobs and Interviews
-          </a>
-        </article>
-      </div>
+      <button id="clearHistoryBtn" class="secondary" type="button">
+        Clear conversation history / የውይይት ታሪክ አጽዳ
+      </button>
     </section>
 
-    <!-- =====================================================
-         JOB ALERTS
-         ===================================================== -->
+    <!-- ==================================================
+         APPROVED COURSE MATERIAL
+         Actual cards and references load from /api/lessons.
+         ================================================== -->
 
-    <section class="support-section" aria-labelledby="jobAlertTitle">
-      <h2 id="jobAlertTitle" class="section-title">🔔 የሥራ ማሳወቂያ</h2>
+    <section
+      id="courseSection"
+      class="course-section"
+      aria-labelledby="courseTitle"
+    >
+      <h2 id="courseTitle" class="section-title">
+        Course material / የትምህርት መረጃ
+      </h2>
 
       <p class="section-text">
-        የሚፈልጉትን የሥራ መስክ ይምረጡ። አዲስ የሥራ መረጃ ሲገባ በስልክ ወይም በ Telegram ይደርስዎታል።
+        Choose a lesson from the approved course library.
+        The assistant should identify when that material does not
+        support an answer.
       </p>
 
-      <form id="jobAlertForm" class="support-form" novalidate>
-        <label for="jobPhone">📱 ስልክ ቁጥር</label>
-        <input
-          id="jobPhone"
-          type="tel"
-          inputmode="tel"
-          autocomplete="tel"
-          placeholder="+251913623851"
-        />
-
-        <label for="jobTelegram">✈️ Telegram ስም</label>
-        <input
-          id="jobTelegram"
-          type="text"
-          autocomplete="username"
-          placeholder="@BarokXn"
-        />
-
-        <label for="jobArea">💼 የሥራ መስክ</label>
-        <select id="jobArea">
-          <option value="">ይምረጡ / Choose</option>
-          <option value="computer">ኮምፒውተር / Computer</option>
-          <option value="english">እንግሊዝኛ / English</option>
-          <option value="business">ንግድ / Business</option>
-          <option value="health">ጤና / Health</option>
-          <option value="agriculture">ግብርና / Agriculture</option>
-        </select>
-
-        <button id="jobAlertBtn" type="submit">✅ የሥራ ማሳወቂያ ተመዝግብ</button>
-      </form>
-
-      <p class="privacy-note">
-        <strong>Privacy / የግላዊነት ማስታወሻ፦</strong>
-        ስልክ ቁጥርዎ እና Telegram ስምዎ ለሥራ ማሳወቂያ ብቻ ያገለግላሉ። መረጃዎ ለሌሎች አይሻራም።
+      <p
+        id="courseStatus"
+        class="voice-status"
+        role="status"
+      >
+        Lesson library has not loaded yet.
       </p>
 
-      <p class="sms-note">
-        <strong>SMS / መልዕክት፦</strong>
-        የሥራ ማሳወቂያ በ SMS ወይም በ Telegram ይላካል። የእርስዎ የሞባይል ከፍያ አገልግሎት SMS ወጪ ሊኖረው ይችላል።
-      </p>
+      <div id="courseGrid" class="course-grid"></div>
     </section>
 
-    <!-- =====================================================
-         INTERVIEW SUPPORT
-         ===================================================== -->
+    <!-- ==================================================
+         HUMAN HELP
+         ================================================== -->
 
-    <section class="form-section" aria-labelledby="interviewTitle">
-      <h2 id="interviewTitle" class="section-title">♿️ የቃለ መጠይቅ ድጋፍ</h2>
+    <section
+      id="humanHelpSection"
+      class="support-section"
+      aria-labelledby="humanHelpTitle"
+    >
+      <h2 id="humanHelpTitle" class="section-title">
+        Human help / የሰው ድጋፍ
+      </h2>
 
       <p class="section-text">
-        ለቃለ መጠይቅ ድጋፍ ይጠይቁ። የምስል መግለጫ፣ የቃለ መጠይቅ ትምህርት፣ ወይም ሌላ ድጋፍ ማግኘት ይችላሉ።
+        Send your question to a support person.
+        Screen sharing is optional and is not required to request help.
       </p>
 
-      <form id="accommodationForm" class="support-form" novalidate>
-        <label for="accommodationName">👤 ሙሉ ስም</label>
-        <input
-          id="accommodationName"
-          type="text"
-          autocomplete="name"
-          placeholder="Eba Mengistu"
-        />
+      <form id="humanHelpForm" class="support-form">
+        <label for="helpQuestion">
+          Your question or problem / ጥያቄዎ ወይም ችግርዎ
+        </label>
 
-        <label for="accommodationPhone">📱 ስልክ ቁጥር</label>
-        <input
-          id="accommodationPhone"
-          type="tel"
-          inputmode="tel"
-          autocomplete="tel"
-          placeholder="+251913623851"
-        />
-
-        <label for="accommodationType">🤝 የሚፈልጉት ድጋፍ</label>
-        <select id="accommodationType">
-          <option value="">ይምረጡ / Choose</option>
-          <option value="sign">የምስል ቋንቋ አስተርጓሚ / Sign language</option>
-          <option value="interview">የቃለ መጠይቅ ትምህርት / Interview training</option>
-          <option value="cv">CV እና ማመልከቻ ድጋፍ / CV support</option>
-          <option value="other">ሌላ ድጋፍ / Other support</option>
-        </select>
-
-        <label for="accommodationDetails">📝 ተጨማሪ መረጃ</label>
         <textarea
-          id="accommodationDetails"
+          id="helpQuestion"
+          name="question"
           rows="4"
-          placeholder="ምን ዓይነት ድጋፍ ይፈልጋሉ?"
+          maxlength="3000"
+          dir="auto"
+          required
         ></textarea>
 
-        <button id="accommodationBtn" type="submit">🚀 የቃለ መጠይቅ ድጋፍ ጠይቅ</button>
+        <label for="helpContactMethod">
+          How can support reply? / ድጋፍ ሰጪው እንዴት ያግኝዎት?
+        </label>
+
+        <select
+          id="helpContactMethod"
+          name="contactMethod"
+          required
+        >
+          <option value="">Choose / ይምረጡ</option>
+          <option value="telegram">Telegram</option>
+          <option value="phone">Phone / ስልክ</option>
+          <option value="email">Email / ኢሜይል</option>
+        </select>
+
+        <label for="helpContact">
+          Contact details / የመገናኛ መረጃ
+        </label>
+
+        <input
+          id="helpContact"
+          name="contact"
+          type="text"
+          maxlength="200"
+          dir="auto"
+          aria-describedby="helpContactHint"
+          required
+        />
+
+        <p id="helpContactHint" class="field-hint">
+          Enter a Telegram username, international phone number,
+          or email address matching your selection.
+        </p>
+
+        <label class="checkbox-label" for="helpConsent">
+          <input
+            id="helpConsent"
+            name="consent"
+            type="checkbox"
+            required
+          />
+
+          <span>
+            I agree to share this question and contact information
+            with the support team so they can reply.
+          </span>
+        </label>
+
+        <button id="humanHelpSubmitBtn" type="submit">
+          Send help request / የእርዳታ ጥያቄ ላክ
+        </button>
       </form>
-    </section>
 
-    <!-- =====================================================
-         TEACHER VIEW
-         ===================================================== -->
+      <p
+        id="humanHelpStatus"
+        class="voice-status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      ></p>
 
-    <section class="teacher-section" aria-labelledby="teacherTitle">
-      <h2 id="teacherTitle" class="section-title">👩‍🏫 የመምህር እይታ</h2>
+      <p id="helpRequestReference" class="request-reference"></p>
 
-      <p class="section-text">
-        ተማሪዎች በብዛት የጠየቋቸው ጥያቄዎች እዚህ ይታያሉ። መምህር ምን ማስተማር እንዳለበት ለመረዳት ይረዳል።
+      <p class="privacy-note">
+        Do not include passwords, one-time codes, bank details,
+        or unnecessary sensitive information.
+        This is not an emergency service; response times may vary.
       </p>
 
+      <p class="telegram-option">
+        Prefer Telegram?
+        <a
+          id="telegramSupportLink"
+          href="https://t.me/EbaMengistuBot"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open @EbaMengistuBot
+        </a>.
+        You may need to press Start.
+      </p>
+    </section>
+
+    <!-- ==================================================
+         LEARNER-CONTROLLED MEETING SUPPORT
+         ================================================== -->
+
+    <section
+      id="screenShareSection"
+      class="support-section"
+      aria-labelledby="screenShareTitle"
+    >
+      <h2 id="screenShareTitle" class="section-title">
+        Optional meeting support / አማራጭ የስብሰባ ድጋፍ
+      </h2>
+
+      <p class="section-text">
+        This form sends a meeting link. It does not start
+        screen sharing or give anyone access to your device.
+      </p>
+
+      <ol class="support-steps">
+        <li>
+          Create or join a meeting using a service you trust.
+        </li>
+
+        <li>
+          Share the meeting link with support if you choose.
+        </li>
+
+        <li>
+          In the meeting application, choose whether to share a
+          window or screen. You can stop sharing at any time.
+        </li>
+      </ol>
+
+      <form id="screenShareForm" class="support-form">
+        <label for="meetingLink">
+          HTTPS meeting link / የስብሰባ ሊንክ
+        </label>
+
+        <input
+          id="meetingLink"
+          name="meetingLink"
+          type="url"
+          inputmode="url"
+          placeholder="https://..."
+          maxlength="2000"
+          required
+        />
+
+        <label class="checkbox-label" for="screenShareConsent">
+          <input
+            id="screenShareConsent"
+            name="consent"
+            type="checkbox"
+            required
+          />
+
+          <span>
+            I choose to share this meeting link with support.
+            I understand screen sharing is separate and optional.
+          </span>
+        </label>
+
+        <button id="screenShareSubmitBtn" type="submit">
+          Send meeting link / የስብሰባ ሊንክ ላክ
+        </button>
+      </form>
+
+      <p
+        id="screenShareStatus"
+        class="voice-status"
+        role="status"
+        aria-live="polite"
+      ></p>
+
+      <p class="privacy-note">
+        Close private documents and notifications before sharing.
+        Never share passwords or security codes.
+      </p>
+    </section>
+
+    <!-- ==================================================
+         JOB ALERT SUBSCRIPTION REQUEST
+         ================================================== -->
+
+    <section
+      id="jobAlertSection"
+      class="support-section"
+      aria-labelledby="jobAlertTitle"
+    >
+      <h2 id="jobAlertTitle" class="section-title">
+        Job alerts / የሥራ ማሳወቂያ
+      </h2>
+
+      <p class="section-text">
+        Choose your job interests and preferred alert channels.
+        A subscription is active only when the service confirms it.
+      </p>
+
+      <form id="jobAlertForm" class="support-form">
+        <label for="jobArea">
+          Job area / የሥራ መስክ
+        </label>
+
+        <select id="jobArea" name="area" required>
+          <option value="">Choose / ይምረጡ</option>
+          <option value="computer">Computer and digital work</option>
+          <option value="education">Education and tutoring</option>
+          <option value="business">Business and administration</option>
+          <option value="customer-service">Customer service</option>
+          <option value="translation">Translation and languages</option>
+          <option value="health">Health</option>
+          <option value="agriculture">Agriculture</option>
+          <option value="other">Other</option>
+        </select>
+
+        <label for="jobLocation">
+          Preferred location / የሚፈልጉት ቦታ
+        </label>
+
+        <input
+          id="jobLocation"
+          name="location"
+          type="text"
+          maxlength="150"
+          dir="auto"
+          placeholder="City, region, or remote"
+        />
+
+        <fieldset class="channel-options">
+          <legend>
+            Alert channels / የማሳወቂያ መንገዶች
+          </legend>
+
+          <label class="checkbox-label" for="jobChannelTelegram">
+            <input
+              id="jobChannelTelegram"
+              name="channels"
+              type="checkbox"
+              value="telegram"
+            />
+
+            <span>Telegram</span>
+          </label>
+
+          <label class="checkbox-label" for="jobChannelSms">
+            <input
+              id="jobChannelSms"
+              name="channels"
+              type="checkbox"
+              value="sms"
+            />
+
+            <span>SMS</span>
+          </label>
+        </fieldset>
+
+        <label for="jobTelegram">
+          Telegram username / የTelegram ስም
+        </label>
+
+        <input
+          id="jobTelegram"
+          name="telegram"
+          type="text"
+          maxlength="100"
+          autocomplete="off"
+          autocapitalize="none"
+          spellcheck="false"
+          placeholder="@your_username"
+          aria-describedby="jobTelegramHint"
+        />
+
+        <p id="jobTelegramHint" class="field-hint">
+          A username alone may not activate bot alerts.
+          Open the bot and press Start; the service must link
+          your subscription to your Telegram account.
+        </p>
+
+        <label for="jobPhone">
+          SMS phone number / የSMS ስልክ ቁጥር
+        </label>
+
+        <input
+          id="jobPhone"
+          name="phone"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          maxlength="25"
+          placeholder="+251..."
+          aria-describedby="jobPhoneHint"
+        />
+
+        <p id="jobPhoneHint" class="field-hint">
+          Use international format. Required if you choose SMS.
+        </p>
+
+        <label class="checkbox-label" for="jobAlertConsent">
+          <input
+            id="jobAlertConsent"
+            name="consent"
+            type="checkbox"
+            required
+          />
+
+          <span>
+            I request job alerts through the channels I selected
+            and agree to use these contact details for that purpose.
+          </span>
+        </label>
+
+        <button id="jobAlertBtn" type="submit">
+          Request job alerts / የሥራ ማሳወቂያ ጠይቅ
+        </button>
+      </form>
+
+      <p
+        id="jobAlertStatus"
+        class="voice-status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      ></p>
+
+      <p class="sms-note">
+        SMS availability depends on the configured provider and
+        destination. Sandbox acceptance is not real-phone delivery.
+        Carrier or service charges may apply.
+      </p>
+
+      <details class="unsubscribe-section">
+        <summary>
+          Stop job alerts / የሥራ ማሳወቂያ አቁም
+        </summary>
+
+        <form id="unsubscribeForm" class="support-form">
+          <label for="unsubscribeContact">
+            Subscription reference or registered contact
+          </label>
+
+          <input
+            id="unsubscribeContact"
+            name="contact"
+            type="text"
+            maxlength="200"
+            dir="auto"
+            required
+          />
+
+          <button id="unsubscribeBtn" type="submit">
+            Request unsubscribe / ማቋረጥ ጠይቅ
+          </button>
+        </form>
+
+        <p
+          id="unsubscribeStatus"
+          class="voice-status"
+          role="status"
+          aria-live="polite"
+        ></p>
+
+        <p class="field-hint">
+          Unsubscribe is complete only after the service confirms it.
+          If unavailable, contact the support bot.
+        </p>
+      </details>
+    </section>
+
+    <!-- ==================================================
+         REVIEWED JOB LISTINGS
+         ================================================== -->
+
+    <section
+      id="jobListingsSection"
+      class="course-section"
+      aria-labelledby="jobListingsTitle"
+    >
+      <h2 id="jobListingsTitle" class="section-title">
+        Job opportunities / የሥራ ዕድሎች
+      </h2>
+
+      <p class="section-text">
+        Check each employer, deadline, and application source.
+        Demonstration entries must be labelled as examples,
+        not presented as verified vacancies.
+      </p>
+
+      <button id="refreshJobsBtn" class="secondary" type="button">
+        Refresh listings / ዝርዝሩን አድስ
+      </button>
+
+      <p
+        id="jobsStatus"
+        class="voice-status"
+        role="status"
+        aria-live="polite"
+      >
+        Job listings have not loaded yet.
+      </p>
+
+      <div id="jobsGrid" class="course-grid"></div>
+    </section>
+
+    <!-- ==================================================
+         INTERVIEW ACCOMMODATIONS
+         ================================================== -->
+
+    <section
+      id="interviewSection"
+      class="form-section"
+      aria-labelledby="interviewTitle"
+    >
+      <h2 id="interviewTitle" class="section-title">
+        Interview support / የቃለ መጠይቅ ድጋፍ
+      </h2>
+
+      <p class="section-text">
+        Tell support what adjustment or preparation help you need.
+        You do not need to provide a medical diagnosis.
+        A request does not guarantee an accommodation has been arranged.
+      </p>
+
+      <form id="accommodationForm" class="support-form">
+        <label for="accommodationName">
+          Your name / ስምዎ
+        </label>
+
+        <input
+          id="accommodationName"
+          name="name"
+          type="text"
+          autocomplete="name"
+          maxlength="150"
+          dir="auto"
+          required
+        />
+
+        <label for="accommodationPhone">
+          Contact phone / የመገናኛ ስልክ
+        </label>
+
+        <input
+          id="accommodationPhone"
+          name="phone"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          maxlength="25"
+          placeholder="+251..."
+          required
+        />
+
+        <label for="accommodationType">
+          Support needed / የሚፈልጉት ድጋፍ
+        </label>
+
+        <select
+          id="accommodationType"
+          name="type"
+          required
+        >
+          <option value="">Choose / ይምረጡ</option>
+          <option value="extra-time">Extra time</option>
+          <option value="screen-reader">Screen reader compatibility</option>
+          <option value="sign-language">Sign language interpreter</option>
+          <option value="quiet-space">Quiet interview space</option>
+          <option value="written-questions">Written questions</option>
+          <option value="interview-preparation">Interview preparation</option>
+          <option value="cv-support">CV or application support</option>
+          <option value="other">Other</option>
+        </select>
+
+        <label for="accommodationDetails">
+          Additional details, optional / ተጨማሪ መረጃ
+        </label>
+
+        <textarea
+          id="accommodationDetails"
+          name="details"
+          rows="4"
+          maxlength="2000"
+          dir="auto"
+          aria-describedby="accommodationHint"
+        ></textarea>
+
+        <p id="accommodationHint" class="field-hint">
+          Describe the practical support you need.
+          Avoid unnecessary health or other sensitive details.
+        </p>
+
+        <label class="checkbox-label" for="accommodationConsent">
+          <input
+            id="accommodationConsent"
+            name="consent"
+            type="checkbox"
+            required
+          />
+
+          <span>
+            I agree to share this request and contact information
+            with the support team for follow-up.
+          </span>
+        </label>
+
+        <button id="accommodationBtn" type="submit">
+          Request interview support / የቃለ መጠይቅ ድጋፍ ጠይቅ
+        </button>
+      </form>
+
+      <p
+        id="accommodationStatus"
+        class="voice-status"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      ></p>
+    </section>
+
+    <!-- ==================================================
+         LOW-BANDWIDTH OPTIONS
+         ================================================== -->
+
+    <section
+      id="lowBandwidthSection"
+      class="support-section"
+      aria-labelledby="lowBandwidthTitle"
+    >
+      <h2 id="lowBandwidthTitle" class="section-title">
+        Low-bandwidth support / አነስተኛ ዳታ የሚፈልግ ድጋፍ
+      </h2>
+
+      <p class="section-text">
+        You can type instead of using voice. Telegram text
+        conversations are also available.
+        SMS instructions should be shown only when the service
+        has an active inbound number or shortcode.
+      </p>
+
+      <p>
+        <a
+          class="course-link"
+          href="https://t.me/EbaMengistuBot"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open Telegram text support
+        </a>
+      </p>
+
+      <p id="smsRouteInfo" class="sms-note">
+        An inbound SMS number has not been published on this page.
+        Contact support for current availability.
+      </p>
+    </section>
+
+    <!-- ==================================================
+         ANONYMOUS TEACHER TOPICS
+         ================================================== -->
+
+    <section
+      id="teacherSection"
+      class="teacher-section"
+      aria-labelledby="teacherTitle"
+    >
+      <h2 id="teacherTitle" class="section-title">
+        Learning topics / የትምህርት ርዕሶች
+      </h2>
+
+      <p class="section-text">
+        Aggregate lesson-topic counts only.
+        This view must not display learner names, contact details,
+        or individual private questions.
+      </p>
+
+      <button id="refreshTeacherStatsBtn" class="secondary" type="button">
+        Refresh topic counts
+      </button>
+
+      <p
+        id="teacherStatsStatus"
+        class="voice-status"
+        role="status"
+        aria-live="polite"
+      ></p>
+
       <div id="teacherStats" class="teacher-stats">
-        <p>No questions yet.</p>
+        <p>Topic counts have not loaded yet.</p>
       </div>
     </section>
 
-    <!-- =====================================================
-         PRIORITY ORDER
-         ===================================================== -->
+    <!-- ==================================================
+         PRIVACY / CAPABILITIES
+         ================================================== -->
 
-    <section class="priority-section" aria-labelledby="priorityTitle">
-      <h2 id="priorityTitle" class="section-title">🚀 የመጀመሪያ ቅድሚያ</h2>
+    <section
+      id="privacySection"
+      class="support-section"
+      aria-labelledby="privacyTitle"
+    >
+      <h2 id="privacyTitle" class="section-title">
+        Privacy and service information
+      </h2>
 
-      <p class="section-text">
-        ይህ የመጀመሪያ ቅድሚያ ዝርዝር ነው። መጀመሪያ የተማሪዎችን ችግር ይፍቱ፤ ከዚያ የመምህር እና የአስተዳደር አገልግሎት ይጨምሩ።
-      </p>
-
-      <ol class="priority-list">
+      <ul class="privacy-list">
         <li>
-          <strong>1. Student learning support:</strong>
-          ተማሪዎች ጥያቄ ይጠይቁ፣ መልስ ያግኙ፣ ድምፅ ያዳምጡ እና የትምህርት መረጃ ይክፈቱ።
+          Questions sent to the answer service may be processed by
+          the configured AI provider. Do not include passwords,
+          payment details, or unnecessary personal information.
         </li>
 
         <li>
-          <strong>2. Job alerts:</strong>
-          ተማሪዎች ስልክ ቁጥር ወይም Telegram ስም በመመዝገብ የሥራ ማሳወቂያ ያገኙ።
+          Browser voice availability varies. If an online speech
+          fallback is enabled, the answer text may be sent to that
+          speech provider, including Google.
         </li>
 
         <li>
-          <strong>3. Interview support:</strong>
-          ተማሪዎች ለቃለ መጠይቅ ድጋፍ፣ ለCV እና ለምስል ቋንቋ እርዳታ ይጠይቁ።
+          Help and interview-support requests may be stored or
+          forwarded to the configured support administrator.
         </li>
 
         <li>
-          <strong>4. Teacher analytics:</strong>
-          መምህር ተማሪዎች በብዛት የጠየቋቸውን ጥያቄዎች ይመልከቱ እና ትምህርቱን ያሻሽሉ።
+          Opening Telegram uses Telegram's service.
+          Review the message before sending it.
         </li>
 
         <li>
-          <strong>5. Admin and reports:</strong>
-          አስተዳደር የተማሪዎችን ችግር፣ የሥራ ጥያቄዎችን እና የድጋፍ ጥያቄዎችን ሪፖርት ያገኛል።
+          A support reference or website session ID is not a
+          verified Telegram identity.
         </li>
-      </ol>
+
+        <li>
+          A sent request is not a guarantee of a reply,
+          a job placement, an interview accommodation,
+          or notification delivery.
+        </li>
+
+        <li>
+          For questions about your submitted information,
+          contact the support team through the Telegram bot.
+        </li>
+      </ul>
     </section>
 
-    <!-- =====================================================
+    <!-- ==================================================
          FOOTER
-         ===================================================== -->
+         ================================================== -->
 
     <footer class="site-footer">
       <p>
-        <strong>Learning and Employment / ትምህርት እና ሥራ</strong><br />
-        Accessibility Hackathon 2026 Ethiopia<br />
-        Support: Telegram <strong>@EbaMengistuBot</strong>
+        <strong>
+          Learning and Employment / ትምህርት እና ሥራ
+        </strong>
+      </p>
+
+      <p>
+        Track 3 — Accessible learning and employment support
+      </p>
+
+      <p>
+        <a
+          href="https://t.me/EbaMengistuBot"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Telegram support: @EbaMengistuBot
+        </a>
+      </p>
+
+      <p>
+        <a href="#privacySection">Privacy information</a>
+        <span aria-hidden="true"> · </span>
+        <a href="#main">Back to top</a>
       </p>
     </footer>
-  </main>
 
-  <script src="script.js"></script>
+  </main>
 </body>
 </html>
