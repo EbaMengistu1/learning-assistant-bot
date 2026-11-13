@@ -2,13 +2,13 @@
 
 (() => {
   /* =========================================================
-     LEARNING AND EMPLOYMENT — SUPER POWER FINAL SCRIPT.JS
-     Track 3: Course answers + Railway + Telegram support
+     LEARNING AND EMPLOYMENT — FINAL POWERFUL SCRIPT.JS
+     Railway bot + Telegram @EbaMengistuBot
      ========================================================= */
 
   const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
 
-  // Your Railway API
+  // Your existing Railway API
   const API_BASE_URL =
     "https://learning-assistant-bot-production.up.railway.app";
 
@@ -38,9 +38,9 @@
   const voiceStatus = $("voiceStatus");
 
   const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v8";
-  const SETTINGS_KEY = "learningSettings_v8";
-  const CHAT_ID_KEY = "learningChatId_v8";
+  const CACHE_KEY = "learningAnswers_v9";
+  const SETTINGS_KEY = "learningSettings_v9";
+  const CHAT_ID_KEY = "learningChatId_v9";
 
   let language = "am";
   let fontSize = 1.05;
@@ -1534,7 +1534,7 @@
     );
 
     add(
-      "Telegram bot link",
+      "Telegram bot username",
       TELEGRAM_BOT_URL === "https://t.me/EbaMengistuBot"
     );
 
@@ -1575,8 +1575,8 @@
     showAnswer(
       failed.length === 0
         ? bilingual(
-            "✅ Final website check passed. Railway API, Telegram support, course FAQ, job alerts, interview support, and accessibility tools are ready.",
-            "✅ የመጨረሻ የድር ጣቢያ ፍተሻ አልፏል። Railway API፣ Telegram ድጋፍ፣ የትምህርት FAQ፣ የሥራ ማሳወቂያ፣ የቃለ መጠይቅ ድጋፍ እና ተደራሽነት መሣሪያዎች ዝግጁ ናቸው።"
+            "✅ Final website check passed. Railway API, Telegram @EbaMengistuBot, course FAQ, job alerts, interview support, and accessibility tools are ready.",
+            "✅ የመጨረሻ የድር ጣቢያ ፍተሻ አልፏል። Railway API፣ Telegram @EbaMengistuBot፣ የትምህርት FAQ፣ የሥራ ማሳወቂያ፣ የቃለ መጠይቅ ድጋፍ እና ተደራሽነት መሣሪያዎች ዝግጁ ናቸው።"
           )
         : bilingual(
             `⚠️ ${failed.length} check(s) failed. Open browser console for details.`,
