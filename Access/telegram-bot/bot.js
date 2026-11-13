@@ -116,6 +116,7 @@ const userState = new Map();
 const userLanguage = new Map();
 const simpleMode = new Map();
 const smsWaiting = new Map();
+const teacherSession = new Map();
 
 const pendingTeacherMessages = new Map();
 const questionCounts = new Map();
@@ -873,7 +874,7 @@ async function sendAccommodationMenu(chatId) {
    ========================================================= */
 
 async function sendStartMenu(chatId) {
-  const teacher = isAdmin(chatId);
+  const teacher = isAdmin(chatId) && teacherSession.get(chatId) === true;
 
   const studentWelcome = [
     "🇪🇹 እንኳን ደህና መጡ!",
@@ -1547,10 +1548,11 @@ if (data === "teacher_logout") {
   pendingTeacherMessages.delete(chatId);
   userQuiz.delete(chatId);
   userLessons.delete(chatId);
+  teacherSession.delete(chatId);
 
   return send(
     chatId,
-    "🚪 Teacher session closed.\n\nYou are now using the student menu.\n\nSend /start to open the student panel."
+    "🚪 Teacher session closed.\n\nYou are now using the student menu.\n\nSend /admin to return to the teacher panel."
   );
 }
 
@@ -1895,11 +1897,12 @@ async function handleMessage(message) {
   pendingTeacherMessages.delete(chatId);
   userQuiz.delete(chatId);
   userLessons.delete(chatId);
+  teacherSession.delete(chatId);
 
   if (isAdmin(chatId)) {
     return send(
       chatId,
-      "🚪 Teacher session closed.\n\nYou are now using the student menu.\n\nSend /start to open the student panel.\nSend /admin to return to the teacher panel."
+      "🚪 Teacher session closed.\n\nYou are now using the student menu.\n\nSend /admin to return to the teacher panel."
     );
   }
 
@@ -1907,10 +1910,11 @@ async function handleMessage(message) {
 }
 
   if (command === "/start") {
-    userState.delete(chatId);
-    smsWaiting.delete(chatId);
-    return sendStartMenu(chatId);
-  }
+  userState.delete(chatId);
+  smsWaiting.delete(chatId);
+  teacherSession.delete(chatId);
+  return sendStartMenu(chatId);
+}
 
   if (command === "/confirm") {
     return executeTeacherMessage(chatId);
@@ -1934,7 +1938,12 @@ async function handleMessage(message) {
   if (command === "/lessons") return sendLessonMenu(chatId);
   if (command === "/jobs") return sendJobAlerts(chatId);
   if (command === "/progress") return sendProgress(chatId);
-  if (command === "/admin") return sendTeacherPanel(chatId);
+  if (command === "/admin") {
+  if (!isAdmin(chatId)) return send(chatId, "Admin access required.");
+
+  teacherSession.set(chatId, true);
+  return sendTeacherPanel(chatId);
+}
 
   if (command === "/teachers") {
   if (!isOwner(chatId)) {
