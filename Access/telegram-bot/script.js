@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const APP_KEY = "__learningEmploymentBilingual";
+  const APP_KEY = "__learningEmploymentFinalApp";
 
   if (window[APP_KEY]) return;
   window[APP_KEY] = true;
@@ -15,23 +15,29 @@
       apiBase:
         "https://learning-assistant-bot-production.up.railway.app",
 
-      /*
-       * This path must match a REAL route on your backend.
-       * Your reported 404 means this connection still needs
-       * verification. Do not guess a different route.
-       */
+      // Must match an actual POST route on your backend.
       answerPath: "/api/ask",
 
       telegram: "https://t.me/EbaMengistuBot",
 
       /*
-       * Optional speech route.
-       * Leave empty unless implemented on your backend.
+       * Optional backend text-to-speech route.
+       * Leave empty unless your backend implements it.
        *
-       * POST { text, language: "am-ET" | "en-US" }
-       * Return audio bytes with an audio/* Content-Type.
+       * POST JSON:
+       * { text, language: "am-ET" | "en-US" }
+       *
+       * Response:
+       * Audio bytes with an audio/* Content-Type.
        */
-      speechPath: ""
+      speechPath: "",
+
+      /*
+       * Best-effort unofficial Google audio fallback.
+       * It may be blocked or unavailable.
+       * Text is sent to Google when this fallback is used.
+       */
+      allowGoogleSpeechFallback: true
     };
 
     const $ = id => document.getElementById(id);
@@ -47,21 +53,21 @@
     const ETHIOPIC =
       /[\u1200-\u137f\u1380-\u139f\u2d80-\u2ddf]/;
 
-    const SETTINGS_KEY = "learning_bilingual_settings";
+    const SETTINGS_KEY = "learning_employment_final_settings";
 
-    function readSettings() {
+    function loadSettings() {
       try {
-        const data = JSON.parse(
+        const value = JSON.parse(
           localStorage.getItem(SETTINGS_KEY) || "{}"
         );
 
-        return data && typeof data === "object" ? data : {};
+        return value && typeof value === "object" ? value : {};
       } catch {
         return {};
       }
     }
 
-    const settings = readSettings();
+    const settings = loadSettings();
 
     let language = settings.language === "en" ? "en" : "am";
 
@@ -78,7 +84,7 @@
     let copiedQuestion = "";
 
     let requestVersion = 0;
-    let requestController = null;
+    let answerController = null;
 
     let readingLanguage = null;
     let speechVersion = 0;
@@ -99,15 +105,15 @@
           JSON.stringify(settings)
         );
       } catch {
-        // Local storage is optional.
+        // Storage is optional.
       }
     }
 
     saveSetting("chatId", chatId);
 
-    const on = (id, handler) => {
-      $(id)?.addEventListener("click", handler);
-    };
+    function on(id, callback) {
+      $(id)?.addEventListener("click", callback);
+    }
 
     function status(am, en, type = "info", target = $("voiceStatus")) {
       const text = language === "am" ? am : en;
@@ -148,6 +154,7 @@
         document.querySelectorAll("button.active-primary")
           .forEach(item => item.classList.remove("active-primary"));
 
+        // Get Answer uses temporary CSS hover only.
         if (button.id === "getAnswerBtn") return;
 
         button.classList.add("active-primary");
@@ -165,7 +172,7 @@
     });
 
     /* =====================================================
-       INTERFACE LANGUAGE
+       LANGUAGE / ACCESSIBILITY
        ===================================================== */
 
     const labels = {
@@ -177,8 +184,8 @@
         clearBtn: "አጽዳ",
         copyBtn: "ጥያቄውን ቅዳ",
         helpBtn: "እርዳታ አስፈልገኛል",
-        downloadBtn: "አውርድ",
         screenShareBtn: "የስብሰባ ሊንክ ላክ",
+        downloadBtn: "አውርድ",
         readAm: "አማርኛ አንብብ",
         readEn: "English አንብብ",
         micAm: "በአማርኛ ተናገር",
@@ -195,8 +202,8 @@
         clearBtn: "Clear",
         copyBtn: "Copy Question",
         helpBtn: "I Need Help",
-        downloadBtn: "Download",
         screenShareBtn: "Send Meeting Link",
+        downloadBtn: "Download",
         readAm: "Read Amharic",
         readEn: "Read English",
         micAm: "Speak Amharic",
@@ -214,12 +221,12 @@
         ["speakEnglishBtn", readingLanguage === "en", t.readEn, false],
         ["voiceAmharicBtn", microphone?.lang === "am", t.micAm, true],
         ["voiceEnglishBtn", microphone?.lang === "en", t.micEn, true]
-      ].forEach(([id, enabled, normal, isMic]) => {
+      ].forEach(([id, enabled, normal, isMicrophone]) => {
         const button = $(id);
         if (!button) return;
 
         button.textContent = enabled
-          ? isMic ? t.listening : t.stop
+          ? isMicrophone ? t.listening : t.stop
           : normal;
 
         button.setAttribute("aria-pressed", String(enabled));
@@ -270,8 +277,8 @@
         "clearBtn",
         "copyBtn",
         "helpBtn",
-        "downloadBtn",
-        "screenShareBtn"
+        "screenShareBtn",
+        "downloadBtn"
       ].forEach(id => {
         if ($(id)) $(id).textContent = t[id];
       });
@@ -323,63 +330,6 @@
 
     window.addEventListener("online", updateConnection);
     window.addEventListener("offline", updateConnection);
-
-    /* =====================================================
-       BUILT-IN BILINGUAL SAMPLE LESSONS
-       These are not your complete lesson library.
-       ===================================================== */
-
-    const lessons = [
-      {
-        questions: [
-          "what is downloading",
-          "ማውረድ ምን ማለት ነው",
-          "ማውረድ ምንድን ነው"
-        ],
-        am: "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ማለት ነው።",
-        en: "Downloading means saving a file from the internet to your device.",
-        source: "Built-in sample lesson: Computer Basics"
-      },
-      {
-        questions: [
-          "what is email",
-          "what is an email",
-          "ኢሜይል ምንድን ነው",
-          "ኢሜይል ምን ማለት ነው"
-        ],
-        am: "ኢሜይል በኢንተርኔት መልዕክት ለመላክና ለመቀበል የሚያገለግል መንገድ ነው።",
-        en: "Email is a way to send and receive messages over the internet.",
-        source: "Built-in sample lesson: Internet and Email"
-      },
-      {
-        questions: [
-          "what is a job interview",
-          "የሥራ ቃለ መጠይቅ ምንድን ነው",
-          "ቃለ መጠይቅ ምንድን ነው"
-        ],
-        am: "የሥራ ቃለ መጠይቅ አሠሪው ስለ ክህሎትዎና ልምድዎ የሚጠይቅበት ውይይት ነው።",
-        en: "A job interview is a conversation in which an employer asks about your skills and experience.",
-        source: "Built-in sample lesson: Jobs and Interviews"
-      }
-    ];
-
-    function normalizeQuestion(text) {
-      return String(text)
-        .toLowerCase()
-        .replace(/[?፧።.!]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-    }
-
-    function localAnswer(text) {
-      const normalized = normalizeQuestion(text);
-
-      return lessons.find(item =>
-        item.questions.some(
-          sample => normalizeQuestion(sample) === normalized
-        )
-      ) || null;
-    }
 
     /* =====================================================
        NETWORK
@@ -445,16 +395,79 @@
     }
 
     /* =====================================================
-       BILINGUAL ANSWER DISPLAY
+       BUILT-IN BILINGUAL SAMPLE LESSONS
+       Not the complete lesson library.
+       ===================================================== */
+
+    const lessons = [
+      {
+        questions: [
+          "what is downloading",
+          "ማውረድ ምን ማለት ነው",
+          "ማውረድ ምንድን ነው"
+        ],
+        am: "ማውረድ ማለት ፋይልን ከኢንተርኔት ወደ መሣሪያዎ ማስቀመጥ ማለት ነው።",
+        en: "Downloading means saving a file from the internet to your device.",
+        source: "Built-in sample lesson: Computer Basics"
+      },
+      {
+        questions: [
+          "what is email",
+          "what is an email",
+          "ኢሜይል ምንድን ነው",
+          "ኢሜይል ምን ማለት ነው"
+        ],
+        am: "ኢሜይል በኢንተርኔት መልዕክት ለመላክና ለመቀበል የሚያገለግል መንገድ ነው።",
+        en: "Email is a way to send and receive messages over the internet.",
+        source: "Built-in sample lesson: Internet and Email"
+      },
+      {
+        questions: [
+          "what is a job interview",
+          "የሥራ ቃለ መጠይቅ ምንድን ነው",
+          "ቃለ መጠይቅ ምንድን ነው"
+        ],
+        am: "የሥራ ቃለ መጠይቅ አሠሪው ስለ ክህሎትዎና ልምድዎ የሚጠይቅበት ውይይት ነው።",
+        en: "A job interview is a conversation in which an employer asks about your skills and experience.",
+        source: "Built-in sample lesson: Jobs and Interviews"
+      }
+    ];
+
+    function normalizeQuestion(text) {
+      return String(text)
+        .toLowerCase()
+        .replace(/[?፧።.!]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function localAnswer(text) {
+      const normalized = normalizeQuestion(text);
+
+      return lessons.find(item =>
+        item.questions.some(
+          example => normalizeQuestion(example) === normalized
+        )
+      ) || null;
+    }
+
+    /* =====================================================
+       BILINGUAL ANSWERS
        ===================================================== */
 
     function extractLanguage(text, lang) {
       return String(text)
         .split(/\n\s*(?:Source\s*:|Source\s*\/|ምንጭ\s*:|📚)/i)[0]
         .split(/\n+/)
-        .filter(line => lang === "am"
-          ? ETHIOPIC.test(line)
-          : /[A-Za-z]/.test(line) && !ETHIOPIC.test(line))
+        .filter(line => {
+          if (/^\s*(English|አማርኛ)\s*:?\s*$/i.test(line)) {
+            return false;
+          }
+
+          return lang === "am"
+            ? ETHIOPIC.test(line)
+            : /[A-Za-z]/.test(line) && !ETHIOPIC.test(line);
+        })
         .join("\n")
         .trim();
     }
@@ -503,8 +516,11 @@
     function displayAnswer(record, firstLanguage) {
       currentAnswer = record;
 
-      const am = record.am || "የአማርኛ ትርጉም ከአገልጋዩ አልተመለሰም።";
-      const en = record.en || "The server did not return an English translation.";
+      const am = record.am ||
+        "የአማርኛ ትርጉም ከአገልጋዩ አልተመለሰም።";
+
+      const en = record.en ||
+        "The server did not return an English translation.";
 
       const sections = firstLanguage === "am"
         ? [`አማርኛ\n${am}`, `English\n${en}`]
@@ -532,8 +548,8 @@
       const firstLanguage = detectLanguage(text);
       const version = ++requestVersion;
 
-      requestController?.abort();
-      requestController = null;
+      answerController?.abort();
+      answerController = null;
       busy($("getAnswerBtn"), false);
 
       if (!text) {
@@ -550,7 +566,7 @@
       if (text.length > 6000) {
         status(
           "ጥያቄዎን እባክዎ ያሳጥሩ።",
-          "Please shorten the question to 6,000 characters or fewer.",
+          "Please shorten your question to 6,000 characters or fewer.",
           "warn"
         );
         return;
@@ -566,7 +582,6 @@
           "Answer found in the built-in sample lesson.",
           "ok"
         );
-
         return;
       }
 
@@ -580,7 +595,7 @@
       busy($("getAnswerBtn"), true);
 
       const controller = new AbortController();
-      requestController = controller;
+      answerController = controller;
 
       const payload = {
         chatId,
@@ -612,22 +627,13 @@
       } catch (error) {
         if (version !== requestVersion) return;
 
-        let am;
-        let en;
+        const am = error.status === 404
+          ? "የመልስ አገልጋዩ መንገድ አልተገኘም። የRailway API አድራሻና መንገድ ማስተካከል ያስፈልጋል።"
+          : "ከአገልጋዩ መልስ ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም እርዳታ ይጠይቁ።";
 
-        if (error.status === 404) {
-          am =
-            "የመልስ አገልጋዩ መንገድ አልተገኘም። የRailway API አድራሻና መንገድ ማስተካከል ያስፈልጋል።";
-
-          en =
-            "The answer API route was not found. Verify the Railway URL and the actual backend answer route.";
-        } else {
-          am =
-            "ከአገልጋዩ መልስ ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም እርዳታ ይጠይቁ።";
-
-          en =
-            "The answer service could not complete the request. Try again or use I Need Help.";
-        }
+        const en = error.status === 404
+          ? "The answer API route was not found. Verify the Railway URL and the actual backend answer route."
+          : "The answer service could not complete the request. Try again or use I Need Help.";
 
         displayAnswer({ am, en, source: "" }, firstLanguage);
 
@@ -640,7 +646,7 @@
         console.error("Answer request failed:", error);
       } finally {
         if (version === requestVersion) {
-          requestController = null;
+          answerController = null;
           busy($("getAnswerBtn"), false);
         }
       }
@@ -660,7 +666,7 @@
     });
 
     /* =====================================================
-       ONE READING CONTROLLER
+       SINGLE READING CONTROLLER
        ===================================================== */
 
     function stopReading() {
@@ -763,44 +769,53 @@
 
         timer = setTimeout(() => {
           finish(run === speechVersion ? synth.getVoices() : []);
-        }, 1500);
+        }, 1200);
 
         check();
       });
     }
 
     function readingText(lang) {
-      if (currentAnswer) return currentAnswer[lang] || "";
+      if (currentAnswer) {
+        return String(currentAnswer[lang] || "").trim();
+      }
 
-      return extractLanguage(answer.value, lang)
-        .replace(/^(English|አማርኛ)\s*$/gm, "")
-        .trim();
+      return extractLanguage(answer.value, lang);
     }
 
-    function makeChunks(text) {
-      const sentences = text
+    function makeChunks(text, limit = 170) {
+      const cleaned = String(text)
         .replace(/https?:\/\/\S+/g, "")
-        .replace(/[*#`]/g, "")
-        .match(/[^.!?።፧\n]+[.!?።፧]?/g) || [];
+        .replace(/[*#`]/g, "");
 
-      const chunks = [];
+      const sentences =
+        cleaned.match(/[^.!?።፧\n]+[.!?።፧]?/g) || [];
+
+      const output = [];
 
       for (const sentence of sentences) {
         let chunk = "";
 
-        for (const word of sentence.trim().split(/\s+/)) {
-          if (chunk && `${chunk} ${word}`.length > 180) {
-            chunks.push(chunk);
+        for (let word of sentence.trim().split(/\s+/)) {
+          if (chunk && `${chunk} ${word}`.length > limit) {
+            output.push(chunk);
             chunk = "";
           }
 
-          chunk = chunk ? `${chunk} ${word}` : word;
+          while (word.length > limit) {
+            output.push(word.slice(0, limit));
+            word = word.slice(limit);
+          }
+
+          if (word) {
+            chunk = chunk ? `${chunk} ${word}` : word;
+          }
         }
 
-        if (chunk) chunks.push(chunk);
+        if (chunk) output.push(chunk);
       }
 
-      return chunks;
+      return output;
     }
 
     function speakChunk(text, voice, lang, run) {
@@ -852,8 +867,11 @@
           if (
             run !== speechVersion ||
             ["canceled", "interrupted"].includes(event.error)
-          ) finish(null, false);
-          else finish(new Error(event.error || "Speech failed."));
+          ) {
+            finish(null, false);
+          } else {
+            finish(new Error(event.error || "Speech failed."));
+          }
         };
 
         activeUtterance = utterance;
@@ -867,12 +885,90 @@
       });
     }
 
+    async function playAudioSource(source, run) {
+      if (run !== speechVersion) return false;
+
+      const player = new Audio();
+      player.preload = "auto";
+      player.volume = 0.8;
+      activeAudio = player;
+
+      try {
+        return await new Promise((resolve, reject) => {
+          let done = false;
+
+          function finish(error, completed = true) {
+            if (done) return;
+            done = true;
+
+            clearTimeout(timer);
+            player.onended = null;
+            player.onerror = null;
+
+            if (cancelSpeech === cancel) cancelSpeech = null;
+
+            error ? reject(error) : resolve(completed);
+          }
+
+          function cancel() {
+            player.pause();
+            finish(null, false);
+          }
+
+          const timer = setTimeout(() => {
+            player.pause();
+            finish(new Error("Online audio timed out."));
+          }, 120000);
+
+          cancelSpeech = cancel;
+
+          player.onended = () => finish(null, true);
+
+          player.onerror = () => {
+            finish(new Error("Online audio was unavailable or blocked."));
+          };
+
+          if (run !== speechVersion) {
+            cancel();
+            return;
+          }
+
+          player.src = source;
+          player.play().catch(error => finish(error));
+        });
+      } finally {
+        player.pause();
+        player.removeAttribute("src");
+        player.load();
+
+        if (activeAudio === player) activeAudio = null;
+      }
+    }
+
+    async function googleSpeech(text, lang, run) {
+      for (const chunk of makeChunks(text)) {
+        if (run !== speechVersion) return;
+
+        const url = new URL(
+          "https://translate.google.com/translate_tts"
+        );
+
+        url.searchParams.set("ie", "UTF-8");
+        url.searchParams.set("client", "tw-ob");
+        url.searchParams.set("tl", lang);
+        url.searchParams.set("q", chunk);
+
+        const completed = await playAudioSource(url.href, run);
+
+        if (!completed || run !== speechVersion) return;
+      }
+    }
+
     async function serverSpeech(text, lang, run) {
       const controller = new AbortController();
       speechController = controller;
 
       let objectURL;
-
       const timer = setTimeout(() => controller.abort(), 30000);
 
       try {
@@ -902,62 +998,25 @@
         if (run !== speechVersion) return;
 
         objectURL = URL.createObjectURL(blob);
-
-        const player = new Audio(objectURL);
-        player.volume = 0.8;
-        activeAudio = player;
-
-        await new Promise((resolve, reject) => {
-          let done = false;
-
-          function finish(error) {
-            if (done) return;
-            done = true;
-
-            clearTimeout(playTimer);
-            player.onended = null;
-            player.onerror = null;
-
-            if (cancelSpeech === cancel) cancelSpeech = null;
-
-            error ? reject(error) : resolve();
-          }
-
-          function cancel() {
-            player.pause();
-            finish();
-          }
-
-          const playTimer = setTimeout(() => {
-            player.pause();
-            finish(new Error("Audio timed out."));
-          }, 300000);
-
-          cancelSpeech = cancel;
-          player.onended = () => finish();
-          player.onerror = () => finish(new Error("Audio failed."));
-
-          player.play().catch(finish);
-        });
+        await playAudioSource(objectURL, run);
       } finally {
         clearTimeout(timer);
 
         if (speechController === controller) speechController = null;
         if (objectURL) URL.revokeObjectURL(objectURL);
-        if (run === speechVersion) activeAudio = null;
       }
     }
 
     async function readAloud(lang) {
-      const same = readingLanguage === lang;
+      const sameLanguage = readingLanguage === lang;
 
       stopReading();
 
-      if (same) return;
+      if (sameLanguage) return;
 
       stopMicrophone();
 
-      const text = readingText(lang).trim();
+      const text = readingText(lang);
 
       if (!text) {
         status(
@@ -969,7 +1028,6 @@
       }
 
       const run = speechVersion;
-
       readingLanguage = lang;
       updateMediaButtons();
 
@@ -991,23 +1049,39 @@
           }
         } else if (CONFIG.speechPath) {
           await serverSpeech(text, lang, run);
+        } else if (
+          CONFIG.allowGoogleSpeechFallback &&
+          navigator.onLine !== false
+        ) {
+          status(
+            "የመስመር ላይ የንባብ አገልግሎት እየተሞከረ ነው...",
+            "Trying online speech. Answer text will be sent to Google."
+          );
+
+          await googleSpeech(text, lang, run);
         } else {
           status(
-            "በዚህ መሣሪያ ለተመረጠው ቋንቋ የንባብ ድምፅ የለም።",
-            `No ${lang === "am" ? "Amharic" : "English"} voice is available. A server speech service is needed for this device.`,
+            "ለዚህ ቋንቋ የንባብ ድምፅ አልተገኘም።",
+            "No matching reading voice is available.",
             "warn"
           );
         }
       } catch (error) {
-        if (run === speechVersion) {
-          status(
-            "የድምፅ ንባቡ አልተሳካም።",
-            "Reading failed. Check the device voice or speech service.",
-            "warn"
-          );
+        if (run !== speechVersion) return;
 
-          console.warn("Reading:", error.message);
-        }
+        try {
+          window.speechSynthesis?.cancel();
+        } catch {}
+
+        activeAudio?.pause();
+
+        status(
+          "የድምፅ ንባቡ አልተሳካም። የመስመር ላይ አገልግሎቱ አልተገኘ ወይም ተዘግቶ ሊሆን ይችላል።",
+          "Reading was unavailable. The device voice or online speech service could not complete playback.",
+          "warn"
+        );
+
+        console.warn("Reading failed:", error.message);
       } finally {
         if (run === speechVersion) {
           readingLanguage = null;
@@ -1020,7 +1094,7 @@
     on("speakEnglishBtn", () => readAloud("en"));
 
     /* =====================================================
-       MICROPHONE + SOFT BEEPS
+       MICROPHONE + START / END BEEPS
        ===================================================== */
 
     function unlockAudio() {
@@ -1205,8 +1279,8 @@
 
     on("clearBtn", () => {
       requestVersion++;
-      requestController?.abort();
-      requestController = null;
+      answerController?.abort();
+      answerController = null;
 
       question.value = "";
       answer.value = "";
@@ -1350,7 +1424,7 @@
     });
 
     /* =====================================================
-       JOB ALERT / INTERVIEW FORMS
+       FORMS
        ===================================================== */
 
     function formStatus(form) {
@@ -1534,6 +1608,7 @@
 
       try {
         const url = new URL(input.trim());
+
         if (url.protocol !== "https:") throw new Error();
 
         meetingLink = url.href;
@@ -1574,20 +1649,19 @@
     });
 
     on("downloadBtn", () => {
-      const content = [
+      const text = [
         "Learning and Employment / ትምህርት እና ሥራ",
         `Question:\n${question.value}`,
         `Answer:\n${answer.value}`
       ].join("\n\n");
 
       const url = URL.createObjectURL(
-        new Blob(["\uFEFF", content], {
+        new Blob(["\uFEFF", text], {
           type: "text/plain;charset=utf-8"
         })
       );
 
       const link = document.createElement("a");
-
       link.href = url;
       link.download = "learning-and-employment.txt";
 
@@ -1599,7 +1673,7 @@
     });
 
     /* =====================================================
-       TEACHER STATISTICS
+       TEACHER VIEW
        ===================================================== */
 
     async function loadTeacherStats() {
@@ -1639,7 +1713,8 @@
     }
 
     /* =====================================================
-       NON-DESTRUCTIVE DIAGNOSTICS
+       DIAGNOSTICS
+       Does not send questions or submit forms.
        ===================================================== */
 
     window.testWebsite = async () => {
@@ -1651,8 +1726,11 @@
         "getAnswerBtn",
         "clearBtn",
         "copyBtn",
+        "languageToggleBtn",
         "speakAmharicBtn",
         "speakEnglishBtn",
+        "voiceAmharicBtn",
+        "voiceEnglishBtn",
         "jobAlertForm",
         "accommodationForm"
       ].forEach(id => {
@@ -1669,7 +1747,7 @@
       const voices = window.speechSynthesis?.getVoices() || [];
 
       results.push({
-        test: "Amharic built-in answer",
+        test: "Built-in Amharic answer",
         passed: Boolean(localAnswer("ማውረድ ምን ማለት ነው?")),
         details: ""
       });
@@ -1677,7 +1755,7 @@
       results.push({
         test: "Amharic device voice",
         passed: Boolean(chooseVoice(voices, "am")),
-        details: "If unavailable, configure a real server speech route."
+        details: "Online fallback is attempted if no device voice exists."
       });
 
       results.push({
@@ -1692,7 +1770,7 @@
         results.push({
           test: "Server health",
           passed: true,
-          details: "Does not prove the answer route or Groq works."
+          details: "Does not verify the answer route, Groq, or speech."
         });
       } catch (error) {
         results.push({
@@ -1726,13 +1804,13 @@
 
     window.addEventListener("pagehide", () => {
       requestVersion++;
-      requestController?.abort();
+      answerController?.abort();
       stopReading();
       stopMicrophone();
     });
 
     console.info(
-      "Bilingual learning app initialized. Run testWebsite() for diagnostics."
+      "Learning app initialized once. Run testWebsite() for diagnostics."
     );
   }
 
