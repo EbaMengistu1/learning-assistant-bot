@@ -830,11 +830,12 @@ async function sendTeacherPanel(chatId) {
   await send(chatId, "Teacher panel", {
     reply_markup: {
       inline_keyboard: [
-        [button("Students", "view_students")],
-        [button("Telegram announcement", "start_telegram_announcement")],
-        [button("SMS announcement", "start_sms_announcement")],
-        [button("Analytics", "view_teacher_analytics")]
-      ]
+  [button("Students", "view_students")],
+  [button("Telegram announcement", "start_telegram_announcement")],
+  [button("SMS announcement", "start_sms_announcement")],
+  [button("Analytics", "view_teacher_analytics")],
+  [button("🚪 Logout / ውጣ", "teacher_logout")]
+]
     }
   });
 }
@@ -1537,8 +1538,27 @@ async function handleCallback(query) {
   }
 
   if (data === "share_screen_no") {
-    return send(chatId, "No problem. You can still ask for help.");
-  }
+  return send(chatId, "No problem. You can still ask for help.");
+}
+
+if (data === "teacher_logout") {
+  userState.delete(chatId);
+  smsWaiting.delete(chatId);
+  pendingTeacherMessages.delete(chatId);
+  userQuiz.delete(chatId);
+  userLessons.delete(chatId);
+
+  return send(
+    chatId,
+    "🚪 Teacher session closed.\n\nYou are now using the student menu.\n\nSend /start to open the student panel."
+  );
+}
+
+if (data === "toggle_simple_mode") {
+  const next = !simpleMode.get(chatId);
+  simpleMode.set(chatId, next);
+  return send(chatId, `Simple mode is ${next ? "ON" : "OFF"}.`);
+}
 
   if (data === "toggle_simple_mode") {
     const next = !simpleMode.get(chatId);
@@ -1870,11 +1890,21 @@ async function handleMessage(message) {
   await saveDb("saveUser", user);
 
   if (["/cancel", "/stop"].includes(command)) {
-    userState.delete(chatId);
-    smsWaiting.delete(chatId);
-    pendingTeacherMessages.delete(chatId);
-    return send(chatId, "Cancelled.");
+  userState.delete(chatId);
+  smsWaiting.delete(chatId);
+  pendingTeacherMessages.delete(chatId);
+  userQuiz.delete(chatId);
+  userLessons.delete(chatId);
+
+  if (isAdmin(chatId)) {
+    return send(
+      chatId,
+      "🚪 Teacher session closed.\n\nYou are now using the student menu.\n\nSend /start to open the student panel.\nSend /admin to return to the teacher panel."
+    );
   }
+
+  return send(chatId, "✅ Cancelled. Send /start for the student menu.");
+}
 
   if (command === "/start") {
     userState.delete(chatId);
