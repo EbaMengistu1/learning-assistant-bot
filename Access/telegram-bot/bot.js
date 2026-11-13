@@ -867,7 +867,6 @@ async function sendAccommodationMenu(chatId) {
   );
 }
 
-
 /* =========================================================
    BILINGUAL START MENUS
    Student + Teacher / Admin
