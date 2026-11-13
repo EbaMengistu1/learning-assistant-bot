@@ -61,6 +61,8 @@ const allowedOrigins = (process.env.WEB_ORIGINS || "")
   .map(value => value.trim())
   .filter(Boolean);
 
+app.options("*", cors());
+
 app.use(cors({
   origin(origin, callback) {
     if (
