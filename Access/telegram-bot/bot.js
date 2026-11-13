@@ -14,7 +14,7 @@ const db = require("./database");
 
 const TOKEN = process.env.BOT_TOKEN;
 const GROQ_API_KEY = (process.env.GROQ_API_KEY || "").trim();
-const GROQ_MODEL = "llama-3.1-8b-instant";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || "";
 const WEB_ADMIN_TOKEN = process.env.WEB_ADMIN_TOKEN || "";
 const AT_USERNAME = (process.env.AT_USERNAME || "").trim();
