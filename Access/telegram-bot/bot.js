@@ -206,6 +206,17 @@ async function send(chatId, text, options = {}) {
 
   if (remaining) chunks.push(remaining);
 
+  const options = {
+  reply_markup: {
+    inline_keyboard: [
+      [
+        { text: "📚 How to use", callback_data: "how_to_use" },
+        { text: "📚 Download", callback_data: "download_lesson" }
+      ]
+    ]
+  }
+};
+
   for (let index = 0; index < chunks.length; index++) {
     await bot.sendMessage(
       chatId,
@@ -1820,15 +1831,29 @@ if (data === "toggle_simple_mode") {
   }
 }
 
-bot.on("callback_query", query => {
-  handleCallback(query).catch(async error => {
-    console.error("Callback failed:", error.message);
-    const chatId = query.message?.chat?.id;
-    if (chatId) {
-      await send(chatId, "That action could not finish. Please try again.")
-        .catch(() => {});
-    }
-  });
+bot.on("callback_query", async (query) => {
+  const chatId = query.message.chat.id;
+
+  if (query.data === "how_to_use") {
+    await bot.sendMessage(
+      chatId,
+      "📚 How to use\n\n" +
+      "1. Read the lesson carefully.\n" +
+      "2. Ask questions in English or Amharic.\n" +
+      "3. Click Download to save the lesson.\n" +
+      "4. Practice what you learned."
+    );
+  }
+
+  if (query.data === "download_lesson") {
+    await bot.sendMessage(
+      chatId,
+      "📚 Download\n\n" +
+      "Your lesson download will be available soon."
+    );
+  }
+
+  await bot.answerCallbackQuery(query.id);
 });
 
 /* =========================================================
