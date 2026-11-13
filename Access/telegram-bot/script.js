@@ -2,13 +2,13 @@
 
 (() => {
   /* =========================================================
-     LEARNING AND EMPLOYMENT — FINAL MATCHING SCRIPT.JS
+     LEARNING AND EMPLOYMENT — FINAL SCRIPT.JS
      Railway + Telegram @EbaMengistuBot + Track 3
+     Soft voice | Voice beep | Language-first answers
      ========================================================= */
 
   const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
 
-  // Your existing Railway API
   const API_BASE_URL =
     "https://learning-assistant-bot-production.up.railway.app";
 
@@ -38,9 +38,9 @@
   const voiceStatus = $("voiceStatus");
 
   const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v10";
-  const SETTINGS_KEY = "learningSettings_v10";
-  const CHAT_ID_KEY = "learningChatId_v10";
+  const CACHE_KEY = "learningAnswers_v11";
+  const SETTINGS_KEY = "learningSettings_v11";
+  const CHAT_ID_KEY = "learningChatId_v11";
 
   let language = "am";
   let fontSize = 1.05;
@@ -53,10 +53,10 @@
 
   const audio = new Audio();
   const flashTimers = new WeakMap();
+  let audioContext = null;
 
   /* =========================================================
      OFFLINE COURSE FAQ
-     Add approved course answers here.
      ========================================================= */
 
   const courseFAQ = {
@@ -199,10 +199,6 @@
     announce(text);
   }
 
-  function bilingual(english, amharic) {
-    return `${english}\n\n${amharic}`;
-  }
-
   function on(button, handler) {
     button?.addEventListener("click", handler);
   }
@@ -301,7 +297,7 @@
 
     setTimeout(
       () => languageToggleBtn.classList.remove("language-flash"),
-      2000
+      1600
     );
 
     status(
@@ -371,6 +367,75 @@
     updateContrastButton();
     updateConnectionBadge();
   });
+
+  /* =========================================================
+     NICE VOICE BEEP
+     ========================================================= */
+
+  function getContext() {
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
+
+    if (!AudioContextClass) return null;
+
+    if (!audioContext) {
+      audioContext = new AudioContextClass();
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume().catch(() => {});
+    }
+
+    return audioContext;
+  }
+
+  function playBeep(type = "start") {
+    const context = getContext();
+
+    if (!context) return;
+
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+
+    const now = context.currentTime;
+
+    const settings = type === "start"
+      ? {
+          frequency: 660,
+          endFrequency: 880,
+          duration: 0.18,
+          volume: 0.07
+        }
+      : {
+          frequency: 880,
+          endFrequency: 620,
+          duration: 0.22,
+          volume: 0.06
+        };
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(settings.frequency, now);
+    oscillator.frequency.exponentialRampToValueAtTime(
+      settings.endFrequency,
+      now + settings.duration
+    );
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(
+      settings.volume,
+      now + 0.03
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      now + settings.duration
+    );
+
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + settings.duration + 0.02);
+  }
 
   /* =========================================================
      OFFLINE CACHE
@@ -599,18 +664,18 @@
 
     for (const [key, answer] of Object.entries(courseFAQ)) {
       if (q.includes(key)) {
-        return bilingual(answer.en, answer.am) +
-          `\n\n📚 Source / ምንጭ: ${answer.source}`;
+        return language === "am"
+          ? `${answer.am}\n\n${answer.en}\n\n📚 ምንጭ: ${answer.source}`
+          : `${answer.en}\n\n${answer.am}\n\n📚 Source: ${answer.source}`;
       }
     }
 
     const math = solveMath(q);
 
     if (math !== null) {
-      return bilingual(
-        `The answer is ${math}.`,
-        `መልሱ ${math} ነው።`
-      ) + "\n\n📚 Source / ምንጭ: Built-in course calculator";
+      return language === "am"
+        ? `መልሱ ${math} ነው።\n\nThe answer is ${math}.\n\n📚 ምንጭ: Built-in course calculator`
+        : `The answer is ${math}.\n\nመልሱ ${math} ነው።\n\n📚 Source: Built-in course calculator`;
     }
 
     return null;
@@ -699,8 +764,9 @@
       "https://en.wikipedia.org/wiki/" +
       encodeURIComponent(hit.title.replace(/ /g, "_"));
 
-    return bilingual(english, amharic) +
-      `\n\n📚 Source / ምንጭ: ${hit.title}\n${source}`;
+    return language === "am"
+      ? `${amharic}\n\n${english}\n\n📚 ምንጭ: ${hit.title}\n${source}`
+      : `${english}\n\n${amharic}\n\n📚 Source: ${hit.title}\n${source}`;
   }
 
   async function getAnswer() {
@@ -711,10 +777,10 @@
     stopRecognition();
 
     if (!question) {
-      showAnswer(bilingual(
-        "Please type a course question.",
-        "እባክዎ የትምህርት ጥያቄ ይጻፉ።"
-      ));
+      showAnswer(language === "am"
+        ? "እባክዎ የትምህርት ጥያቄ ይጻፉ።\n\nPlease type a course question."
+        : "Please type a course question.\n\nእባክዎ የትምህርት ጥያቄ ይጻፉ።"
+      );
 
       questionInput.focus();
       return;
@@ -735,15 +801,18 @@
     }
 
     if (navigator.onLine === false) {
-      showAnswer(bilingual(
-        "This question needs internet. Basic course answers still work offline.",
-        "ይህ ጥያቄ ኢንተርኔት ያስፈልገዋል። መሠረታዊ የትምህርት መልሶች ያለ ኢንተርኔት ይሰራሉ።"
-      ));
+      showAnswer(language === "am"
+        ? "ይህ ጥያቄ ኢንተርኔት ያስፈልገዋል። መሠረታዊ የትምህርት መልሶች ያለ ኢንተርኔት ይሰራሉ።\n\nThis question needs internet. Basic course answers still work offline."
+        : "This question needs internet. Basic course answers still work offline.\n\nይህ ጥያቄ ኢንተርኔት ያስፈልገዋል። መሠረታዊ የትምህርት መልሶች ያለ ኢንተርኔት ይሰራሉ።"
+      );
 
       return;
     }
 
-    showAnswer("🔎 እየፈለግሁ ነው... / Searching...");
+    showAnswer(language === "am"
+      ? "🔎 እየፈለግሁ ነው..."
+      : "🔎 Searching..."
+    );
 
     getAnswerBtn.disabled = true;
     getAnswerBtn.setAttribute("aria-busy", "true");
@@ -772,10 +841,10 @@
       console.warn("Web answer failed:", webError);
 
       if (version === requestVersion) {
-        showAnswer(bilingual(
-          "I could not find this in the course material. Press I Need Help to ask a teacher on Telegram.",
-          "ይህን በትምህርት መረጃ ውስጥ ማግኘት አልቻልኩም። መምህር ለመጠየቅ እርዳታ አስፈልገኛል ይጫኑ።"
-        ));
+        showAnswer(language === "am"
+          ? "ይህን በትምህርት መረጃ ውስጥ ማግኘት አልቻልኩም። መምህር ለመጠየቅ እርዳታ አስፈልገኛል ይጫኑ።\n\nI could not find this in the course material. Press I Need Help to ask a teacher on Telegram."
+          : "I could not find this in the course material. Press I Need Help to ask a teacher on Telegram.\n\nይህን በትምህርት መረጃ ውስጥ ማግኘት አልቻልኩም። መምህር ለመጠየቅ እርዳታ አስፈልገኛል ይጫኑ።"
+        );
       }
     } finally {
       if (version === requestVersion) {
@@ -795,7 +864,7 @@
   });
 
   /* =========================================================
-     READ ALOUD
+     SOFT READ ALOUD
      ========================================================= */
 
   function stopAllSpeech() {
@@ -890,9 +959,14 @@
   function speakDevice(text, voice, lang, version) {
     return new Promise((resolve, reject) => {
       const utterance = new SpeechSynthesisUtterance(text);
+
       utterance.voice = voice;
       utterance.lang = lang === "am" ? "am-ET" : "en-US";
-      utterance.rate = 0.92;
+
+      // Soft, natural reading speed
+      utterance.rate = 0.88;
+      utterance.pitch = 1.02;
+      utterance.volume = 0.9;
 
       const timer = setTimeout(() => {
         if (version === speechVersion) {
@@ -1001,7 +1075,7 @@
   on(speakEnglishBtn, () => readAloud("en"));
 
   /* =========================================================
-     VOICE INPUT
+     VOICE INPUT WITH START AND END BEEP
      ========================================================= */
 
   function stopRecognition() {
@@ -1056,6 +1130,15 @@
     button?.setAttribute("aria-pressed", "true");
     applyLanguage();
 
+    current.onstart = () => {
+      playBeep("start");
+
+      status(
+        "🎤 እያዳመጥኩ ነው። እባክዎ ይናገሩ።",
+        "🎤 Listening. Please speak."
+      );
+    };
+
     current.onresult = event => {
       if (recognition !== current) return;
 
@@ -1065,9 +1148,11 @@
         (questionInput.value && !/\s$/.test(questionInput.value) ? " " : "") +
         text;
 
+      playBeep("end");
+
       status(
-        "ተመዝግቧል። መልስ አግኝ ይጫኑ።",
-        "Got it. Press Get Answer.",
+        "✅ ተመዝግቧል። መልስ አግኝ ይጫኑ።",
+        "✅ Got it. Press Get Answer.",
         "ok"
       );
     };
@@ -1108,11 +1193,6 @@
 
       if (recognition !== current) return;
       current.start();
-
-      status(
-        "እባክዎ ይናገሩ...",
-        "Please speak..."
-      );
     } catch (error) {
       console.warn("Microphone failed:", error);
       stopRecognition();
@@ -1617,19 +1697,15 @@
 
     showAnswer(
       failed.length === 0
-        ? bilingual(
-            "✅ Final website test passed. Railway API, Telegram @EbaMengistuBot, course FAQ, job alerts, interview support, teacher analytics, privacy notes, SMS route, and accessibility tools are ready.",
-            "✅ የመጨረሻ የድር ጣቢያ ሙከራ አልፏል። Railway API፣ Telegram @EbaMengistuBot፣ የትምህርት FAQ፣ የሥራ ማሳወቂያ፣ የቃለ መጠይቅ ድጋፍ፣ የመምህር ትንተና፣ የግላዊነት ማስታወሻ፣ SMS መንገድ እና ተደራሽነት መሣሪያዎች ዝግጁ ናቸው።"
-          )
-        : bilingual(
-            `⚠️ ${failed.length} test(s) failed. Open browser console for details.`,
-            `⚠️ ${failed.length} ሙከራ አልተሳካም። ለዝርዝር የአሳሽ Console ይክፈቱ።`
-          )
+        ? language === "am"
+          ? "✅ የመጨረሻ የድር ጣቢያ ሙከራ አልፏል። Railway API፣ Telegram @EbaMengistuBot፣ የትምህርት FAQ፣ የሥራ ማሳወቂያ፣ የቃለ መጠይቅ ድጋፍ፣ የመምህር ትንተና፣ የግላዊነት ማስታወሻ፣ SMS መንገድ እና ተደራሽነት መሣሪያዎች ዝግጁ ናቸው።"
+          : "✅ Final website test passed. Railway API, Telegram @EbaMengistuBot, course FAQ, job alerts, interview support, teacher analytics, privacy notes, SMS route, and accessibility tools are ready."
+        : language === "am"
+          ? `⚠️ ${failed.length} ሙከራ አልተሳካም። ለዝርዝር የአሳሽ Console ይክፈቱ።`
+          : `⚠️ ${failed.length} test(s) failed. Open browser console for details.`
     );
   }
 
-  // Open browser console and type:
-  // testWebsite()
   window.testWebsite = testWebsite;
 
   /* =========================================================
