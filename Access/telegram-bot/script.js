@@ -2,8 +2,8 @@
 
 (() => {
   /* =========================================================
-     LEARNING AND EMPLOYMENT — FINAL POWERFUL SCRIPT.JS
-     Railway bot + Telegram @EbaMengistuBot
+     LEARNING AND EMPLOYMENT — FINAL MATCHING SCRIPT.JS
+     Railway + Telegram @EbaMengistuBot + Track 3
      ========================================================= */
 
   const TELEGRAM_BOT_URL = "https://t.me/EbaMengistuBot";
@@ -38,9 +38,9 @@
   const voiceStatus = $("voiceStatus");
 
   const ETHIOPIC = /[\u1200-\u137F]/;
-  const CACHE_KEY = "learningAnswers_v9";
-  const SETTINGS_KEY = "learningSettings_v9";
-  const CHAT_ID_KEY = "learningChatId_v9";
+  const CACHE_KEY = "learningAnswers_v10";
+  const SETTINGS_KEY = "learningSettings_v10";
+  const CHAT_ID_KEY = "learningChatId_v10";
 
   let language = "am";
   let fontSize = 1.05;
@@ -56,6 +56,7 @@
 
   /* =========================================================
      OFFLINE COURSE FAQ
+     Add approved course answers here.
      ========================================================= */
 
   const courseFAQ = {
@@ -1494,7 +1495,7 @@
   }
 
   /* =========================================================
-     FINAL WEBSITE CHECK
+     FINAL WEBSITE TEST
      ========================================================= */
 
   async function testWebsite() {
@@ -1510,11 +1511,28 @@
         questionInput &&
         answerBox &&
         getAnswerBtn &&
+        clearBtn &&
+        copyBtn &&
+        languageToggleBtn &&
+        speakAmharicBtn &&
+        speakEnglishBtn &&
+        voiceAmharicBtn &&
+        voiceEnglishBtn &&
+        contrastBtn &&
+        fontSmall &&
+        fontNormal &&
+        fontLarge &&
         helpBtn &&
         screenShareBtn &&
-        downloadBtn &&
-        jobAlertForm &&
-        accommodationForm
+        downloadBtn
+      )
+    );
+
+    add(
+      "Course material section",
+      Boolean(
+        document.querySelector(".course-section") &&
+        document.querySelectorAll(".course-link").length >= 3
       )
     );
 
@@ -1529,6 +1547,50 @@
     );
 
     add(
+      "Job alert form",
+      Boolean(
+        jobAlertForm &&
+        $("jobPhone") &&
+        $("jobTelegram") &&
+        $("jobArea") &&
+        $("jobAlertBtn")
+      )
+    );
+
+    add(
+      "Interview support form",
+      Boolean(
+        accommodationForm &&
+        $("accommodationName") &&
+        $("accommodationPhone") &&
+        $("accommodationType") &&
+        $("accommodationDetails") &&
+        $("accommodationBtn")
+      )
+    );
+
+    add(
+      "Privacy and SMS notes",
+      Boolean(
+        document.querySelector(".privacy-note") &&
+        document.querySelector(".sms-note")
+      )
+    );
+
+    add(
+      "Priority order section",
+      Boolean(
+        document.querySelector(".priority-section") &&
+        document.querySelector(".priority-list")
+      )
+    );
+
+    add(
+      "Teacher analytics section",
+      Boolean(teacherStats)
+    );
+
+    add(
       "Railway API URL",
       API_BASE_URL.startsWith("https://")
     );
@@ -1536,25 +1598,6 @@
     add(
       "Telegram bot username",
       TELEGRAM_BOT_URL === "https://t.me/EbaMengistuBot"
-    );
-
-    add(
-      "Interview support form",
-      Boolean(
-        $("accommodationName") &&
-        $("accommodationPhone") &&
-        $("accommodationType") &&
-        $("accommodationDetails")
-      )
-    );
-
-    add(
-      "Job alert form",
-      Boolean(
-        $("jobPhone") &&
-        $("jobTelegram") &&
-        $("jobArea")
-      )
     );
 
     try {
@@ -1575,12 +1618,12 @@
     showAnswer(
       failed.length === 0
         ? bilingual(
-            "✅ Final website check passed. Railway API, Telegram @EbaMengistuBot, course FAQ, job alerts, interview support, and accessibility tools are ready.",
-            "✅ የመጨረሻ የድር ጣቢያ ፍተሻ አልፏል። Railway API፣ Telegram @EbaMengistuBot፣ የትምህርት FAQ፣ የሥራ ማሳወቂያ፣ የቃለ መጠይቅ ድጋፍ እና ተደራሽነት መሣሪያዎች ዝግጁ ናቸው።"
+            "✅ Final website test passed. Railway API, Telegram @EbaMengistuBot, course FAQ, job alerts, interview support, teacher analytics, privacy notes, SMS route, and accessibility tools are ready.",
+            "✅ የመጨረሻ የድር ጣቢያ ሙከራ አልፏል። Railway API፣ Telegram @EbaMengistuBot፣ የትምህርት FAQ፣ የሥራ ማሳወቂያ፣ የቃለ መጠይቅ ድጋፍ፣ የመምህር ትንተና፣ የግላዊነት ማስታወሻ፣ SMS መንገድ እና ተደራሽነት መሣሪያዎች ዝግጁ ናቸው።"
           )
         : bilingual(
-            `⚠️ ${failed.length} check(s) failed. Open browser console for details.`,
-            `⚠️ ${failed.length} ፍተሻ አልተሳካም። ለዝርዝር የአሳሽ Console ይክፈቱ።`
+            `⚠️ ${failed.length} test(s) failed. Open browser console for details.`,
+            `⚠️ ${failed.length} ሙከራ አልተሳካም። ለዝርዝር የአሳሽ Console ይክፈቱ።`
           )
     );
   }

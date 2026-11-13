@@ -1,5 +1,5 @@
 /* =========================================================
-   LEARNING AND EMPLOYMENT — FINAL STYLE.CSS
+   LEARNING AND EMPLOYMENT — MATCHING FINAL STYLE.CSS
    Mobile-first, accessible, clean, Track 3 ready
    ========================================================= */
 
@@ -10,6 +10,7 @@
   --green-dark: #047857;
   --bg: #f3f6fb;
   --card: #ffffff;
+  --soft: #f8fafc;
   --text: #172033;
   --muted: #64748b;
   --border: #dbe3ef;
@@ -297,7 +298,8 @@ button:active {
 .course-section,
 .support-section,
 .form-section,
-.teacher-section {
+.teacher-section,
+.priority-section {
   margin-top: 30px;
   padding: 20px 16px;
   background: var(--card);
@@ -330,7 +332,7 @@ button:active {
 
 .course-card {
   padding: 18px;
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--border);
   border-radius: 16px;
   transition:
@@ -404,13 +406,33 @@ button:active {
   background: #eff6ff;
 }
 
+/* ---------- PRIVACY AND SMS NOTES ---------- */
+
+.privacy-note,
+.sms-note {
+  max-width: 720px;
+  margin: 14px auto 0;
+  padding: 12px 14px;
+  text-align: center;
+  font-size: 0.92rem;
+  color: #475569;
+  background: var(--soft);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.privacy-note strong,
+.sms-note strong {
+  color: var(--blue);
+}
+
 /* ---------- TEACHER VIEW ---------- */
 
 .teacher-stats {
   max-width: 720px;
   margin: 0 auto;
   padding: 18px;
-  background: #f8fafc;
+  background: var(--soft);
   border: 1px solid var(--border);
   border-radius: 16px;
 }
@@ -422,6 +444,23 @@ button:active {
 
 .teacher-stats li {
   margin-bottom: 8px;
+}
+
+/* ---------- PRIORITY ORDER ---------- */
+
+.priority-list {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-left: 24px;
+}
+
+.priority-list li {
+  margin-bottom: 14px;
+  line-height: 1.55;
+}
+
+.priority-list strong {
+  color: var(--blue);
 }
 
 /* ---------- FOOTER ---------- */
@@ -537,6 +576,7 @@ body.high-contrast {
   --green: #60a5fa;
   --bg: #0b1220;
   --card: #0b1220;
+  --soft: #0b1220;
   --text: #ffffff;
   --muted: #e2e8f0;
   --border: #ffd166;
@@ -550,7 +590,9 @@ body.high-contrast .section-title {
 
 body.high-contrast .app-title span,
 body.high-contrast .section-text,
-body.high-contrast .course-card p {
+body.high-contrast .course-card p,
+body.high-contrast .privacy-note,
+body.high-contrast .sms-note {
   color: #e2e8f0;
 }
 
@@ -561,18 +603,24 @@ body.high-contrast .course-section,
 body.high-contrast .support-section,
 body.high-contrast .form-section,
 body.high-contrast .teacher-section,
+body.high-contrast .priority-section,
 body.high-contrast .course-card,
 body.high-contrast .teacher-stats,
 body.high-contrast textarea,
 body.high-contrast input,
-body.high-contrast select {
+body.high-contrast select,
+body.high-contrast .privacy-note,
+body.high-contrast .sms-note {
   background: #0b1220;
   border: 3px solid #ffd166;
   color: #fff;
   box-shadow: none;
 }
 
-body.high-contrast label {
+body.high-contrast label,
+body.high-contrast .priority-list strong,
+body.high-contrast .privacy-note strong,
+body.high-contrast .sms-note strong {
   color: #ffd166;
 }
 
@@ -674,7 +722,8 @@ body.high-contrast .site-footer {
   .course-section,
   .support-section,
   .form-section,
-  .teacher-section {
+  .teacher-section,
+  .priority-section {
     padding: 18px 12px;
   }
 }
@@ -744,6 +793,11 @@ body.high-contrast .site-footer {
 
   .section-text {
     font-size: 0.95rem;
+  }
+
+  .privacy-note,
+  .sms-note {
+    font-size: 0.88rem;
   }
 
   .site-footer {
