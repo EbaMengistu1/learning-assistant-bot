@@ -1274,6 +1274,57 @@ app.post("/api/ask", rateLimit, async (req, res) => {
   }
 });
 
+app.post("/api/speech", async (req, res) => {
+  try {
+    const text = String(req.body?.text || "").trim();
+    const language = req.body?.language === "am-ET" ? "am" : "en";
+
+    if (!text) {
+      return res.status(400).json({
+        ok: false,
+        error: "Text is required."
+      });
+    }
+
+    const chunks = text
+      .replace(/\s+/g, " ")
+      .trim()
+      .match(/.{1,180}(\s|$)/g) || [text];
+
+    const audioParts = [];
+
+    for (const chunk of chunks) {
+      const url =
+        "https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=" +
+        language +
+        "&q=" +
+        encodeURIComponent(chunk.trim());
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Speech service returned ${response.status}`);
+      }
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      audioParts.push(buffer);
+    }
+
+    const audio = Buffer.concat(audioParts);
+
+    res.set("Content-Type", "audio/mpeg");
+    res.set("Content-Length", audio.length);
+    res.send(audio);
+  } catch (error) {
+    console.error("Speech error:", error.message);
+
+    res.status(502).json({
+      ok: false,
+      error: "Speech service is unavailable."
+    });
+  }
+});
+
 /*
  * Public aggregate topic counts only.
  * Do not expose individual students' questions publicly.
