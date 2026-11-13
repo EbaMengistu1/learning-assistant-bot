@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>API Test</title>
+</head>
+<body>
+  <h1>Learning Assistant API Test</h1>
+
+  <input id="question" placeholder="What is email?">
+  <button onclick="testAsk()">Get Answer</button>
+
+  <pre id="result"></pre>
+
+  <script>
+    async function testAsk() {
+      const question = document.getElementById("question").value;
+      const result = document.getElementById("result");
+
+      result.textContent = "Waiting...";
+
+      try {
+        const response = await fetch(
+          "https://learning-assistant-bot-production.up.railway.app/api/ask",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              question: question,
+              language: "en"
+            })
+          }
+        );
+
+        const data = await response.json();
+        result.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        result.textContent = "Fetch failed: " + error.message;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1131,16 +1131,21 @@ async function sendSms(to, message) {
 const requestBuckets = new Map();
 
 function rateLimit(req, res, next) {
+  if (req.method === "OPTIONS") return next();
+
   const now = Date.now();
   const key = req.ip;
   let bucket = requestBuckets.get(key);
+
 
   if (!bucket || bucket.resetAt <= now) {
     bucket = { count: 0, resetAt: now + 60000 };
     requestBuckets.set(key, bucket);
   }
 
+
   bucket.count++;
+
 
   if (bucket.count > 20) {
     return res.status(429).json({
@@ -1148,6 +1153,7 @@ function rateLimit(req, res, next) {
       error: "Too many requests. Try again shortly."
     });
   }
+
 
   next();
 }
