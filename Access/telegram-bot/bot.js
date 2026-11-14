@@ -1558,9 +1558,12 @@ async function handleCallback(query) {
   if (data === "open_quiz_menu") return sendQuizMenu(chatId);
   if (data === "show_progress") return sendProgress(chatId);
 
-  if (["student_learning", "track3_course_question"].includes(data)) {
-    return sendLessonMenu(chatId);
-  }
+  if (
+  ["start_learning", "student_learning", "track3_course_question"]
+    .includes(data)
+) {
+  return sendLessonMenu(chatId);
+}
 
   if (data === "track3_menu") return sendTrackMenu(chatId);
   if (data === "teacher_panel") return sendTeacherPanel(chatId);
@@ -1817,41 +1820,11 @@ if (data === "toggle_simple_mode") {
   }
 }
 
-const lessonMenu = {
-  reply_markup: {
-    inline_keyboard: [
-      [{ text: "📚 Email", callback_data: "lesson_email" }],
-      [{ text: "📚 Internet", callback_data: "lesson_internet" }],
-      [{ text: "📚 Interview Preparation", callback_data: "lesson_interview" }]
-    ]
-  }
-};
-
-bot.on("callback_query", async (query) => {
-  const chatId = query.message.chat.id;
-
-  if (query.data === "student_panel") {
-    await bot.sendMessage(chatId, "🎓 Student Panel\n\nChoose an option:", studentMenu);
-  }
-
-  if (query.data === "teacher_panel") {
-    await bot.sendMessage(chatId, "👩‍🏫 Teacher Panel\n\nChoose an option:", teacherMenu);
-  }
-
-  if (query.data === "start_learning") {
-    await bot.sendMessage(
-      chatId,
-      "📚 Choose a lesson:\n\n" +
-      "You can also type your question in Amharic or English.",
-      lessonMenu
-    );
-  }
-
-  try {
-    await bot.answerCallbackQuery(query.id);
-  } catch (error) {
-    // Ignore expired or invalid button clicks
-  }
+bot.on("callback_query", (query) => {
+  handleCallback(query).catch(async (error) => {
+    console.error("Telegram callback failed:", error.message);
+    await bot.answerCallbackQuery(query.id).catch(() => {});
+  });
 });
 
 /* =========================================================
