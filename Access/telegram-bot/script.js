@@ -470,6 +470,31 @@ const questionInput = document.getElementById("question");
       }, 650));
     });
 
+    document.querySelectorAll("article.course-card").forEach(card => {
+  const chooseButton = card.querySelector(".choose-lesson");
+
+  if (!chooseButton) return;
+
+  chooseButton.addEventListener("click", () => {
+    const titleElement =
+      card.querySelector("h3") ||
+      card.querySelector("h2") ||
+      card.querySelector(".course-title");
+
+    const lessonTitle = titleElement
+      ? titleElement.textContent.trim()
+      : "";
+
+    if (!lessonTitle) return;
+
+    questionInput.value =
+      "Course material: " + lessonTitle +
+      ". What is " + lessonTitle + "?";
+
+    questionInput.focus();
+  });
+});
+
     /* =====================================================
        LESSONS AND SAFE SOURCE RENDERING
        ===================================================== */
