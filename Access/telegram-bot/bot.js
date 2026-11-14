@@ -1820,27 +1820,24 @@ if (data === "toggle_simple_mode") {
   }
 }
 
-if (query.data === "start_learning") {
-  const lessonMenu = {
-    reply_markup: {
-      inline_keyboard: lessons.map((lesson) => [
-        {
-          text: "📚 " + lesson.title,
-          callback_data: "lesson_" + lesson.id
-        }
-      ])
-    }
-  };
+const lessonMenu = {
+  reply_markup: {
+    inline_keyboard: [
+      [{ text: "📚 Email", callback_data: "lesson_email" }],
+      [{ text: "📚 Internet", callback_data: "lesson_internet" }],
+      [{ text: "📚 Interview Preparation", callback_data: "lesson_interview" }]
+    ]
+  }
+};
 
   await bot.sendMessage(
-    query.message.chat.id,
-    "📚 Choose a lesson:\n\n" +
-    "You can also type your question in Amharic or English.",
-    lessonMenu
-  );
+  query.message.chat.id,
+  "📚 Choose a lesson:\n\n" +
+  "You can also type your question in Amharic or English.",
+  lessonMenu
+);
 
   await bot.answerCallbackQuery(query.id);
-}
 
 /* =========================================================
    TEACHER SEND CONFIRMATION
