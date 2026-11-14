@@ -206,23 +206,13 @@ async function send(chatId, text, options = {}) {
 
   if (remaining) chunks.push(remaining);
 
-  const lessonOptions = {
-  reply_markup: {
-    inline_keyboard: [
-      [
-        { text: "📚 How to use", callback_data: "how_to_use" },
-        { text: "📚 Download", callback_data: "download_lesson" }
-      ]
-    ]
+  for (let index = 0; index < chunks.length; index++) {
+    await bot.sendMessage(
+      chatId,
+      chunks[index],
+      index === chunks.length - 1 ? options : {}
+    );
   }
-};
-
-for (let index = 0; index < chunks.length; index++) {
-  await bot.sendMessage(
-    chatId,
-    chunks[index],
-    index === chunks.length - 1 ? lessonOptions : {}
-  );
 }
 
 async function saveDb(method, ...args) {
