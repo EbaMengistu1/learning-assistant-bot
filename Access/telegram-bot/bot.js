@@ -1831,39 +1831,13 @@ const lessonMenu = {
 };
 
   bot.on("callback_query", async (query) => {
-  const chatId = query.message.chat.id;
-
-  if (query.data === "student_panel") {
-    await bot.sendMessage(
-      chatId,
-      "🎓 Student Panel\n\nChoose an option:",
-      studentMenu
-    );
-  }
-
-  if (query.data === "teacher_panel") {
-    await bot.sendMessage(
-      chatId,
-      "👩‍🏫 Teacher Panel\n\nChoose an option:",
-      teacherMenu
-    );
-  }
-
-  if (query.data === "start_learning") {
-    await bot.sendMessage(
-      chatId,
-      "📚 Choose a lesson:\n\n" +
-      "You can also type your question in Amharic or English.",
-      lessonMenu
-    );
-  }
-
-  try {
-    await bot.answerCallbackQuery(query.id);
-  } catch (error) {
-    // Ignore expired button clicks
-  }
+  await bot.sendMessage(
+    query.message.chat.id,
+    "📚 Choose a lesson"
+  );
 });
+
+  await bot.answerCallbackQuery(query.id);
 
 /* =========================================================
    TEACHER SEND CONFIRMATION
