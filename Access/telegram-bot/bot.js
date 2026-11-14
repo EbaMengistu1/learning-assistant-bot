@@ -1823,26 +1823,30 @@ if (data === "toggle_simple_mode") {
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
 
-  if (query.data === "how_to_use") {
-    await bot.sendMessage(
-      chatId,
-      "📚 How to use\n\n" +
-      "1. Read the lesson carefully.\n" +
-      "2. Ask questions in English or Amharic.\n" +
-      "3. Click Download to save the lesson.\n" +
-      "4. Practice what you learned."
-    );
-  }
+  try {
+    if (query.data === "how_to_use") {
+      await bot.sendMessage(
+        chatId,
+        "📚 How to use\n\n" +
+        "1. Read the lesson carefully.\n" +
+        "2. Ask questions in English or Amharic.\n" +
+        "3. Click Download to save the lesson.\n" +
+        "4. Practice what you learned."
+      );
+    }
 
-  if (query.data === "download_lesson") {
-    await bot.sendMessage(
-      chatId,
-      "📚 Download\n\n" +
-      "Your lesson download will be available soon."
-    );
-  }
+    if (query.data === "download_lesson") {
+      await bot.sendMessage(
+        chatId,
+        "📚 Download\n\n" +
+        "Your lesson download will be available soon."
+      );
+    }
 
-  await bot.answerCallbackQuery(query.id);
+    await bot.answerCallbackQuery(query.id);
+  } catch (error) {
+    // Ignore expired or invalid Telegram button clicks
+  }
 });
 
 /* =========================================================
@@ -2305,4 +2309,12 @@ process.on("SIGINT", shutdown);
 start().catch(error => {
   console.error("Startup failed:", error.message);
   process.exit(1);
+});
+
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled promise error:", error);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught error:", error);
 });
