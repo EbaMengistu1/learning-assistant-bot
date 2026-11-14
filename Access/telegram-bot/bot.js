@@ -1820,34 +1820,27 @@ if (data === "toggle_simple_mode") {
   }
 }
 
-bot.on("callback_query", async (query) => {
-  const chatId = query.message.chat.id;
-
-  try {
-    if (query.data === "how_to_use") {
-      await bot.sendMessage(
-        chatId,
-        "📚 How to use\n\n" +
-        "1. Read the lesson carefully.\n" +
-        "2. Ask questions in English or Amharic.\n" +
-        "3. Click Download to save the lesson.\n" +
-        "4. Practice what you learned."
-      );
+if (query.data === "start_learning") {
+  const lessonMenu = {
+    reply_markup: {
+      inline_keyboard: lessons.map((lesson) => [
+        {
+          text: "📚 " + lesson.title,
+          callback_data: "lesson_" + lesson.id
+        }
+      ])
     }
+  };
 
-    if (query.data === "download_lesson") {
-      await bot.sendMessage(
-        chatId,
-        "📚 Download\n\n" +
-        "Your lesson download will be available soon."
-      );
-    }
+  await bot.sendMessage(
+    query.message.chat.id,
+    "📚 Choose a lesson:\n\n" +
+    "You can also type your question in Amharic or English.",
+    lessonMenu
+  );
 
-    await bot.answerCallbackQuery(query.id);
-  } catch (error) {
-    // Ignore expired or invalid Telegram button clicks
-  }
-});
+  await bot.answerCallbackQuery(query.id);
+}
 
 /* =========================================================
    TEACHER SEND CONFIRMATION
