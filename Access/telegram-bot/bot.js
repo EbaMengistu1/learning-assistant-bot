@@ -1830,12 +1830,12 @@ const lessonMenu = {
   }
 };
 
+  bot.on("callback_query", async (query) => {
   await bot.sendMessage(
-  query.message.chat.id,
-  "📚 Choose a lesson:\n\n" +
-  "You can also type your question in Amharic or English.",
-  lessonMenu
-);
+    query.message.chat.id,
+    "📚 Choose a lesson"
+  );
+});
 
   await bot.answerCallbackQuery(query.id);
 
