@@ -470,28 +470,28 @@ const questionInput = document.getElementById("question");
       }, 650));
     });
 
-    document.querySelectorAll("article.course-card").forEach(card => {
-  const chooseButton = card.querySelector(".choose-lesson");
+    document.querySelectorAll("article.course-card button").forEach(button => {
+  button.addEventListener("click", () => {
+    const card = button.closest("article.course-card");
 
-  if (!chooseButton) return;
+    const title =
+      card?.querySelector("h3")?.textContent.trim() ||
+      card?.querySelector("h2")?.textContent.trim() ||
+      card?.querySelector(".course-title")?.textContent.trim() ||
+      "";
 
-  chooseButton.addEventListener("click", () => {
-    const titleElement =
-      card.querySelector("h3") ||
-      card.querySelector("h2") ||
-      card.querySelector(".course-title");
-
-    const lessonTitle = titleElement
-      ? titleElement.textContent.trim()
-      : "";
-
-    if (!lessonTitle) return;
+    if (!title) {
+      console.log("Course title not found");
+      return;
+    }
 
     questionInput.value =
-      "Course material: " + lessonTitle +
-      ". What is " + lessonTitle + "?";
+      "Course material: " + title +
+      ". What is " + title + "?";
 
     questionInput.focus();
+
+    console.log("Question box filled with:", questionInput.value);
   });
 });
 
@@ -2494,3 +2494,45 @@ const questionInput = document.getElementById("question");
     init();
   }
 })();
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+
+  if (!button) return;
+
+  const buttonText = button.textContent.trim().toLowerCase();
+
+  if (
+    !buttonText.includes("choose lesson") &&
+    !buttonText.includes("ትምህርት ምረጥ")
+  ) {
+    return;
+  }
+
+  const card = button.closest("article");
+
+  if (!card) return;
+
+  const title =
+    card.querySelector("h3")?.textContent.trim() ||
+    card.querySelector("h2")?.textContent.trim() ||
+    card.querySelector(".course-title")?.textContent.trim() ||
+    "";
+
+  if (!title) return;
+
+  const questionInput = document.getElementById("question");
+
+  if (!questionInput) return;
+
+  questionInput.value =
+    "Course material: " + title +
+    ". What is " + title + "?";
+
+  questionInput.focus();
+
+  questionInput.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+});
