@@ -1830,6 +1830,14 @@ const lessonMenu = {
 bot.on("callback_query", async (query) => {
   const chatId = query.message.chat.id;
 
+  if (query.data === "student_panel") {
+    await bot.sendMessage(chatId, "🎓 Student Panel\n\nChoose an option:", studentMenu);
+  }
+
+  if (query.data === "teacher_panel") {
+    await bot.sendMessage(chatId, "👩‍🏫 Teacher Panel\n\nChoose an option:", teacherMenu);
+  }
+
   if (query.data === "start_learning") {
     await bot.sendMessage(
       chatId,
@@ -1842,7 +1850,7 @@ bot.on("callback_query", async (query) => {
   try {
     await bot.answerCallbackQuery(query.id);
   } catch (error) {
-    // Ignore expired button clicks
+    // Ignore expired or invalid button clicks
   }
 });
 
