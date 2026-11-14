@@ -913,10 +913,7 @@ async function sendStartMenu(chatId) {
 
   const studentButtons = [
     [
-      {
-        text: "📚 ትምህርት ጀምር / Start Learning",
-        callback_data: "student_learning"
-      }
+      { text: "📚 Start Learning", callback_data: "start_learning" }
     ],
     [
       {
@@ -1830,14 +1827,24 @@ const lessonMenu = {
   }
 };
 
-  bot.on("callback_query", async (query) => {
-  await bot.sendMessage(
-    query.message.chat.id,
-    "📚 Choose a lesson"
-  );
-});
+bot.on("callback_query", async (query) => {
+  const chatId = query.message.chat.id;
 
-  await bot.answerCallbackQuery(query.id);
+  if (query.data === "start_learning") {
+    await bot.sendMessage(
+      chatId,
+      "📚 Choose a lesson:\n\n" +
+      "You can also type your question in Amharic or English.",
+      lessonMenu
+    );
+  }
+
+  try {
+    await bot.answerCallbackQuery(query.id);
+  } catch (error) {
+    // Ignore expired button clicks
+  }
+});
 
 /* =========================================================
    TEACHER SEND CONFIRMATION
